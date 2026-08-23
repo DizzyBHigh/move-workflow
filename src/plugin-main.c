@@ -14,6 +14,7 @@ OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
 #define TEST_SCENE_NAME "obs-move-workflow test scene"
 #define PHASE12_TEST_DURATION_MS 1000
+#define PHASE13_END_ACTION_DELAY_MS 350
 
 typedef struct duration_restore_context {
 	obs_source_t *filter;
@@ -21,8 +22,14 @@ typedef struct duration_restore_context {
 	long long duration;
 } duration_restore_context_t;
 
+typedef struct end_action_context {
+	workflow_t *workflow;
+	char node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
+	size_t node_count;
+} end_action_context_t;
+
 static workflow_t workflow = {
-	.id = "phase12-test-workflow",
+	.id = "phase13-test-workflow",
 	.name = "Test Move Source Workflow",
 	.enabled = true,
 	.entry_node_count = 3,
@@ -40,48 +47,50 @@ static workflow_t workflow = {
 				.kind = WORKFLOW_MOVE_SOURCE,
 			},
 			.duration = {.mode = WORKFLOW_USE_EXISTING},
-			.end_actions_mode = WORKFLOW_USE_EXISTING,
+			.end_actions_mode = WORKFLOW_OVERRIDE,
 			.start_trigger_mode = WORKFLOW_USE_EXISTING,
 			.stop_trigger_mode = WORKFLOW_USE_EXISTING,
-			.simultaneous_actions_mode = WORKFLOW_USE_EXISTING,
-			.next_actions_mode = WORKFLOW_USE_EXISTING,
-			.next_move_on_mode = WORKFLOW_USE_EXISTING,
+			.simultaneous_actions_mode = WORKFLOW_OVERRIDE,
+			.next_actions_mode = WORKFLOW_OVERRIDE,
+			.next_move_on_mode = WORKFLOW_OVERRIDE,
+			.end_node_count = 1,
+			.end_node_ids = {"move-center"},
 		},
 		{
 			.id = "move-center",
 			.name = "Move Source - Center",
 			.action = {
 				.scene_name = TEST_SCENE_NAME,
-				.source_name = "",
+				source_name = "",
 				.filter_name = "Move Source - Center",
 				.filter_id = "move_source_filter",
 				.kind = WORKFLOW_MOVE_SOURCE,
 			},
 			.duration = {.mode = WORKFLOW_USE_EXISTING},
-			.end_actions_mode = WORKFLOW_USE_EXISTING,
+			.end_actions_mode = WORKFLOW_OVERRIDE,
 			.start_trigger_mode = WORKFLOW_USE_EXISTING,
 			.stop_trigger_mode = WORKFLOW_USE_EXISTING,
-			.simultaneous_actions_mode = WORKFLOW_USE_EXISTING,
-			.next_actions_mode = WORKFLOW_USE_EXISTING,
-			.next_move_on_mode = WORKFLOW_USE_EXISTING,
+			.simultaneous_actions_mode = WORKFLOW_OVERRIDE,
+			.next_actions_mode = WORKFLOW_OVERRIDE,
+			.next_move_on_mode = WORKFLOW_OVERRIDE,
 		},
 		{
 			.id = "move-right",
 			.name = "Move Source - Right",
 			.action = {
 				.scene_name = TEST_SCENE_NAME,
-				.source_name = "",
+				source_name = "",
 				.filter_name = "Move Source - Right",
 				.filter_id = "move_source_filter",
 				.kind = WORKFLOW_MOVE_SOURCE,
 			},
 			.duration = {.mode = WORKFLOW_USE_EXISTING},
-			.end_actions_mode = WORKFLOW_USE_EXISTING,
+			.end_actions_mode = WORKFLOW_OVERRIDE,
 			.start_trigger_mode = WORKFLOW_USE_EXISTING,
 			.stop_trigger_mode = WORKFLOW_USE_EXISTING,
-			.simultaneous_actions_mode = WORKFLOW_USE_EXISTING,
-			.next_actions_mode = WORKFLOW_USE_EXISTING,
-			.next_move_on_mode = WORKFLOW_USE_EXISTING,
+			simultaneous_actions_mode = WORKFLOW_OVERRIDE,
+			next_actions_mode = WORKFLOW_OVERRIDE,
+			next_move_on_mode = WORKFLOW_OVERRIDE,
 		},
 	},
 };
@@ -126,7 +135,7 @@ static void inspect_existing_move_settings(obs_source_t *filter, const workflow_
 	const char *next = obs_data_get_string(settings, "next_move");
 
 	blog(LOG_INFO,
-	     "[Move Workflow Phase 12] Existing settings for node \"%s\": source=\"%s\" custom_duration=%s duration=%lldms start_trigger=%lld stop_trigger=%lld simultaneous=\"%s\" next=\"%s\" next_move_on=%lld",
+	     "[Move Workflow Phase 13] Existing settings for node \"%s\": source=\"%s\" custom_duration=%s duration=%lldms start_trigger=%lld stop_trigger=%lld simultaneous=\"%s\" next=\"%s\" next_move_on=%lld",
 	     node->name, source ? source : "", custom_duration ? "true" : "false",
 	     duration, start_trigger, stop_trigger,
 	     simultaneous ? simultaneous : "", next ? next : "", next_move_on);
@@ -149,7 +158,7 @@ static void restore_duration(void *data)
 	}
 
 	blog(LOG_INFO,
-	     "[Move Workflow Phase 12] Duration override restored: custom_duration=%s duration=%lldms",
+	     "[Move Workflow Phase 13] Duration override restored: custom_duration=%s duration=%lldms",
 	     ctx->custom_duration ? "true" : "false", ctx->duration);
 
 	obs_source_release(ctx->filter);
@@ -187,12 +196,12 @@ static bool apply_duration_override(obs_source_t *filter, uint64_t duration_ms)
 	obs_data_release(settings);
 
 	blog(LOG_INFO,
-	     "[Move Workflow Phase 12] Applying duration override: original=%lldms override=%llums",
+	     "[Move Workflow Phase 13] Applying duration override: original=%lldms override=%llums",
 	     ctx->duration, (unsigned long long)duration_ms);
 
 	pthread_t thread;
 	if (pthread_create(&thread, NULL, duration_restore_thread, ctx) != 0) {
-		blog(LOG_WARNING, "[Move Workflow Phase 12] Failed to start duration restore thread");
+		blog(LOG_WARNING, "[Move Workflow Phase 13] Failed to start duration restore thread");
 		restore_duration(ctx);
 		return false;
 	}
@@ -200,19 +209,90 @@ static bool apply_duration_override(obs_source_t *filter, uint64_t duration_ms)
 	return true;
 }
 
-static void execute_node(const workflow_node_t *node)
+static workflow_node_t *find_node(workflow_t *wf, const char *node_id)
+{
+	for (size_t i = 0; i < wf->node_count; ++i) {
+		if (strcmp(wf->nodes[i].id, node_id) == 0)
+			return &wf->nodes[i];
+	}
+	return NULL;
+}
+
+static void execute_node(workflow_node_t *node);
+
+static void execute_end_actions(void *data)
+{
+	end_action_context_t *ctx = data;
+	if (!ctx)
+		return;
+
+	for (size_t i = 0; i < ctx->node_count; ++i) {
+		workflow_node_t *end_node = find_node(ctx->workflow, ctx->node_ids[i]);
+		if (!end_node) {
+			blog(LOG_WARNING,
+			     "[Move Workflow Phase 13] End action node not found: \"%s\"",
+			     ctx->node_ids[i]);
+			continue;
+		}
+
+		blog(LOG_INFO,
+		     "[Move Workflow Phase 13] Director end action -> \"%s\"",
+		     end_node->name);
+		execute_node(end_node);
+	}
+
+	free(ctx);
+}
+
+static void *end_action_thread(void *data)
+{
+	end_action_context_t *ctx = data;
+	os_set_thread_name("move-workflow-end-actions");
+	os_sleep_ms(PHASE13_END_ACTION_DELAY_MS);
+	obs_queue_task(OBS_TASK_UI, execute_end_actions, ctx, false);
+	return NULL;
+}
+
+static void schedule_end_actions(workflow_t *wf, const workflow_node_t *node)
+{
+	if (node->end_actions_mode != WORKFLOW_OVERRIDE || node->end_node_count == 0)
+		return;
+
+	end_action_context_t *ctx = calloc(1, sizeof(*ctx));
+	if (!ctx)
+		return;
+
+	ctx->workflow = wf;
+	ctx->node_count = node->end_node_count;
+	for (size_t i = 0; i < node->end_node_count; ++i)
+		snprintf(ctx->node_ids[i], WORKFLOW_MAX_NAME, "%s", node->end_node_ids[i]);
+
+	blog(LOG_INFO,
+	     "[Move Workflow Phase 13] Scheduling %zu director end action(s) for \"%s\"",
+	     ctx->node_count, node->name);
+
+	pthread_t thread;
+	if (pthread_create(&thread, NULL, end_action_thread, ctx) != 0) {
+		blog(LOG_WARNING, "[Move Workflow Phase 13] Failed to start end action thread");
+		free(ctx);
+		return;
+	}
+	pthread_detach(thread);
+}
+
+static void execute_node(workflow_node_t *node)
 {
 	obs_source_t *filter = find_move_filter(&node->action);
 	if (!filter) {
 		blog(LOG_WARNING,
-		     "[Move Workflow Phase 12] Target not found or type mismatch: node=\"%s\" scene=\"%s\" filter=\"%s\" id=\"%s\" kind=\"%s\"",
+		     "[Move Workflow Phase 13] Target not found or type mismatch: node=\"%s\" scene=\"%s\" filter=\"%s\" id=\"%s\" kind=\"%s\"",
 		     node->name, node->action.scene_name, node->action.filter_name,
 		     node->action.filter_id, workflow_move_kind_name(node->action.kind));
 		return;
 	}
 
 	blog(LOG_INFO,
-	     "[Move Workflow Phase 12] Executing node: \"%s\" | action=%s | duration=%s | end=%s | start=%s | stop=%s | simultaneous=%s | next=%s | next-on=%s",
+	     "[Move Workflow Phase 13] Executing node: \"%s\" | action=%s | duration=%s | end=%s | start=%s | stop=%s | simultaneous=%s | next=%s | next-on=%s",
 	     node->name, workflow_move_kind_name(node->action.kind),
 	     workflow_value_mode_name(node->duration.mode),
 	     workflow_value_mode_name(node->end_actions_mode),
@@ -226,25 +306,18 @@ static void execute_node(const workflow_node_t *node)
 
 	if (node->duration.mode == WORKFLOW_OVERRIDE) {
 		if (!apply_duration_override(filter, node->duration.duration_ms)) {
-			blog(LOG_WARNING, "[Move Workflow Phase 12] Failed to apply duration override");
 			obs_source_release(filter);
 			return;
 		}
 	}
 
-	/* The existing Move filter remains responsible for performing the move. */
+	/* The director explicitly owns chaining. Do not inherit the filter's next/end settings. */
+	schedule_end_actions(&workflow, node);
+
+	/* The existing Move filter remains responsible for performing the primitive action. */
 	obs_source_set_enabled(filter, false);
 	obs_source_set_enabled(filter, true);
 	obs_source_release(filter);
-}
-
-static workflow_node_t *find_node(workflow_t *wf, const char *node_id)
-{
-	for (size_t i = 0; i < wf->node_count; ++i) {
-		if (strcmp(wf->nodes[i].id, node_id) == 0)
-			return &wf->nodes[i];
-	}
-	return NULL;
 }
 
 static void execute_node_by_id(workflow_t *wf, const char *node_id)
@@ -255,59 +328,53 @@ static void execute_node_by_id(workflow_t *wf, const char *node_id)
 	if (node)
 		execute_node(node);
 	else
-		blog(LOG_WARNING, "[Move Workflow Phase 12] Test node not found: \"%s\"", node_id);
+		blog(LOG_WARNING, "[Move Workflow Phase 13] Test node not found: \"%s\"", node_id);
 }
 
 static void hotkey_left_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
 {
-	UNUSED_PARAMETER(id);
-	UNUSED_PARAMETER(hotkey);
-	if (pressed)
-		execute_node_by_id((workflow_t *)data, "move-left");
+	UNUSED_PARAMETER(id); UNUSED_PARAMETER(hotkey);
+	if (pressed) execute_node_by_id((workflow_t *)data, "move-left");
 }
-
 static void hotkey_center_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
 {
-	UNUSED_PARAMETER(id);
-	UNUSED_PARAMETER(hotkey);
-	if (pressed)
-		execute_node_by_id((workflow_t *)data, "move-center");
+	UNUSED_PARAMETER(id); UNUSED_PARAMETER(hotkey);
+	if (pressed) execute_node_by_id((workflow_t *)data, "move-center");
 }
-
 static void hotkey_right_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
 {
-	UNUSED_PARAMETER(id);
-	UNUSED_PARAMETER(hotkey);
-	if (pressed)
-		execute_node_by_id((workflow_t *)data, "move-right");
+	UNUSED_PARAMETER(id); UNUSED_PARAMETER(hotkey);
+	if (pressed) execute_node_by_id((workflow_t *)data, "move-right");
 }
 
-static void menu_left_cb(void *data)
-{
-	execute_node_by_id((workflow_t *)data, "move-left");
-}
-
-static void menu_center_cb(void *data)
-{
-	execute_node_by_id((workflow_t *)data, "move-center");
-}
-
-static void menu_right_cb(void *data)
-{
-	execute_node_by_id((workflow_t *)data, "move-right");
-}
+static void menu_left_cb(void *data) { execute_node_by_id((workflow_t *)data, "move-left"); }
+static void menu_center_cb(void *data) { execute_node_by_id((workflow_t *)data, "move-center"); }
+static void menu_right_cb(void *data) { execute_node_by_id((workflow_t *)data, "move-right"); }
 
 static void menu_duration_cb(void *data)
 {
 	workflow_t *wf = data;
 	workflow_node_t *node = find_node(wf, "move-left");
-	if (!node)
-		return;
-
+	if (!node) return;
 	node->duration.mode = WORKFLOW_OVERRIDE;
 	node->duration.duration_ms = PHASE12_TEST_DURATION_MS;
 	execute_node(node);
 	node->duration.mode = WORKFLOW_USE_EXISTING;
+}
+
+static void menu_end_action_cb(void *data)
+{
+	workflow_t *wf = data;
+	workflow_node_t *node = find_node(wf, "move-left");
+	if (!node) return;
+
+	node->end_actions_mode = WORKFLOW_OVERRIDE;
+	node->end_node_count = 1;
+	snprintf(node->end_node_ids[0], WORKFLOW_MAX_NAME, "%s", "move-center");
+
+	blog(LOG_INFO,
+	     "[Move Workflow Phase 13] TEST: Left has director end action -> Center");
+	execute_node(node);
 }
 
 bool obs_module_load(void)
@@ -316,32 +383,24 @@ bool obs_module_load(void)
 	static obs_hotkey_id center_hotkey_id;
 	static obs_hotkey_id right_hotkey_id;
 
-	blog(LOG_INFO, "[Move Workflow Phase 12] Loaded");
-	blog(LOG_INFO, "[Move Workflow Phase 12] Workflow \"%s\" has %zu node(s)",
-	     workflow.name, workflow.node_count);
+	blog(LOG_INFO, "[Move Workflow Phase 13] Loaded");
+	blog(LOG_INFO, "[Move Workflow Phase 13] Workflow \"%s\" has %zu node(s)", workflow.name, workflow.node_count);
 
-	left_hotkey_id = obs_hotkey_register_frontend(
-		"obs_move_workflow.test_left", "Move Workflow: Test Left",
-		hotkey_left_callback, &workflow);
-	center_hotkey_id = obs_hotkey_register_frontend(
-		"obs_move_workflow.test_center", "Move Workflow: Test Center",
-		hotkey_center_callback, &workflow);
-	right_hotkey_id = obs_hotkey_register_frontend(
-		"obs_move_workflow.test_right", "Move Workflow: Test Right",
-		hotkey_right_callback, &workflow);
-	UNUSED_PARAMETER(left_hotkey_id);
-	UNUSED_PARAMETER(center_hotkey_id);
-	UNUSED_PARAMETER(right_hotkey_id);
+	left_hotkey_id = obs_hotkey_register_frontend("obs_move_workflow.test_left", "Move Workflow: Test Left", hotkey_left_callback, &workflow);
+	center_hotkey_id = obs_hotkey_register_frontend("obs_move_workflow.test_center", "Move Workflow: Test Center", hotkey_center_callback, &workflow);
+	right_hotkey_id = obs_hotkey_register_frontend("obs_move_workflow.test_right", "Move Workflow: Test Right", hotkey_right_callback, &workflow);
+	UNUSED_PARAMETER(left_hotkey_id); UNUSED_PARAMETER(center_hotkey_id); UNUSED_PARAMETER(right_hotkey_id);
 
 	obs_frontend_add_tools_menu_item("Move Workflow: Test Left", menu_left_cb, &workflow);
 	obs_frontend_add_tools_menu_item("Move Workflow: Test Center", menu_center_cb, &workflow);
 	obs_frontend_add_tools_menu_item("Move Workflow: Test Right", menu_right_cb, &workflow);
 	obs_frontend_add_tools_menu_item("Move Workflow: Test Duration Override (Left)", menu_duration_cb, &workflow);
+	obs_frontend_add_tools_menu_item("Move Workflow: Test End Action Left -> Center", menu_end_action_cb, &workflow);
 
 	return true;
 }
 
 void obs_module_unload(void)
 {
-	blog(LOG_INFO, "[Move Workflow Phase 12] Unloaded");
+	blog(LOG_INFO, "[Move Workflow Phase 13] Unloaded");
 }
