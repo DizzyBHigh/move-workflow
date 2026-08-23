@@ -761,6 +761,9 @@ private:
 
     void updateDelayAvailability()
     {
+        if (!startDelayBox_)
+        return;
+        
         const QString parentName = source_->currentData().toString();
         const QString filterName = filter_->currentData().toString();
         bool relevant = false;
