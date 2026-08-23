@@ -10,8 +10,8 @@ and Move Source - Left filter. This is a proof-of-engine path, not the final
 configuration UI.
 
 This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or
+it under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 */
 
@@ -77,10 +77,13 @@ static bool trigger_test_move_filter(void)
 	return true;
 }
 
-static void workflow_hotkey_callback(void *data, obs_hotkey_id id, bool pressed)
+/* OBS 32.x obs_hotkey_func includes the obs_hotkey_t * argument. */
+static void workflow_hotkey_callback(void *data, obs_hotkey_id id,
+					      obs_hotkey_t *hotkey, bool pressed)
 {
 	UNUSED_PARAMETER(data);
 	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
 
 	if (!pressed)
 		return;
