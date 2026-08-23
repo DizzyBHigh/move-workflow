@@ -159,9 +159,25 @@ public:
         type_->setPlainText(node_.workflow.type == WORKFLOW_NODE_TRIGGER ? "TRIGGER" : "ACTION");
 
         if (node_.workflow.type == WORKFLOW_NODE_TRIGGER) {
-            const QString trigger = read_text(node_.workflow.trigger.action);
-            details_->setPlainText(QString("Trigger: %1\nConnections: %2")
-                                       .arg(trigger.isEmpty() ? "None" : trigger)
+            const QString trigger = QString::fromUtf8(workflow_trigger_type_name(node_.workflow.trigger.type));
+            QString target;
+            if (node_.workflow.trigger.type == WORKFLOW_TRIGGER_FILTER_ENABLE) {
+                target = QString("%1 / %2")
+                             .arg(read_text(node_.workflow.trigger.scene_name),
+                                  read_text(node_.workflow.trigger.filter_name));
+            } else if (node_.workflow.trigger.type == WORKFLOW_TRIGGER_SOURCE_VISIBILITY ||
+                       node_.workflow.trigger.type == WORKFLOW_TRIGGER_SOURCE_MUTE ||
+                       node_.workflow.trigger.type == WORKFLOW_TRIGGER_SOURCE_AUDIO_TRACK ||
+                       node_.workflow.trigger.type == WORKFLOW_TRIGGER_SOURCE_HOTKEY) {
+                target = read_text(node_.workflow.trigger.scene_name);
+            } else if (node_.workflow.trigger.type == WORKFLOW_TRIGGER_FRONTEND_ACTION) {
+                target = read_text(node_.workflow.trigger.action);
+            } else if (node_.workflow.trigger.type == WORKFLOW_TRIGGER_FRONTEND_HOTKEY) {
+                target = read_text(node_.workflow.trigger.hotkey);
+            }
+            details_->setPlainText(QString("Trigger: %1%2\nConnections: %3")
+                                       .arg(trigger,
+                                            target.isEmpty() ? QString() : QString("\n%1").arg(target))
                                        .arg((qulonglong)(node_.workflow.end_node_count +
                                                          node_.workflow.simultaneous_node_count +
                                                          node_.workflow.next_node_count)));
@@ -210,7 +226,7 @@ class EditorScene final : public QGraphicsScene {
 public:
     explicit EditorScene(QObject *parent = nullptr) : QGraphicsScene(parent)
     {
-        connect(this, &QGraphicsScene::changed, this, [this] { updateConnectionGeometry(); });
+        connect(this, &QGraphicsScene::changed, this, [this] { updateConnections(); });
     }
 
     NodeItem *addNode(workflow_node_type_t type, const QString &name)
@@ -220,6 +236,8 @@ public:
         copy_text(node.workflow.id, WORKFLOW_MAX_NAME, QString("node-%1").arg(node.numeric_id));
         copy_text(node.workflow.name, WORKFLOW_MAX_NAME, name);
         node.workflow.type = type;
+        node.workflow.trigger.type = WORKFLOW_TRIGGER_NONE;
+        node.workflow.trigger.state = WORKFLOW_TRIGGER_STATE_ENABLED;
         copy_text(node.workflow.trigger.action, WORKFLOW_MAX_NAME, "None");
         node.workflow.duration.mode = WORKFLOW_OVERRIDE;
         node.workflow.start_delay.mode = WORKFLOW_OVERRIDE;
@@ -538,10 +556,8 @@ public:
         workflow_node_t *wf = node_->workflowNode();
         copy_text(wf->name, WORKFLOW_MAX_NAME, name);
 
-        if (wf->type == WORKFLOW_NODE_TRIGGER) {
-            copy_text(wf->trigger.action, WORKFLOW_MAX_NAME, triggerAction_->currentText());
-            return true;
-        }
+        if (wf->type == WORKFLOW_NODE_TRIGGER)
+            return applyTrigger();
 
         const QString parentName = source_->currentData().toString();
         const QString filterName = filter_->currentData().toString();
@@ -567,7 +583,7 @@ public:
         copy_text(wf->action.scene_name, WORKFLOW_MAX_NAME, parentName);
         wf->action.source_name[0] = '\0';
         copy_text(wf->action.filter_name, WORKFLOW_MAX_NAME, filterName);
-        copy_text(wf->action.filter_id, WORKFLOW_MAX_NAME, filterId);
+        copy_text(wf->action.filter_id, WORKFLOW_MAX_NAME, QString::fromUtf8(filterId));
         wf->action.kind = workflow_kind_from_filter_id(filterId);
 
         wf->start_delay.mode = WORKFLOW_OVERRIDE;
@@ -594,18 +610,348 @@ private:
     {
         auto *box = new QGroupBox("Trigger", parent);
         auto *boxLayout = new QVBoxLayout(box);
+
         triggerAction_ = new QComboBox(box);
-        triggerAction_->addItems({"None", "Frontend Action", "Source Visibility", "Source Mute",
-                                  "Source Audio Track", "Source Hotkey", "Filter Enable",
-                                  "Frontend Hotkey", "Setting", "UDP packet", "Websocket Request",
-                                  "Websocket Event"});
-        const int index = triggerAction_->findText(read_text(node_->workflowNode()->trigger.action));
-        if (index >= 0)
-            triggerAction_->setCurrentIndex(index);
-        boxLayout->addWidget(new QLabel("Trigger Action", box));
+        const QList<QPair<QString, workflow_trigger_type_t>> triggerTypes = {
+            {"None", WORKFLOW_TRIGGER_NONE},
+            {"Frontend Action", WORKFLOW_TRIGGER_FRONTEND_ACTION},
+            {"Source Visibility", WORKFLOW_TRIGGER_SOURCE_VISIBILITY},
+            {"Source Mute", WORKFLOW_TRIGGER_SOURCE_MUTE},
+            {"Source Audio Track", WORKFLOW_TRIGGER_SOURCE_AUDIO_TRACK},
+            {"Source Hotkey", WORKFLOW_TRIGGER_SOURCE_HOTKEY},
+            {"Filter Enable", WORKFLOW_TRIGGER_FILTER_ENABLE},
+            {"Frontend Hotkey", WORKFLOW_TRIGGER_FRONTEND_HOTKEY},
+            {"Setting", WORKFLOW_TRIGGER_SETTING},
+            {"UDP Packet", WORKFLOW_TRIGGER_UDP_PACKET},
+            {"WebSocket Request", WORKFLOW_TRIGGER_WEBSOCKET_REQUEST},
+            {"WebSocket Event", WORKFLOW_TRIGGER_WEBSOCKET_EVENT},
+        };
+        for (const auto &entry : triggerTypes)
+            triggerAction_->addItem(entry.first, (int)entry.second);
+
+        workflow_trigger_type_t storedType = node_->workflowNode()->trigger.type;
+        if (storedType == WORKFLOW_TRIGGER_NONE) {
+            const QString legacy = read_text(node_->workflowNode()->trigger.action);
+            for (int i = 0; i < triggerAction_->count(); ++i) {
+                if (triggerAction_->itemText(i).compare(legacy, Qt::CaseInsensitive) == 0) {
+                    storedType = (workflow_trigger_type_t)triggerAction_->itemData(i).toInt();
+                    break;
+                }
+            }
+        }
+        const int storedIndex = triggerAction_->findData((int)storedType);
+        triggerAction_->setCurrentIndex(storedIndex >= 0 ? storedIndex : 0);
+
+        boxLayout->addWidget(new QLabel("Trigger", box));
         boxLayout->addWidget(triggerAction_);
-        boxLayout->addWidget(new QLabel("A Trigger Node can start a workflow branch from anywhere in the graph.", box));
+
+        triggerSettingsBox_ = new QGroupBox("Trigger Settings", box);
+        triggerSettingsLayout_ = new QVBoxLayout(triggerSettingsBox_);
+        boxLayout->addWidget(triggerSettingsBox_);
+
+        connect(triggerAction_, &QComboBox::currentIndexChanged, this,
+                [this](int) { rebuildTriggerSettings(); });
+
+        rebuildTriggerSettings();
+        boxLayout->addWidget(new QLabel(
+            "The trigger identifies the OBS event that starts this workflow branch. "
+            "A Trigger Node may be connected anywhere in the graph.", box));
         layout->addWidget(box);
+    }
+
+    void clearTriggerSettings()
+    {
+        if (!triggerSettingsLayout_)
+            return;
+        while (QLayoutItem *item = triggerSettingsLayout_->takeAt(0)) {
+            if (QWidget *widget = item->widget())
+                widget->deleteLater();
+            delete item;
+        }
+        triggerSource_ = nullptr;
+        triggerFilter_ = nullptr;
+        triggerState_ = nullptr;
+        triggerAudioTrack_ = nullptr;
+        triggerActionValue_ = nullptr;
+        triggerHotkey_ = nullptr;
+        triggerSettingName_ = nullptr;
+        triggerValue_ = nullptr;
+        triggerMatch_ = nullptr;
+        triggerUdpPort_ = nullptr;
+    }
+
+    QComboBox *makeTriggerStateCombo(QWidget *parent, workflow_trigger_state_t state)
+    {
+        auto *combo = new QComboBox(parent);
+        combo->addItem("Enabled", (int)WORKFLOW_TRIGGER_STATE_ENABLED);
+        combo->addItem("Disabled", (int)WORKFLOW_TRIGGER_STATE_DISABLED);
+        const int index = combo->findData((int)state);
+        combo->setCurrentIndex(index >= 0 ? index : 0);
+        return combo;
+    }
+
+    QLineEdit *makeTriggerLineEdit(QWidget *parent, const QString &value, const QString &placeholder = QString())
+    {
+        auto *edit = new QLineEdit(value, parent);
+        edit->setPlaceholderText(placeholder);
+        return edit;
+    }
+
+    void rebuildTriggerSettings()
+    {
+        clearTriggerSettings();
+        if (!triggerSettingsLayout_)
+            return;
+
+        const workflow_trigger_ref_t &trigger = node_->workflowNode()->trigger;
+        const workflow_trigger_type_t type = (workflow_trigger_type_t)triggerAction_->currentData().toInt();
+
+        switch (type) {
+        case WORKFLOW_TRIGGER_FRONTEND_ACTION: {
+            triggerActionValue_ = new QComboBox(triggerSettingsBox_);
+            triggerActionValue_->setEditable(true);
+            triggerActionValue_->addItems({
+                "Start Streaming", "Stop Streaming", "Start Recording", "Stop Recording",
+                "Pause Recording", "Resume Recording", "Toggle Studio Mode", "Start Replay Buffer",
+                "Stop Replay Buffer", "Save Replay Buffer", "Enable Preview", "Disable Preview"});
+            const QString wanted = read_text(trigger.action);
+            if (!wanted.isEmpty())
+                triggerActionValue_->setCurrentText(wanted);
+            addTriggerRow("Action", triggerActionValue_);
+            break;
+        }
+        case WORKFLOW_TRIGGER_SOURCE_VISIBILITY:
+            buildSourceStateSettings("Visibility", trigger.state);
+            break;
+        case WORKFLOW_TRIGGER_SOURCE_MUTE:
+            buildSourceStateSettings("Mute State", trigger.state);
+            break;
+        case WORKFLOW_TRIGGER_SOURCE_AUDIO_TRACK:
+            buildSourceAudioTrackSettings(trigger);
+            break;
+        case WORKFLOW_TRIGGER_SOURCE_HOTKEY:
+            buildSourceHotkeySettings(trigger);
+            break;
+        case WORKFLOW_TRIGGER_FILTER_ENABLE:
+            buildFilterEnableSettings(trigger);
+            break;
+        case WORKFLOW_TRIGGER_FRONTEND_HOTKEY:
+            triggerHotkey_ = makeTriggerLineEdit(triggerSettingsBox_, read_text(trigger.hotkey), "Hotkey or OBS hotkey name");
+            addTriggerRow("Hotkey", triggerHotkey_);
+            break;
+        case WORKFLOW_TRIGGER_SETTING:
+            buildSettingSettings(trigger);
+            break;
+        case WORKFLOW_TRIGGER_UDP_PACKET:
+            triggerUdpPort_ = new QSpinBox(triggerSettingsBox_);
+            triggerUdpPort_->setRange(1, 65535);
+            triggerUdpPort_->setValue(trigger.udp_port > 0 ? trigger.udp_port : 9000);
+            addTriggerRow("Port", triggerUdpPort_);
+            triggerMatch_ = makeTriggerLineEdit(triggerSettingsBox_, read_text(trigger.match), "Packet text or pattern");
+            addTriggerRow("Match", triggerMatch_);
+            break;
+        case WORKFLOW_TRIGGER_WEBSOCKET_REQUEST:
+        case WORKFLOW_TRIGGER_WEBSOCKET_EVENT:
+            triggerMatch_ = makeTriggerLineEdit(triggerSettingsBox_, read_text(trigger.match), "Request/event name or match pattern");
+            addTriggerRow("Match", triggerMatch_);
+            break;
+        case WORKFLOW_TRIGGER_NONE:
+        default:
+            triggerSettingsLayout_->addWidget(new QLabel("No trigger settings are required.", triggerSettingsBox_));
+            break;
+        }
+    }
+
+    void addTriggerRow(const QString &label, QWidget *widget)
+    {
+        auto *row = new QHBoxLayout;
+        row->addWidget(new QLabel(label, triggerSettingsBox_));
+        row->addWidget(widget, 1);
+        triggerSettingsLayout_->addLayout(row);
+    }
+
+    void buildSourceStateSettings(const QString &stateLabel, workflow_trigger_state_t state)
+    {
+        triggerSource_ = new QComboBox(triggerSettingsBox_);
+        populateTriggerSources(read_text(node_->workflowNode()->trigger.scene_name));
+        addTriggerRow("Source", triggerSource_);
+        triggerState_ = makeTriggerStateCombo(triggerSettingsBox_, state);
+        addTriggerRow(stateLabel, triggerState_);
+    }
+
+    void buildSourceAudioTrackSettings(const workflow_trigger_ref_t &trigger)
+    {
+        triggerSource_ = new QComboBox(triggerSettingsBox_);
+        populateTriggerSources(read_text(trigger.scene_name));
+        addTriggerRow("Source", triggerSource_);
+        triggerAudioTrack_ = new QSpinBox(triggerSettingsBox_);
+        triggerAudioTrack_->setRange(1, 32);
+        triggerAudioTrack_->setValue(trigger.audio_track > 0 ? trigger.audio_track : 1);
+        addTriggerRow("Track", triggerAudioTrack_);
+        triggerState_ = makeTriggerStateCombo(triggerSettingsBox_, trigger.state);
+        addTriggerRow("Enabled", triggerState_);
+    }
+
+    void buildSourceHotkeySettings(const workflow_trigger_ref_t &trigger)
+    {
+        triggerSource_ = new QComboBox(triggerSettingsBox_);
+        populateTriggerSources(read_text(trigger.scene_name));
+        addTriggerRow("Source", triggerSource_);
+        triggerHotkey_ = makeTriggerLineEdit(triggerSettingsBox_, read_text(trigger.hotkey), "Hotkey name");
+        addTriggerRow("Hotkey", triggerHotkey_);
+    }
+
+    void buildFilterEnableSettings(const workflow_trigger_ref_t &trigger)
+    {
+        triggerSource_ = new QComboBox(triggerSettingsBox_);
+        triggerFilter_ = new QComboBox(triggerSettingsBox_);
+        populateTriggerSources(read_text(trigger.scene_name));
+        addTriggerRow("Source", triggerSource_);
+        populateTriggerFilters(read_text(trigger.filter_name));
+        addTriggerRow("Filter", triggerFilter_);
+        triggerState_ = makeTriggerStateCombo(triggerSettingsBox_, trigger.state);
+        addTriggerRow("State", triggerState_);
+        connect(triggerSource_, &QComboBox::currentIndexChanged, this, [this] {
+            populateTriggerFilters();
+        });
+    }
+
+    void buildSettingSettings(const workflow_trigger_ref_t &trigger)
+    {
+        triggerSource_ = new QComboBox(triggerSettingsBox_);
+        populateTriggerSources(read_text(trigger.scene_name));
+        addTriggerRow("Source", triggerSource_);
+        triggerSettingName_ = makeTriggerLineEdit(triggerSettingsBox_, read_text(trigger.setting_name), "Setting name");
+        addTriggerRow("Setting", triggerSettingName_);
+        triggerValue_ = makeTriggerLineEdit(triggerSettingsBox_, read_text(trigger.value), "Expected value");
+        addTriggerRow("Value", triggerValue_);
+    }
+
+    bool applyTrigger()
+    {
+        workflow_node_t *wf = node_->workflowNode();
+        workflow_trigger_ref_t &trigger = wf->trigger;
+        const workflow_trigger_type_t type = (workflow_trigger_type_t)triggerAction_->currentData().toInt();
+        trigger.type = type;
+        const QString actionName = type == WORKFLOW_TRIGGER_FRONTEND_ACTION
+                                        ? (triggerActionValue_ ? triggerActionValue_->currentText() : QString())
+                                        : QString::fromUtf8(workflow_trigger_type_name(type));
+        copy_text(trigger.action, WORKFLOW_MAX_NAME, actionName);
+
+        if (triggerSource_)
+            copy_text(trigger.scene_name, WORKFLOW_MAX_NAME, triggerSource_->currentData().toString());
+        else
+            trigger.scene_name[0] = '\0';
+        if (triggerFilter_)
+            copy_text(trigger.filter_name, WORKFLOW_MAX_NAME, triggerFilter_->currentData().toString());
+        else
+            trigger.filter_name[0] = '\0';
+        if (triggerState_)
+            trigger.state = (workflow_trigger_state_t)triggerState_->currentData().toInt();
+        else
+            trigger.state = WORKFLOW_TRIGGER_STATE_ENABLED;
+        if (triggerAudioTrack_)
+            trigger.audio_track = triggerAudioTrack_->value();
+        else
+            trigger.audio_track = 0;
+        if (triggerHotkey_)
+            copy_text(trigger.hotkey, WORKFLOW_MAX_NAME, triggerHotkey_->text().trimmed());
+        else
+            trigger.hotkey[0] = '\0';
+        if (triggerSettingName_)
+            copy_text(trigger.setting_name, WORKFLOW_MAX_NAME, triggerSettingName_->text().trimmed());
+        else
+            trigger.setting_name[0] = '\0';
+        if (triggerValue_)
+            copy_text(trigger.value, WORKFLOW_MAX_VALUE, triggerValue_->text());
+        else
+            trigger.value[0] = '\0';
+        if (triggerMatch_)
+            copy_text(trigger.match, WORKFLOW_MAX_VALUE, triggerMatch_->text());
+        else
+            trigger.match[0] = '\0';
+        trigger.udp_port = triggerUdpPort_ ? (uint16_t)triggerUdpPort_->value() : 0;
+
+        if (type == WORKFLOW_TRIGGER_FILTER_ENABLE) {
+            const QString sourceName = read_text(trigger.scene_name);
+            const QString filterName = read_text(trigger.filter_name);
+            if (sourceName.isEmpty() || filterName.isEmpty())
+                return false;
+            obs_source_t *parent = obs_get_source_by_name(sourceName.toUtf8().constData());
+            if (!parent)
+                return false;
+            obs_source_t *filter = obs_source_get_filter_by_name(parent, filterName.toUtf8().constData());
+            if (!filter) {
+                obs_source_release(parent);
+                return false;
+            }
+            copy_text(trigger.filter_id, WORKFLOW_MAX_NAME, QString::fromUtf8(obs_source_get_id(filter)));
+            obs_source_release(filter);
+            obs_source_release(parent);
+        } else {
+            trigger.filter_id[0] = '\0';
+        }
+
+        return true;
+    }
+
+    static bool addTriggerSource(void *data, obs_source_t *source)
+    {
+        auto *combo = static_cast<QComboBox *>(data);
+        if (!combo || !source)
+            return true;
+        const QString name = QString::fromUtf8(obs_source_get_name(source));
+        if (combo->findData(name) < 0)
+            combo->addItem(name, name);
+        return true;
+    }
+
+    void populateTriggerSources(const QString &wanted = QString())
+    {
+        if (!triggerSource_)
+            return;
+        triggerSource_->blockSignals(true);
+        triggerSource_->clear();
+        obs_enum_scenes(addTriggerSource, triggerSource_);
+        obs_enum_sources(addTriggerSource, triggerSource_);
+        triggerSource_->blockSignals(false);
+        const int index = triggerSource_->findData(wanted);
+        if (index >= 0)
+            triggerSource_->setCurrentIndex(index);
+        else if (triggerSource_->count() > 0)
+            triggerSource_->setCurrentIndex(0);
+    }
+
+    static void addTriggerFilter(obs_source_t *parent, obs_source_t *filter, void *param)
+    {
+        Q_UNUSED(parent);
+        auto *combo = static_cast<QComboBox *>(param);
+        if (!combo || !filter)
+            return;
+        const QString name = QString::fromUtf8(obs_source_get_name(filter));
+        combo->addItem(name, name);
+    }
+
+    void populateTriggerFilters(const QString &wanted = QString())
+    {
+        if (!triggerFilter_ || !triggerSource_)
+            return;
+        triggerFilter_->blockSignals(true);
+        triggerFilter_->clear();
+        const QString parentName = triggerSource_->currentData().toString();
+        if (!parentName.isEmpty()) {
+            obs_source_t *parent = obs_get_source_by_name(parentName.toUtf8().constData());
+            if (parent) {
+                obs_source_enum_filters(parent, addTriggerFilter, triggerFilter_);
+                obs_source_release(parent);
+            }
+        }
+        triggerFilter_->blockSignals(false);
+        const int index = triggerFilter_->findData(wanted);
+        if (index >= 0)
+            triggerFilter_->setCurrentIndex(index);
+        else if (triggerFilter_->count() > 0)
+            triggerFilter_->setCurrentIndex(0);
     }
 
     void buildActionEditor(QWidget *parent, QVBoxLayout *layout)
@@ -758,6 +1104,18 @@ private:
     QList<NodeItem *> nodes_;
     QLineEdit *name_ = nullptr;
     QComboBox *triggerAction_ = nullptr;
+    QGroupBox *triggerSettingsBox_ = nullptr;
+    QVBoxLayout *triggerSettingsLayout_ = nullptr;
+    QComboBox *triggerSource_ = nullptr;
+    QComboBox *triggerFilter_ = nullptr;
+    QComboBox *triggerState_ = nullptr;
+    QSpinBox *triggerAudioTrack_ = nullptr;
+    QSpinBox *triggerUdpPort_ = nullptr;
+    QComboBox *triggerActionValue_ = nullptr;
+    QLineEdit *triggerHotkey_ = nullptr;
+    QLineEdit *triggerSettingName_ = nullptr;
+    QLineEdit *triggerValue_ = nullptr;
+    QLineEdit *triggerMatch_ = nullptr;
     QComboBox *source_ = nullptr;
     QComboBox *filter_ = nullptr;
     QSpinBox *startDelayMs_ = nullptr;
