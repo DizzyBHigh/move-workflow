@@ -1,0 +1,51 @@
+name: Phase 15 patch
+
+on:
+  push:
+    branches: [phase6-workflow-engine]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Patch director start trigger
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("src/plugin-main.c")
+          s = p.read_text(encoding="utf-8")
+
+          old = '\t\t\t.start_trigger_mode = WORKFLOW_USE_EXISTING,\n\t\t\t.stop_trigger_mode = WORKFLOW_USE_EXISTING,'
+          new = '\t\t\t.start_trigger_mode = WORKFLOW_OVERRIDE,\n\t\t\t.start_trigger_value = "Enable",\n\t\t\t.stop_trigger_mode = WORKFLOW_USE_EXISTING,'
+          if old not in s:
+              raise SystemExit("phase15: target node block not found")
+          s = s.replace(old, new, 1)
+
+          marker = 'static void execute_node(workflow_node_t *node)\n'
+          helper = '''static void apply_start_trigger_override(obs_source_t *filter, const workflow_node_t *node)\n{\n\tif (node->start_trigger_mode == WORKFLOW_OVERRIDE && strcmp(node->start_trigger_value, "Enable") == 0) {\n\t\tblog(LOG_INFO,\n\t\t     "[Move Workflow Phase 15] Applying director Start Trigger override: Enable -> \\"%s\\"",\n\t\t     node->name);\n\t\tobs_source_set_enabled(filter, false);\n\t\tobs_source_set_enabled(filter, true);\n\t\treturn;\n\t}\n\n\t/* The current phase only defines the Enable override. Other trigger modes\n\t * remain outside this test and will be added as their own director phases. */\n\tobs_source_set_enabled(filter, false);\n\tobs_source_set_enabled(filter, true);\n}\n\n'''
+          if marker not in s:
+              raise SystemExit("phase15: execute_node marker not found")
+          s = s.replace(marker, helper + marker, 1)
+
+          old_exec = '\tobs_source_set_enabled(filter, false);\n\tobs_source_set_enabled(filter, true);\n\tobs_source_release(filter);'
+          new_exec = '\tapply_start_trigger_override(filter, node);\n\tobs_source_release(filter);'
+          if old_exec not in s:
+              raise SystemExit("phase15: execution block not found")
+          s = s.replace(old_exec, new_exec, 1)
+
+          p.write_text(s, encoding="utf-8")
+      - name: Commit patch and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/plugin-main.c
+          git rm .github/workflows/phase15-patch.yml
+          git commit -m "Implement director Start Trigger override"
+          git push
