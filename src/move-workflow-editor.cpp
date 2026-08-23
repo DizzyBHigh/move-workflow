@@ -6,6 +6,7 @@
 
 #include <QAbstractItemView>
 #include <QComboBox>
+#include <QCompleter>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QGraphicsItem>
@@ -54,6 +55,20 @@ static void copy_text(char *destination, size_t capacity, const QString &value)
 static QString read_text(const char *value)
 {
     return value ? QString::fromUtf8(value) : QString();
+}
+
+static void configure_searchable_combo(QComboBox *combo)
+{
+    if (!combo || combo->isEditable())
+        return;
+
+    combo->setEditable(true);
+    combo->setInsertPolicy(QComboBox::NoInsert);
+    auto *completer = new QCompleter(combo->model(), combo);
+    completer->setCaseSensitivity(Qt::CaseInsensitive);
+    completer->setFilterMode(Qt::MatchContains);
+    completer->setCompletionMode(QCompleter::PopupCompletion);
+    combo->setCompleter(completer);
 }
 
 static bool list_contains(const char ids[][WORKFLOW_MAX_NAME], size_t count, const QString &id)
@@ -124,7 +139,7 @@ public:
     NodeItem(EditorNode node, QGraphicsItem *parent = nullptr)
         : QGraphicsRectItem(parent), node_(std::move(node))
     {
-        setRect(0, 0, 270, 142);
+        setRect(0, 0, nodeWidth, minimumHeight);
         setFlag(QGraphicsItem::ItemIsMovable);
         setFlag(QGraphicsItem::ItemIsSelectable);
         setFlag(QGraphicsItem::ItemSendsGeometryChanges);
@@ -133,6 +148,7 @@ public:
 
         title_ = new QGraphicsTextItem(read_text(node_.workflow.name), this);
         title_->setDefaultTextColor(Qt::white);
+        title_->setTextWidth(nodeWidth - 28);
         title_->setPos(14, 10);
 
         type_ = new QGraphicsTextItem(this);
@@ -141,6 +157,7 @@ public:
 
         details_ = new QGraphicsTextItem(this);
         details_->setDefaultTextColor(QColor(210, 215, 220));
+        details_->setTextWidth(nodeWidth - 28);
         details_->setPos(14, 56);
         refreshDisplay();
     }
@@ -193,6 +210,8 @@ public:
                                        .arg((qulonglong)node_.workflow.end_node_count)
                                        .arg((qulonglong)node_.workflow.next_node_count));
         }
+
+        updateGeometryForText();
     }
 
 protected:
@@ -204,6 +223,19 @@ protected:
     }
 
 private:
+    static constexpr qreal nodeWidth = 300.0;
+    static constexpr qreal minimumHeight = 142.0;
+
+    void updateGeometryForText()
+    {
+        const qreal contentHeight = details_->boundingRect().height();
+        const qreal desiredHeight = qMax(minimumHeight, 56.0 + contentHeight + 14.0);
+        if (!qFuzzyCompare(rect().height(), desiredHeight)) {
+            prepareGeometryChange();
+            setRect(0, 0, nodeWidth, desiredHeight);
+        }
+    }
+
     void refreshStyle()
     {
         if (node_.workflow.type == WORKFLOW_NODE_TRIGGER) {
@@ -559,7 +591,9 @@ public:
         if (wf->type == WORKFLOW_NODE_TRIGGER)
             return applyTrigger();
 
-        const QString parentName = source_->currentData().toString();
+        const QString parentName = source_->currentData().toString().isEmpty()
+                                        ? source_->currentText().trimmed()
+                                        : source_->currentData().toString();
         const QString filterName = filter_->currentData().toString();
         if (parentName.isEmpty() || filterName.isEmpty())
             return false;
@@ -773,6 +807,7 @@ private:
     void buildSourceStateSettings(const QString &stateLabel, workflow_trigger_state_t state)
     {
         triggerSource_ = new QComboBox(triggerSettingsBox_);
+        configure_searchable_combo(triggerSource_);
         populateTriggerSources(read_text(node_->workflowNode()->trigger.scene_name));
         addTriggerRow("Source", triggerSource_);
         triggerState_ = makeTriggerStateCombo(triggerSettingsBox_, state);
@@ -782,6 +817,7 @@ private:
     void buildSourceAudioTrackSettings(const workflow_trigger_ref_t &trigger)
     {
         triggerSource_ = new QComboBox(triggerSettingsBox_);
+        configure_searchable_combo(triggerSource_);
         populateTriggerSources(read_text(trigger.scene_name));
         addTriggerRow("Source", triggerSource_);
         triggerAudioTrack_ = new QSpinBox(triggerSettingsBox_);
@@ -795,6 +831,7 @@ private:
     void buildSourceHotkeySettings(const workflow_trigger_ref_t &trigger)
     {
         triggerSource_ = new QComboBox(triggerSettingsBox_);
+        configure_searchable_combo(triggerSource_);
         populateTriggerSources(read_text(trigger.scene_name));
         addTriggerRow("Source", triggerSource_);
         triggerHotkey_ = makeTriggerLineEdit(triggerSettingsBox_, read_text(trigger.hotkey), "Hotkey name");
@@ -805,6 +842,7 @@ private:
     {
         triggerSource_ = new QComboBox(triggerSettingsBox_);
         triggerFilter_ = new QComboBox(triggerSettingsBox_);
+        configure_searchable_combo(triggerSource_);
         populateTriggerSources(read_text(trigger.scene_name));
         addTriggerRow("Source", triggerSource_);
         populateTriggerFilters(read_text(trigger.filter_name));
@@ -819,6 +857,7 @@ private:
     void buildSettingSettings(const workflow_trigger_ref_t &trigger)
     {
         triggerSource_ = new QComboBox(triggerSettingsBox_);
+        configure_searchable_combo(triggerSource_);
         populateTriggerSources(read_text(trigger.scene_name));
         addTriggerRow("Source", triggerSource_);
         triggerSettingName_ = makeTriggerLineEdit(triggerSettingsBox_, read_text(trigger.setting_name), "Setting name");
@@ -838,8 +877,13 @@ private:
                                         : QString::fromUtf8(workflow_trigger_type_name(type));
         copy_text(trigger.action, WORKFLOW_MAX_NAME, actionName);
 
+        const QString sourceName = triggerSource_
+                                       ? (triggerSource_->currentData().toString().isEmpty()
+                                              ? triggerSource_->currentText().trimmed()
+                                              : triggerSource_->currentData().toString())
+                                       : QString();
         if (triggerSource_)
-            copy_text(trigger.scene_name, WORKFLOW_MAX_NAME, triggerSource_->currentData().toString());
+            copy_text(trigger.scene_name, WORKFLOW_MAX_NAME, sourceName);
         else
             trigger.scene_name[0] = '\0';
         if (triggerFilter_)
@@ -910,6 +954,7 @@ private:
     {
         if (!triggerSource_)
             return;
+        configure_searchable_combo(triggerSource_);
         triggerSource_->blockSignals(true);
         triggerSource_->clear();
         obs_enum_scenes(addTriggerSource, triggerSource_);
@@ -938,7 +983,9 @@ private:
             return;
         triggerFilter_->blockSignals(true);
         triggerFilter_->clear();
-        const QString parentName = triggerSource_->currentData().toString();
+        const QString parentName = triggerSource_->currentData().toString().isEmpty()
+                                        ? triggerSource_->currentText().trimmed()
+                                        : triggerSource_->currentData().toString();
         if (!parentName.isEmpty()) {
             obs_source_t *parent = obs_get_source_by_name(parentName.toUtf8().constData());
             if (parent) {
@@ -966,6 +1013,7 @@ private:
         targetLayout->addWidget(filter_);
         layout->addWidget(targetBox);
 
+        configure_searchable_combo(source_);
         populateSources(read_text(node_->workflowNode()->action.scene_name));
         connect(source_, &QComboBox::currentIndexChanged, this, [this] { populateFilters(); });
         populateFilters(read_text(node_->workflowNode()->action.filter_name));
@@ -1055,6 +1103,7 @@ private:
 
     void populateSources(const QString &wanted)
     {
+        configure_searchable_combo(source_);
         source_->blockSignals(true);
         source_->clear();
         obs_enum_scenes(addSourceToCombo, source_);
@@ -1084,7 +1133,9 @@ private:
     {
         filter_->blockSignals(true);
         filter_->clear();
-        const QString parentName = source_->currentData().toString();
+        const QString parentName = source_->currentData().toString().isEmpty()
+                                        ? source_->currentText().trimmed()
+                                        : source_->currentData().toString();
         if (!parentName.isEmpty()) {
             obs_source_t *parent = obs_get_source_by_name(parentName.toUtf8().constData());
             if (parent) {
@@ -1203,7 +1254,12 @@ private:
         if (!ok || name.trimmed().isEmpty())
             return;
 
-        scene_->addNode(chosen == trigger ? WORKFLOW_NODE_TRIGGER : WORKFLOW_NODE_ACTION, name.trimmed());
+        NodeItem *node = scene_->addNode(chosen == trigger ? WORKFLOW_NODE_TRIGGER : WORKFLOW_NODE_ACTION,
+                                         name.trimmed());
+        if (node) {
+            node->setSelected(true);
+            view_->fitAll();
+        }
     }
 
     void editNode(NodeItem *node)
