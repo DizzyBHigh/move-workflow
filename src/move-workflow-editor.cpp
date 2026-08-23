@@ -5,6 +5,7 @@
 #include <obs.h>
 
 #include <QAbstractItemView>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QCompleter>
 #include <QDialog>
@@ -409,6 +410,11 @@ private:
             NodeItem *to = findNodeById(ids[i]);
             if (!to || to == from)
                 continue;
+            // Simultaneous/end/next relationships are Action-to-Action links.
+            // Never draw a stale link from an Action node back to a Trigger node.
+            if (from->workflowNode()->type == WORKFLOW_NODE_ACTION &&
+                to->workflowNode()->type == WORKFLOW_NODE_TRIGGER)
+                continue;
             auto *line = new QGraphicsPathItem;
             if (type == "Simultaneous")
                 line->setPen(QPen(QColor(90, 190, 120), 2));
@@ -427,11 +433,43 @@ private:
     {
         const QRectF aRect = from->sceneBoundingRect();
         const QRectF bRect = to->sceneBoundingRect();
-        const QPointF a = QPointF(aRect.right(), aRect.center().y());
-        const QPointF b = QPointF(bRect.left(), bRect.center().y());
-        const qreal dx = qMax<qreal>(40.0, qAbs(b.x() - a.x()) * 0.45);
+        const QPointF fromCenter = aRect.center();
+        const QPointF toCenter = bRect.center();
+        const qreal dx = toCenter.x() - fromCenter.x();
+        const qreal dy = toCenter.y() - fromCenter.y();
+        const qreal distance = qMax<qreal>(40.0, std::sqrt(dx * dx + dy * dy) * 0.35);
+
+        QPointF a;
+        QPointF b;
+        QPointF controlA;
+        QPointF controlB;
+
+        if (qAbs(dx) >= qAbs(dy)) {
+            if (dx >= 0.0) {
+                a = QPointF(aRect.right(), aRect.center().y());
+                b = QPointF(bRect.left(), bRect.center().y());
+                controlA = a + QPointF(distance, 0);
+                controlB = b - QPointF(distance, 0);
+            } else {
+                a = QPointF(aRect.left(), aRect.center().y());
+                b = QPointF(bRect.right(), bRect.center().y());
+                controlA = a - QPointF(distance, 0);
+                controlB = b + QPointF(distance, 0);
+            }
+        } else if (dy >= 0.0) {
+            a = QPointF(aRect.center().x(), aRect.bottom());
+            b = QPointF(bRect.center().x(), bRect.top());
+            controlA = a + QPointF(0, distance);
+            controlB = b - QPointF(0, distance);
+        } else {
+            a = QPointF(aRect.center().x(), aRect.top());
+            b = QPointF(bRect.center().x(), bRect.bottom());
+            controlA = a - QPointF(0, distance);
+            controlB = b + QPointF(0, distance);
+        }
+
         QPainterPath path(a);
-        path.cubicTo(a + QPointF(dx, 0), b - QPointF(dx, 0), b);
+        path.cubicTo(controlA, controlB, b);
         line->setPath(path);
     }
 
@@ -552,15 +590,16 @@ public:
         layout->setContentsMargins(2, 2, 2, 2);
         layout->setSpacing(8);
 
-        auto *nodeBox = new QGroupBox("Node", content);
+        const bool isTrigger = node && node->workflowNode()->type == WORKFLOW_NODE_TRIGGER;
+        auto *nodeBox = new QGroupBox(isTrigger ? "Trigger Node" : "Node", content);
         auto *nodeLayout = new QVBoxLayout(nodeBox);
         name_ = new QLineEdit(node ? node->nodeName() : QString(), nodeBox);
         nodeLayout->addWidget(new QLabel("Name", nodeBox));
         nodeLayout->addWidget(name_);
         layout->addWidget(nodeBox);
 
-        if (node && node->workflowNode()->type == WORKFLOW_NODE_TRIGGER)
-            buildTriggerEditor(nodeBox, nodeLayout);
+        if (isTrigger)
+            buildTriggerEditor(nodeLayout);
         else
             buildActionEditor(content, layout);
 
@@ -620,11 +659,11 @@ public:
         copy_text(wf->action.filter_id, WORKFLOW_MAX_NAME, QString::fromUtf8(filterId));
         wf->action.kind = workflow_kind_from_filter_id(filterId);
 
-        wf->start_delay.mode = WORKFLOW_OVERRIDE;
+        wf->start_delay.mode = startDelayDefault_->isChecked() ? WORKFLOW_USE_EXISTING : WORKFLOW_OVERRIDE;
         wf->start_delay.delay_ms = (uint64_t)startDelayMs_->value();
-        wf->duration.mode = WORKFLOW_OVERRIDE;
+        wf->duration.mode = durationDefault_->isChecked() ? WORKFLOW_USE_EXISTING : WORKFLOW_OVERRIDE;
         wf->duration.duration_ms = (uint64_t)durationMs_->value();
-        wf->end_delay.mode = WORKFLOW_OVERRIDE;
+        wf->end_delay.mode = endDelayDefault_->isChecked() ? WORKFLOW_USE_EXISTING : WORKFLOW_OVERRIDE;
         wf->end_delay.delay_ms = (uint64_t)endDelayMs_->value();
 
         wf->simultaneous_actions_mode = WORKFLOW_OVERRIDE;
@@ -640,12 +679,9 @@ public:
     }
 
 private:
-    void buildTriggerEditor(QWidget *parent, QVBoxLayout *layout)
+    void buildTriggerEditor(QVBoxLayout *layout)
     {
-        auto *box = new QGroupBox("Trigger", parent);
-        auto *boxLayout = new QVBoxLayout(box);
-
-        triggerAction_ = new QComboBox(box);
+        triggerAction_ = new QComboBox(this);
         const QList<QPair<QString, workflow_trigger_type_t>> triggerTypes = {
             {"None", WORKFLOW_TRIGGER_NONE},
             {"Frontend Action", WORKFLOW_TRIGGER_FRONTEND_ACTION},
@@ -676,21 +712,23 @@ private:
         const int storedIndex = triggerAction_->findData((int)storedType);
         triggerAction_->setCurrentIndex(storedIndex >= 0 ? storedIndex : 0);
 
-        boxLayout->addWidget(new QLabel("Trigger", box));
-        boxLayout->addWidget(triggerAction_);
+        layout->addWidget(new QLabel("Trigger", this));
+        layout->addWidget(triggerAction_);
 
-        triggerSettingsBox_ = new QGroupBox("Trigger Settings", box);
+        triggerSettingsBox_ = new QGroupBox("Trigger Settings", this);
         triggerSettingsLayout_ = new QVBoxLayout(triggerSettingsBox_);
-        boxLayout->addWidget(triggerSettingsBox_);
+        layout->addWidget(triggerSettingsBox_);
 
         connect(triggerAction_, &QComboBox::currentIndexChanged, this,
                 [this](int) { rebuildTriggerSettings(); });
 
         rebuildTriggerSettings();
-        boxLayout->addWidget(new QLabel(
+        auto *hint = new QLabel(
             "The trigger identifies the OBS event that starts this workflow branch. "
-            "A Trigger Node may be connected anywhere in the graph.", box));
-        layout->addWidget(box);
+            "A Trigger Node may be connected anywhere in the graph.", this);
+        hint->setWordWrap(true);
+        hint->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        layout->addWidget(hint);
     }
 
     void clearTriggerSettings()
@@ -843,6 +881,7 @@ private:
         triggerSource_ = new QComboBox(triggerSettingsBox_);
         triggerFilter_ = new QComboBox(triggerSettingsBox_);
         configure_searchable_combo(triggerSource_);
+        configure_searchable_combo(triggerFilter_);
         populateTriggerSources(read_text(trigger.scene_name));
         addTriggerRow("Source", triggerSource_);
         populateTriggerFilters(read_text(trigger.filter_name));
@@ -1023,14 +1062,24 @@ private:
         startDelayMs_ = makeMilliseconds(timingBox, "Start Delay");
         durationMs_ = makeMilliseconds(timingBox, "Duration");
         endDelayMs_ = makeMilliseconds(timingBox, "End Delay");
+        startDelayDefault_ = new QCheckBox("Use default", timingBox);
+        durationDefault_ = new QCheckBox("Use default", timingBox);
+        endDelayDefault_ = new QCheckBox("Use default", timingBox);
         if (node_) {
-            startDelayMs_->setValue((int)node_->workflowNode()->start_delay.delay_ms);
-            durationMs_->setValue((int)node_->workflowNode()->duration.duration_ms);
-            endDelayMs_->setValue((int)node_->workflowNode()->end_delay.delay_ms);
+            const workflow_node_t *wf = node_->workflowNode();
+            startDelayMs_->setValue((int)wf->start_delay.delay_ms);
+            durationMs_->setValue((int)wf->duration.duration_ms);
+            endDelayMs_->setValue((int)wf->end_delay.delay_ms);
+            startDelayDefault_->setChecked(wf->start_delay.mode == WORKFLOW_USE_EXISTING);
+            durationDefault_->setChecked(wf->duration.mode == WORKFLOW_USE_EXISTING);
+            endDelayDefault_->setChecked(wf->end_delay.mode == WORKFLOW_USE_EXISTING);
         }
-        addSpinRow(timingLayout, "Start Delay", startDelayMs_);
-        addSpinRow(timingLayout, "Duration", durationMs_);
-        addSpinRow(timingLayout, "End Delay", endDelayMs_);
+        addSpinRow(timingLayout, "Start Delay", startDelayMs_, startDelayDefault_);
+        addSpinRow(timingLayout, "Duration", durationMs_, durationDefault_);
+        addSpinRow(timingLayout, "End Delay", endDelayMs_, endDelayDefault_);
+        connectDefaultToggle(startDelayDefault_, startDelayMs_);
+        connectDefaultToggle(durationDefault_, durationMs_);
+        connectDefaultToggle(endDelayDefault_, endDelayMs_);
         layout->addWidget(timingBox);
 
         simultaneous_ = makeNodeList(node_, node_->workflowNode()->simultaneous_node_ids,
@@ -1056,12 +1105,19 @@ private:
         return spin;
     }
 
-    static void addSpinRow(QVBoxLayout *layout, const QString &label, QSpinBox *spin)
+    static void addSpinRow(QVBoxLayout *layout, const QString &label, QSpinBox *spin, QCheckBox *defaultCheck)
     {
         auto *row = new QHBoxLayout;
         row->addWidget(new QLabel(label));
         row->addWidget(spin, 1);
+        row->addWidget(defaultCheck);
         layout->addLayout(row);
+    }
+
+    static void connectDefaultToggle(QCheckBox *check, QSpinBox *spin)
+    {
+        spin->setEnabled(!check->isChecked());
+        QObject::connect(check, &QCheckBox::toggled, spin, &QSpinBox::setDisabled);
     }
 
     QWidget *makeListBox(const QString &title, QListWidget *list, const QString &hint)
@@ -1078,7 +1134,7 @@ private:
         auto *list = new QListWidget(this);
         list->setSelectionMode(QAbstractItemView::MultiSelection);
         for (NodeItem *candidate : nodes_) {
-            if (candidate == current)
+            if (candidate == current || candidate->workflowNode()->type != WORKFLOW_NODE_ACTION)
                 continue;
             auto *item = new QListWidgetItem(candidate->nodeName(), list);
             item->setData(Qt::UserRole, candidate->id());
@@ -1172,6 +1228,9 @@ private:
     QSpinBox *startDelayMs_ = nullptr;
     QSpinBox *durationMs_ = nullptr;
     QSpinBox *endDelayMs_ = nullptr;
+    QCheckBox *startDelayDefault_ = nullptr;
+    QCheckBox *durationDefault_ = nullptr;
+    QCheckBox *endDelayDefault_ = nullptr;
     QListWidget *simultaneous_ = nullptr;
     QListWidget *endActions_ = nullptr;
     QListWidget *nextActions_ = nullptr;
