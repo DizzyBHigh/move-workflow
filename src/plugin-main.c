@@ -11,12 +11,6 @@ OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
 #define TEST_SCENE_NAME "obs-move-workflow test scene"
 
-/*
- * Phase 11 keeps the three dedicated integration-test actions as separate
- * director nodes. The OBS user has already built these Move filters; the
- * workflow only references them and leaves every director setting on
- * WORKFLOW_USE_EXISTING.
- */
 static workflow_t workflow = {
 	.id = "phase11-test-workflow",
 	.name = "Test Move Source Workflow",
@@ -58,7 +52,7 @@ static workflow_t workflow = {
 			.start_trigger_mode = WORKFLOW_USE_EXISTING,
 			.stop_trigger_mode = WORKFLOW_USE_EXISTING,
 			.simultaneous_actions_mode = WORKFLOW_USE_EXISTING,
-			next_actions_mode = WORKFLOW_USE_EXISTING,
+			.next_actions_mode = WORKFLOW_USE_EXISTING,
 			.next_move_on_mode = WORKFLOW_USE_EXISTING,
 		},
 		{
@@ -66,18 +60,18 @@ static workflow_t workflow = {
 			.name = "Move Source - Right",
 			.action = {
 				.scene_name = TEST_SCENE_NAME,
-				source_name = "",
-				filter_name = "Move Source - Right",
-				filter_id = "move_source_filter",
-				kind = WORKFLOW_MOVE_SOURCE,
+				.source_name = "",
+				.filter_name = "Move Source - Right",
+				.filter_id = "move_source_filter",
+				.kind = WORKFLOW_MOVE_SOURCE,
 			},
-			duration = {.mode = WORKFLOW_USE_EXISTING},
-			end_actions_mode = WORKFLOW_USE_EXISTING,
-			start_trigger_mode = WORKFLOW_USE_EXISTING,
-			stop_trigger_mode = WORKFLOW_USE_EXISTING,
-			simultaneous_actions_mode = WORKFLOW_USE_EXISTING,
-			next_actions_mode = WORKFLOW_USE_EXISTING,
-			next_move_on_mode = WORKFLOW_USE_EXISTING,
+			.duration = {.mode = WORKFLOW_USE_EXISTING},
+			.end_actions_mode = WORKFLOW_USE_EXISTING,
+			.start_trigger_mode = WORKFLOW_USE_EXISTING,
+			.stop_trigger_mode = WORKFLOW_USE_EXISTING,
+			.simultaneous_actions_mode = WORKFLOW_USE_EXISTING,
+			.next_actions_mode = WORKFLOW_USE_EXISTING,
+			.next_move_on_mode = WORKFLOW_USE_EXISTING,
 		},
 	},
 };
