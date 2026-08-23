@@ -54,7 +54,7 @@ static obs_source_t *get_locked_filter(void)
 		return NULL;
 	}
 
-	obs_source_addref(filter);
+	/* obs_source_get_filter_by_name() returns a referenced source. */
 	obs_source_release(scene_source);
 	return filter;
 }
