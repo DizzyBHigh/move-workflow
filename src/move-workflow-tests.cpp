@@ -3,6 +3,7 @@
 #include <obs.h>
 #include <obs-frontend-api.h>
 
+#include <QAction>
 #include <QDialog>
 #include <QGroupBox>
 #include <QLabel>
@@ -67,7 +68,7 @@ void duration_test()
     obs_source_set_enabled(filter, false);
     obs_source_set_enabled(filter, true);
 
-    QPointer<QObject> guard = new QObject();
+    QObject *guard = new QObject();
     QTimer::singleShot(1200, guard, [filter, old_custom, old_duration, guard]() {
         obs_data_t *restore = obs_source_get_settings(filter);
         if (restore) {
