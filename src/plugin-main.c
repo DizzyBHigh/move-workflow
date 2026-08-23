@@ -4,6 +4,8 @@
 #include <plugin-support.h>
 #include <string.h>
 #include <stdlib.h>
+#include <util/platform.h>
+#include <util/threading.h>
 
 #include "workflow-model.h"
 
@@ -60,7 +62,7 @@ static workflow_t workflow = {
 			.start_trigger_mode = WORKFLOW_USE_EXISTING,
 			.stop_trigger_mode = WORKFLOW_USE_EXISTING,
 			.simultaneous_actions_mode = WORKFLOW_USE_EXISTING,
-			next_actions_mode = WORKFLOW_USE_EXISTING,
+			.next_actions_mode = WORKFLOW_USE_EXISTING,
 			.next_move_on_mode = WORKFLOW_USE_EXISTING,
 		},
 		{
@@ -146,11 +148,21 @@ static void restore_duration(void *data)
 		obs_data_release(settings);
 	}
 
-	blog(LOG_INFO, "[Move Workflow Phase 12] Duration override restored: custom_duration=%s duration=%lldms",
+	blog(LOG_INFO,
+	     "[Move Workflow Phase 12] Duration override restored: custom_duration=%s duration=%lldms",
 	     ctx->custom_duration ? "true" : "false", ctx->duration);
 
 	obs_source_release(ctx->filter);
 	free(ctx);
+}
+
+static void *duration_restore_thread(void *data)
+{
+	duration_restore_context_t *ctx = data;
+	os_set_thread_name("move-workflow-duration-restore");
+	os_sleep_ms(PHASE12_TEST_DURATION_MS + 150);
+	obs_queue_task(OBS_TASK_UI, restore_duration, ctx, false);
+	return NULL;
 }
 
 static bool apply_duration_override(obs_source_t *filter, uint64_t duration_ms)
@@ -174,10 +186,17 @@ static bool apply_duration_override(obs_source_t *filter, uint64_t duration_ms)
 	obs_source_update(filter, settings);
 	obs_data_release(settings);
 
-	blog(LOG_INFO, "[Move Workflow Phase 12] Applying duration override: original=%lldms override=%llums",
+	blog(LOG_INFO,
+	     "[Move Workflow Phase 12] Applying duration override: original=%lldms override=%llums",
 	     ctx->duration, (unsigned long long)duration_ms);
 
-	obs_timer_add(restore_duration, ctx, duration_ms + 100);
+	pthread_t thread;
+	if (pthread_create(&thread, NULL, duration_restore_thread, ctx) != 0) {
+		blog(LOG_WARNING, "[Move Workflow Phase 12] Failed to start duration restore thread");
+		restore_duration(ctx);
+		return false;
+	}
+	pthread_detach(thread);
 	return true;
 }
 
@@ -185,13 +204,15 @@ static void execute_node(const workflow_node_t *node)
 {
 	obs_source_t *filter = find_move_filter(&node->action);
 	if (!filter) {
-		blog(LOG_WARNING, "[Move Workflow Phase 12] Target not found or type mismatch: node=\"%s\" scene=\"%s\" filter=\"%s\" id=\"%s\" kind=\"%s\"",
+		blog(LOG_WARNING,
+		     "[Move Workflow Phase 12] Target not found or type mismatch: node=\"%s\" scene=\"%s\" filter=\"%s\" id=\"%s\" kind=\"%s\"",
 		     node->name, node->action.scene_name, node->action.filter_name,
 		     node->action.filter_id, workflow_move_kind_name(node->action.kind));
 		return;
 	}
 
-	blog(LOG_INFO, "[Move Workflow Phase 12] Executing node: \"%s\" | action=%s | duration=%s | end=%s | start=%s | stop=%s | simultaneous=%s | next=%s | next-on=%s",
+	blog(LOG_INFO,
+	     "[Move Workflow Phase 12] Executing node: \"%s\" | action=%s | duration=%s | end=%s | start=%s | stop=%s | simultaneous=%s | next=%s | next-on=%s",
 	     node->name, workflow_move_kind_name(node->action.kind),
 	     workflow_value_mode_name(node->duration.mode),
 	     workflow_value_mode_name(node->end_actions_mode),
@@ -239,23 +260,42 @@ static void execute_node_by_id(workflow_t *wf, const char *node_id)
 
 static void hotkey_left_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
 {
-	UNUSED_PARAMETER(id); UNUSED_PARAMETER(hotkey);
-	if (pressed) execute_node_by_id((workflow_t *)data, "move-left");
-}
-static void hotkey_center_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
-{
-	UNUSED_PARAMETER(id); UNUSED_PARAMETER(hotkey);
-	if (pressed) execute_node_by_id((workflow_t *)data, "move-center");
-}
-static void hotkey_right_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
-{
-	UNUSED_PARAMETER(id); UNUSED_PARAMETER(hotkey);
-	if (pressed) execute_node_by_id((workflow_t *)data, "move-right");
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+	if (pressed)
+		execute_node_by_id((workflow_t *)data, "move-left");
 }
 
-static void menu_left_cb(void *data) { execute_node_by_id((workflow_t *)data, "move-left"); }
-static void menu_center_cb(void *data) { execute_node_by_id((workflow_t *)data, "move-center"); }
-static void menu_right_cb(void *data) { execute_node_by_id((workflow_t *)data, "move-right"); }
+static void hotkey_center_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
+{
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+	if (pressed)
+		execute_node_by_id((workflow_t *)data, "move-center");
+}
+
+static void hotkey_right_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
+{
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+	if (pressed)
+		execute_node_by_id((workflow_t *)data, "move-right");
+}
+
+static void menu_left_cb(void *data)
+{
+	execute_node_by_id((workflow_t *)data, "move-left");
+}
+
+static void menu_center_cb(void *data)
+{
+	execute_node_by_id((workflow_t *)data, "move-center");
+}
+
+static void menu_right_cb(void *data)
+{
+	execute_node_by_id((workflow_t *)data, "move-right");
+}
 
 static void menu_duration_cb(void *data)
 {
@@ -263,9 +303,11 @@ static void menu_duration_cb(void *data)
 	workflow_node_t *node = find_node(wf, "move-left");
 	if (!node)
 		return;
+
 	node->duration.mode = WORKFLOW_OVERRIDE;
 	node->duration.duration_ms = PHASE12_TEST_DURATION_MS;
 	execute_node(node);
+	node->duration.mode = WORKFLOW_USE_EXISTING;
 }
 
 bool obs_module_load(void)
@@ -275,17 +317,27 @@ bool obs_module_load(void)
 	static obs_hotkey_id right_hotkey_id;
 
 	blog(LOG_INFO, "[Move Workflow Phase 12] Loaded");
-	blog(LOG_INFO, "[Move Workflow Phase 12] Workflow \"%s\" has %zu node(s)", workflow.name, workflow.node_count);
+	blog(LOG_INFO, "[Move Workflow Phase 12] Workflow \"%s\" has %zu node(s)",
+	     workflow.name, workflow.node_count);
 
-	left_hotkey_id = obs_hotkey_register_frontend("obs_move_workflow.test_left", "Move Workflow: Test Left", hotkey_left_callback, &workflow);
-	center_hotkey_id = obs_hotkey_register_frontend("obs_move_workflow.test_center", "Move Workflow: Test Center", hotkey_center_callback, &workflow);
-	right_hotkey_id = obs_hotkey_register_frontend("obs_move_workflow.test_right", "Move Workflow: Test Right", hotkey_right_callback, &workflow);
-	UNUSED_PARAMETER(left_hotkey_id); UNUSED_PARAMETER(center_hotkey_id); UNUSED_PARAMETER(right_hotkey_id);
+	left_hotkey_id = obs_hotkey_register_frontend(
+		"obs_move_workflow.test_left", "Move Workflow: Test Left",
+		hotkey_left_callback, &workflow);
+	center_hotkey_id = obs_hotkey_register_frontend(
+		"obs_move_workflow.test_center", "Move Workflow: Test Center",
+		hotkey_center_callback, &workflow);
+	right_hotkey_id = obs_hotkey_register_frontend(
+		"obs_move_workflow.test_right", "Move Workflow: Test Right",
+		hotkey_right_callback, &workflow);
+	UNUSED_PARAMETER(left_hotkey_id);
+	UNUSED_PARAMETER(center_hotkey_id);
+	UNUSED_PARAMETER(right_hotkey_id);
 
 	obs_frontend_add_tools_menu_item("Move Workflow: Test Left", menu_left_cb, &workflow);
 	obs_frontend_add_tools_menu_item("Move Workflow: Test Center", menu_center_cb, &workflow);
 	obs_frontend_add_tools_menu_item("Move Workflow: Test Right", menu_right_cb, &workflow);
 	obs_frontend_add_tools_menu_item("Move Workflow: Test Duration Override (Left)", menu_duration_cb, &workflow);
+
 	return true;
 }
 
