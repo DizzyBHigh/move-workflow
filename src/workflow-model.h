@@ -10,15 +10,15 @@
 #define WORKFLOW_MAX_LINKS 8
 
 /*
- * The workflow layer does not recreate Move/Swap/Value actions. A node
- * references an action the OBS user has already built, then controls the
- * workflow around that action.
- *
- * The selected action supplies the primitive operation (move/source/swap/
- * value). Workflow orchestration is owned by the director and is NOT copied
- * from the selected Move filter: start/end actions, triggers, simultaneous
- * actions, next actions, next-move-on, and delays are director concerns.
+ * Workflow nodes are either entry triggers or actions that reference an
+ * existing Move/Swap/Value filter in OBS. The workflow layer does not
+ * recreate the primitive Move action; it only orchestrates it.
  */
+typedef enum workflow_node_type {
+	WORKFLOW_NODE_TRIGGER = 0,
+	WORKFLOW_NODE_ACTION,
+} workflow_node_type_t;
+
 typedef enum workflow_move_kind {
 	WORKFLOW_MOVE_ACTION = 0,
 	WORKFLOW_MOVE_SOURCE,
@@ -31,7 +31,7 @@ typedef enum workflow_value_mode {
 	WORKFLOW_OVERRIDE,
 } workflow_value_mode_t;
 
-/* The action that can trigger entry into a workflow. */
+/* The action that can trigger entry into a workflow branch. */
 typedef struct workflow_trigger_ref {
 	char action[WORKFLOW_MAX_NAME];
 } workflow_trigger_ref_t;
@@ -45,52 +45,50 @@ typedef struct workflow_action_ref {
 	workflow_move_kind_t kind;
 } workflow_action_ref_t;
 
-/* Duration is a director-controlled setting. */
+/* Director-controlled duration. */
 typedef struct workflow_duration_override {
 	workflow_value_mode_t mode;
 	uint64_t duration_ms;
 } workflow_duration_override_t;
 
-/* Director-owned delay; meaningful for Move Source / Move Source Swap. */
+/* Director-owned delay. */
 typedef struct workflow_delay_override {
 	workflow_value_mode_t mode;
 	uint64_t delay_ms;
 } workflow_delay_override_t;
 
 /*
- * A node is the reusable director representation of one prebuilt action.
- * Relationships point to other nodes, so every chained action is configured
- * through the same director model.
+ * A node represents either a trigger or one prebuilt Move-family action.
+ * Trigger nodes may exist anywhere in the graph; they are not implicitly
+ * restricted to the first node.
+ *
+ * Action nodes deliberately contain no duplicate Move/Swap/Value operation
+ * settings. Source + Filter identify the existing action. The node only
+ * owns orchestration settings: delays, duration, simultaneous actions and
+ * end/next relationships.
  */
 typedef struct workflow_node {
 	char id[WORKFLOW_MAX_NAME];
 	char name[WORKFLOW_MAX_NAME];
+	workflow_node_type_t type;
 
-	/* Entry trigger. Normally configured only on the first node in a tree. */
+	/* Used by trigger nodes. Empty/None for action nodes. */
 	workflow_trigger_ref_t trigger;
 
-	/* The existing action selected by this node. */
+	/* Used by action nodes. References an existing OBS filter. */
 	workflow_action_ref_t action;
 
 	/* Director-owned settings. */
 	workflow_duration_override_t duration;
 	workflow_delay_override_t start_delay;
 	workflow_delay_override_t end_delay;
-	workflow_value_mode_t end_actions_mode;
-	workflow_value_mode_t start_trigger_mode;
-	workflow_value_mode_t stop_trigger_mode;
 	workflow_value_mode_t simultaneous_actions_mode;
+	workflow_value_mode_t end_actions_mode;
 	workflow_value_mode_t next_actions_mode;
-	workflow_value_mode_t next_move_on_mode;
-
-	/* Values used only when the corresponding setting is overridden. */
-	char start_trigger_value[WORKFLOW_MAX_VALUE];
-	char stop_trigger_value[WORKFLOW_MAX_VALUE];
-	char next_move_on_value[WORKFLOW_MAX_VALUE];
 
 	/*
-	 * Relationships refer to other node IDs. The referenced nodes carry their
-	 * own action selection and overrides.
+	 * Relationships refer to other node IDs. Simultaneous nodes start with
+	 * this node; end/next nodes are downstream actions.
 	 */
 	size_t end_node_count;
 	char end_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
@@ -107,13 +105,25 @@ typedef struct workflow {
 	char name[WORKFLOW_MAX_NAME];
 	bool enabled;
 
-	/* Entry node(s) for the workflow. */
+	/* Entry nodes are explicit; there may be more than one trigger branch. */
 	size_t entry_node_count;
 	char entry_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
 
 	size_t node_count;
 	workflow_node_t nodes[WORKFLOW_MAX_NODES];
 } workflow_t;
+
+static inline const char *workflow_node_type_name(workflow_node_type_t type)
+{
+	switch (type) {
+	case WORKFLOW_NODE_TRIGGER:
+		return "Trigger";
+	case WORKFLOW_NODE_ACTION:
+		return "Action";
+	default:
+		return "Unknown";
+	}
+}
 
 static inline const char *workflow_move_kind_name(workflow_move_kind_t kind)
 {
