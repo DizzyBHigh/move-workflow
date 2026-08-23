@@ -12,22 +12,18 @@ OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 #define TEST_SCENE_NAME "obs-move-workflow test scene"
 
 /*
- * Phase 9 uses the director node model from workflow-model.h directly.
- * The selected action is an existing Move-family filter; the node contains
- * only the director settings that may later be kept or overridden.
- *
- * For this phase every director setting remains WORKFLOW_USE_EXISTING.
- * Phase 10 adds the first runtime step toward overrides: read the actual
- * settings from the selected prebuilt Move filter so the director can resolve
- * "use existing" values without changing the user's configuration.
+ * Phase 11 keeps the three dedicated integration-test actions as separate
+ * director nodes. The OBS user has already built these Move filters; the
+ * workflow only references them and leaves every director setting on
+ * WORKFLOW_USE_EXISTING.
  */
 static workflow_t workflow = {
-	.id = "phase10-test-workflow",
+	.id = "phase11-test-workflow",
 	.name = "Test Move Source Workflow",
 	.enabled = true,
-	.entry_node_count = 1,
-	.entry_node_ids = {"move-left"},
-	.node_count = 1,
+	.entry_node_count = 3,
+	.entry_node_ids = {"move-left", "move-center", "move-right"},
+	.node_count = 3,
 	.nodes = {
 		{
 			.id = "move-left",
@@ -39,16 +35,49 @@ static workflow_t workflow = {
 				.filter_id = "move_source_filter",
 				.kind = WORKFLOW_MOVE_SOURCE,
 			},
-			.duration = {
-				.mode = WORKFLOW_USE_EXISTING,
-				.duration_ms = 0,
-			},
+			.duration = {.mode = WORKFLOW_USE_EXISTING},
 			.end_actions_mode = WORKFLOW_USE_EXISTING,
 			.start_trigger_mode = WORKFLOW_USE_EXISTING,
 			.stop_trigger_mode = WORKFLOW_USE_EXISTING,
 			.simultaneous_actions_mode = WORKFLOW_USE_EXISTING,
 			.next_actions_mode = WORKFLOW_USE_EXISTING,
 			.next_move_on_mode = WORKFLOW_USE_EXISTING,
+		},
+		{
+			.id = "move-center",
+			.name = "Move Source - Center",
+			.action = {
+				.scene_name = TEST_SCENE_NAME,
+				.source_name = "",
+				.filter_name = "Move Source - Center",
+				.filter_id = "move_source_filter",
+				.kind = WORKFLOW_MOVE_SOURCE,
+			},
+			.duration = {.mode = WORKFLOW_USE_EXISTING},
+			.end_actions_mode = WORKFLOW_USE_EXISTING,
+			.start_trigger_mode = WORKFLOW_USE_EXISTING,
+			.stop_trigger_mode = WORKFLOW_USE_EXISTING,
+			.simultaneous_actions_mode = WORKFLOW_USE_EXISTING,
+			next_actions_mode = WORKFLOW_USE_EXISTING,
+			.next_move_on_mode = WORKFLOW_USE_EXISTING,
+		},
+		{
+			.id = "move-right",
+			.name = "Move Source - Right",
+			.action = {
+				.scene_name = TEST_SCENE_NAME,
+				source_name = "",
+				filter_name = "Move Source - Right",
+				filter_id = "move_source_filter",
+				kind = WORKFLOW_MOVE_SOURCE,
+			},
+			duration = {.mode = WORKFLOW_USE_EXISTING},
+			end_actions_mode = WORKFLOW_USE_EXISTING,
+			start_trigger_mode = WORKFLOW_USE_EXISTING,
+			stop_trigger_mode = WORKFLOW_USE_EXISTING,
+			simultaneous_actions_mode = WORKFLOW_USE_EXISTING,
+			next_actions_mode = WORKFLOW_USE_EXISTING,
+			next_move_on_mode = WORKFLOW_USE_EXISTING,
 		},
 	},
 };
@@ -77,14 +106,6 @@ static obs_source_t *find_move_filter(const workflow_action_ref_t *action)
 	return filter;
 }
 
-/*
- * Read the settings that already belong to the user's Move filter.
- *
- * Nothing is written back to the filter here. This is deliberately the safe
- * half of the eventual override mechanism: first resolve the existing values,
- * then a later phase can merge director overrides into a temporary settings
- * object and restore the original configuration after execution.
- */
 static void inspect_existing_move_settings(obs_source_t *filter, const workflow_node_t *node)
 {
 	obs_data_t *settings = obs_source_get_settings(filter);
@@ -101,7 +122,7 @@ static void inspect_existing_move_settings(obs_source_t *filter, const workflow_
 	const char *next = obs_data_get_string(settings, "next_move");
 
 	blog(LOG_INFO,
-	     "[Move Workflow Phase 10] Existing settings for node \"%s\": source=\"%s\" custom_duration=%s duration=%lldms start_trigger=%lld stop_trigger=%lld simultaneous=\"%s\" next=\"%s\" next_move_on=%lld",
+	     "[Move Workflow Phase 11] Existing settings for node \"%s\": source=\"%s\" custom_duration=%s duration=%lldms start_trigger=%lld stop_trigger=%lld simultaneous=\"%s\" next=\"%s\" next_move_on=%lld",
 	     node->name,
 	     source ? source : "",
 	     custom_duration ? "true" : "false",
@@ -112,18 +133,14 @@ static void inspect_existing_move_settings(obs_source_t *filter, const workflow_
 	     next ? next : "",
 	     next_move_on);
 
-	/* Move Action has one built-in end-action definition. Our director model
-	 * deliberately represents end actions as multiple node references, so this
-	 * is only an inspection of the prebuilt action and not our final structure.
-	 */
-	if (strcmp(node->action.filter_id, "move_action_filter") == 0) {
+	if (node->action.kind == WORKFLOW_MOVE_ACTION) {
 		const long long end_action = obs_data_get_int(settings, "end_action");
 		const char *end_source = obs_data_get_string(settings, "end_source");
 		const char *end_filter = obs_data_get_string(settings, "end_filter");
 		const long long end_enable = obs_data_get_int(settings, "end_enable");
 
 		blog(LOG_INFO,
-		     "[Move Workflow Phase 10] Existing Move Action end action: action=%lld source=\"%s\" filter=\"%s\" enable=%lld",
+		     "[Move Workflow Phase 11] Existing Move Action end action: action=%lld source=\"%s\" filter=\"%s\" enable=%lld",
 		     end_action,
 		     end_source ? end_source : "",
 		     end_filter ? end_filter : "",
@@ -133,13 +150,12 @@ static void inspect_existing_move_settings(obs_source_t *filter, const workflow_
 	obs_data_release(settings);
 }
 
-static void execute_node(const workflow_node_t *node, size_t index)
+static void execute_node(const workflow_node_t *node)
 {
 	obs_source_t *filter = find_move_filter(&node->action);
 	if (!filter) {
 		blog(LOG_WARNING,
-		     "[Move Workflow Phase 10] Node %zu target not found or type mismatch: node=\"%s\" scene=\"%s\" filter=\"%s\" id=\"%s\" kind=\"%s\"",
-		     index + 1,
+		     "[Move Workflow Phase 11] Target not found or type mismatch: node=\"%s\" scene=\"%s\" filter=\"%s\" id=\"%s\" kind=\"%s\"",
 		     node->name,
 		     node->action.scene_name,
 		     node->action.filter_name,
@@ -149,8 +165,7 @@ static void execute_node(const workflow_node_t *node, size_t index)
 	}
 
 	blog(LOG_INFO,
-	     "[Move Workflow Phase 10] Node %zu: \"%s\" | action=%s | duration=%s | end=%s | start=%s | stop=%s | simultaneous=%s | next=%s | next-on=%s",
-	     index + 1,
+	     "[Move Workflow Phase 11] Executing node: \"%s\" | action=%s | duration=%s | end=%s | start=%s | stop=%s | simultaneous=%s | next=%s | next-on=%s",
 	     node->name,
 	     workflow_move_kind_name(node->action.kind),
 	     workflow_value_mode_name(node->duration.mode),
@@ -163,8 +178,7 @@ static void execute_node(const workflow_node_t *node, size_t index)
 
 	inspect_existing_move_settings(filter, node);
 
-	/* No overrides are applied yet. The selected Move filter is still executed
-	 * exactly as the OBS user configured it. */
+	/* No overrides yet: execute the user's prebuilt Move filter as configured. */
 	obs_source_set_enabled(filter, false);
 	obs_source_set_enabled(filter, true);
 	obs_source_release(filter);
@@ -179,62 +193,94 @@ static workflow_node_t *find_node(workflow_t *wf, const char *node_id)
 	return NULL;
 }
 
-static void execute_workflow(workflow_t *wf)
+static void execute_node_by_id(workflow_t *wf, const char *node_id)
 {
 	if (!wf->enabled)
 		return;
 
-	blog(LOG_INFO, "[Move Workflow Phase 10] Executing workflow: \"%s\" (%zu node(s))",
-	     wf->name, wf->node_count);
-
-	for (size_t i = 0; i < wf->entry_node_count; ++i) {
-		workflow_node_t *node = find_node(wf, wf->entry_node_ids[i]);
-		if (node)
-			execute_node(node, i);
-		else
-			blog(LOG_WARNING, "[Move Workflow Phase 10] Entry node not found: \"%s\"",
-			     wf->entry_node_ids[i]);
-	}
+	workflow_node_t *node = find_node(wf, node_id);
+	if (node)
+		execute_node(node);
+	else
+		blog(LOG_WARNING, "[Move Workflow Phase 11] Test node not found: \"%s\"", node_id);
 }
 
-static void workflow_hotkey_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
+static void hotkey_left_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
 {
-	UNUSED_PARAMETER(data);
 	UNUSED_PARAMETER(id);
 	UNUSED_PARAMETER(hotkey);
-
 	if (pressed)
-		execute_workflow(&workflow);
+		execute_node_by_id((workflow_t *)data, "move-left");
 }
 
-static void menu_cb(void *data)
+static void hotkey_center_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
 {
-	UNUSED_PARAMETER(data);
-	execute_workflow(&workflow);
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+	if (pressed)
+		execute_node_by_id((workflow_t *)data, "move-center");
+}
+
+static void hotkey_right_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
+{
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+	if (pressed)
+		execute_node_by_id((workflow_t *)data, "move-right");
+}
+
+static void menu_left_cb(void *data)
+{
+	execute_node_by_id((workflow_t *)data, "move-left");
+}
+
+static void menu_center_cb(void *data)
+{
+	execute_node_by_id((workflow_t *)data, "move-center");
+}
+
+static void menu_right_cb(void *data)
+{
+	execute_node_by_id((workflow_t *)data, "move-right");
 }
 
 bool obs_module_load(void)
 {
-	static obs_hotkey_id hotkey_id;
+	static obs_hotkey_id left_hotkey_id;
+	static obs_hotkey_id center_hotkey_id;
+	static obs_hotkey_id right_hotkey_id;
 
-	blog(LOG_INFO, "[Move Workflow Phase 10] Loaded");
-	blog(LOG_INFO, "[Move Workflow Phase 10] Workflow \"%s\" has %zu node(s)",
+	blog(LOG_INFO, "[Move Workflow Phase 11] Loaded");
+	blog(LOG_INFO, "[Move Workflow Phase 11] Workflow \"%s\" has %zu node(s)",
 	     workflow.name, workflow.node_count);
 
-	hotkey_id = obs_hotkey_register_frontend(
-		"obs_move_workflow.test_workflow",
-		"Move Workflow: Run Test Move Source Workflow",
-		workflow_hotkey_callback,
+	left_hotkey_id = obs_hotkey_register_frontend(
+		"obs_move_workflow.test_left",
+		"Move Workflow: Test Left",
+		hotkey_left_callback,
 		&workflow);
-	UNUSED_PARAMETER(hotkey_id);
+	center_hotkey_id = obs_hotkey_register_frontend(
+		"obs_move_workflow.test_center",
+		"Move Workflow: Test Center",
+		hotkey_center_callback,
+		&workflow);
+	right_hotkey_id = obs_hotkey_register_frontend(
+		"obs_move_workflow.test_right",
+		"Move Workflow: Test Right",
+		hotkey_right_callback,
+		&workflow);
+	UNUSED_PARAMETER(left_hotkey_id);
+	UNUSED_PARAMETER(center_hotkey_id);
+	UNUSED_PARAMETER(right_hotkey_id);
 
-	obs_frontend_add_tools_menu_item(
-		"Move Workflow: Run Test Move Source Workflow", menu_cb, NULL);
+	obs_frontend_add_tools_menu_item("Move Workflow: Test Left", menu_left_cb, &workflow);
+	obs_frontend_add_tools_menu_item("Move Workflow: Test Center", menu_center_cb, &workflow);
+	obs_frontend_add_tools_menu_item("Move Workflow: Test Right", menu_right_cb, &workflow);
 
 	return true;
 }
 
 void obs_module_unload(void)
 {
-	blog(LOG_INFO, "[Move Workflow Phase 10] Unloaded");
+	blog(LOG_INFO, "[Move Workflow Phase 11] Unloaded");
 }
