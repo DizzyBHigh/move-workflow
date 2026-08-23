@@ -45,64 +45,47 @@ void trigger_filter(const char *name, const char *label)
     obs_source_release(filter);
 }
 
-void duration_test()
+void trigger_director_menu(const char *text)
 {
-    obs_source_t *filter = find_filter("Move Source - Top - Left");
-    if (!filter)
-        return;
-
-    obs_data_t *settings = obs_source_get_settings(filter);
-    if (!settings) {
-        obs_source_release(filter);
+    auto *mainWindow = static_cast<QMainWindow *>(obs_frontend_get_main_window());
+    if (!mainWindow) {
+        blog(LOG_WARNING, "[Move Workflow Tests] OBS main window unavailable");
         return;
     }
 
-    const bool old_custom = obs_data_get_bool(settings, "custom_duration");
-    const int64_t old_duration = obs_data_get_int(settings, "duration");
-    obs_data_set_bool(settings, "custom_duration", true);
-    obs_data_set_int(settings, "duration", 1000);
-    obs_source_update(filter, settings);
-    obs_data_release(settings);
-
-    blog(LOG_INFO, "[Move Workflow Tests] Duration override -> Top Left = 1000ms");
-    obs_source_set_enabled(filter, false);
-    obs_source_set_enabled(filter, true);
-
-    QObject *guard = new QObject();
-    QTimer::singleShot(1200, guard, [filter, old_custom, old_duration, guard]() {
-        obs_data_t *restore = obs_source_get_settings(filter);
-        if (restore) {
-            obs_data_set_bool(restore, "custom_duration", old_custom);
-            obs_data_set_int(restore, "duration", old_duration);
-            obs_source_update(filter, restore);
-            obs_data_release(restore);
+    const auto actions = mainWindow->findChildren<QAction *>();
+    for (QAction *action : actions) {
+        if (action && action->text() == QString::fromUtf8(text)) {
+            blog(LOG_INFO, "[Move Workflow Tests] Triggering director test: %s", text);
+            action->trigger();
+            return;
         }
-        obs_source_release(filter);
-        delete guard;
-        blog(LOG_INFO, "[Move Workflow Tests] Duration override restored");
-    });
+    }
+
+    blog(LOG_WARNING, "[Move Workflow Tests] Director test action not found: %s", text);
+}
+
+void duration_test()
+{
+    trigger_director_menu("Move Workflow: Test Duration Override (Left)");
 }
 
 void multiple_end_actions()
 {
-    blog(LOG_INFO, "[Move Workflow Tests] Multiple End Actions: Bottom Center + Bottom Right (parallel)");
-    trigger_filter("Move Source - Top - Left", "Parent action");
-    QTimer::singleShot(350, [] {
-        trigger_filter("Move Source - Bottom - Center", "End Action 1");
-        trigger_filter("Move Source - Bottom - Right", "End Action 2");
-    });
+    trigger_director_menu("Move Workflow: Test Multiple End Actions (Top Left -> Bottom Center + Bottom Right)");
 }
 
 void end_actions_with_delay()
 {
-    blog(LOG_INFO, "[Move Workflow Tests] End Actions: Bottom Center immediate, Bottom Right +1000ms");
-    trigger_filter("Move Source - Top - Left", "Parent action");
-    QTimer::singleShot(350, [] {
-        trigger_filter("Move Source - Bottom - Center", "End Action 1");
-        QTimer::singleShot(1000, [] {
-            trigger_filter("Move Source - Bottom - Right", "End Action 2 (+1000ms)");
-        });
-    });
+    trigger_director_menu("Move Workflow: Test End Actions with Start Delay (Bottom Right +1000ms)");
+}
+
+void start_trigger_test()
+{
+    /* The existing Top Left director node is the Phase 15 Start Trigger test:
+     * start_trigger_mode=OVERRIDE and start_trigger_value=Enable. Triggering
+     * its existing test action therefore exercises the real director path. */
+    trigger_director_menu("Move Workflow: Test Left");
 }
 
 class TestWindow final : public QDialog {
@@ -114,7 +97,7 @@ public:
 
         auto *layout = new QVBoxLayout(this);
         auto *info = new QLabel(
-            "These tests exercise the existing Move filters through the director test setup.", this);
+            "Movement tests use the existing Move filters. Director tests invoke the director test actions.", this);
         info->setWordWrap(true);
         layout->addWidget(info);
 
@@ -137,10 +120,7 @@ public:
         addButton(directorLayout, "Duration Override — Top Left → 1000ms", [] { duration_test(); });
         addButton(directorLayout, "Multiple End Actions — Bottom Center + Bottom Right", [] { multiple_end_actions(); });
         addButton(directorLayout, "End Actions + Start Delay — Bottom Right +1000ms", [] { end_actions_with_delay(); });
-        addButton(directorLayout, "Start Trigger — Enable", [] {
-            blog(LOG_INFO, "[Move Workflow Tests] Start Trigger override -> Enable");
-            trigger_filter("Move Source - Top - Left", "Start Trigger Enable");
-        });
+        addButton(directorLayout, "Start Trigger — Enable", [] { start_trigger_test(); });
         layout->addWidget(director);
 
         auto *close = new QPushButton("Close", this);
