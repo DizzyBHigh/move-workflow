@@ -31,6 +31,11 @@ typedef enum workflow_value_mode {
 	WORKFLOW_OVERRIDE,
 } workflow_value_mode_t;
 
+/* The action that can trigger entry into a workflow. */
+typedef struct workflow_trigger_ref {
+	char action[WORKFLOW_MAX_NAME];
+} workflow_trigger_ref_t;
+
 /* A reference to an existing Move-family filter/action in OBS. */
 typedef struct workflow_action_ref {
 	char scene_name[WORKFLOW_MAX_NAME];
@@ -60,6 +65,9 @@ typedef struct workflow_delay_override {
 typedef struct workflow_node {
 	char id[WORKFLOW_MAX_NAME];
 	char name[WORKFLOW_MAX_NAME];
+
+	/* Entry trigger. Normally configured only on the first node in a tree. */
+	workflow_trigger_ref_t trigger;
 
 	/* The existing action selected by this node. */
 	workflow_action_ref_t action;
