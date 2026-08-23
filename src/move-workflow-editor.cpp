@@ -22,7 +22,8 @@
 #include <QTimer>
 #include <QVector>
 #include <QPointer>
-#include <QMouseEvent>
+#include <QWheelEvent>
+#include <QVBoxLayout>
 
 #include <memory>
 
@@ -83,9 +84,6 @@ class EditorScene final : public QGraphicsScene {
 public:
     explicit EditorScene(QObject *parent = nullptr) : QGraphicsScene(parent)
     {
-        // QGraphicsScene emits changed() continuously while an item is dragged.
-        // Use that notification to keep workflow connection lines attached to
-        // the nodes rather than waiting for a canvas click.
         connect(this, &QGraphicsScene::changed, this, [this] { updateConnections(); });
     }
 
@@ -163,6 +161,80 @@ private:
     QVector<Connection> connections_;
 };
 
+class WorkflowGraphicsView final : public QGraphicsView {
+public:
+    explicit WorkflowGraphicsView(QGraphicsScene *scene, QWidget *parent = nullptr)
+        : QGraphicsView(scene, parent)
+    {
+        setRenderHint(QPainter::Antialiasing);
+        setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+        setResizeAnchor(QGraphicsView::AnchorUnderMouse);
+        setDragMode(QGraphicsView::RubberBandDrag);
+    }
+
+    void zoomIn()
+    {
+        scale(1.15, 1.15);
+        updateZoomLabel();
+    }
+
+    void zoomOut()
+    {
+        scale(1.0 / 1.15, 1.0 / 1.15);
+        updateZoomLabel();
+    }
+
+    void resetZoom()
+    {
+        resetTransform();
+        updateZoomLabel();
+    }
+
+    void fitAll()
+    {
+        if (!scene() || scene()->items().isEmpty()) {
+            resetZoom();
+            return;
+        }
+
+        const QRectF bounds = scene()->itemsBoundingRect().adjusted(-80, -80, 80, 80);
+        if (bounds.isValid() && !bounds.isEmpty())
+            fitInView(bounds, Qt::KeepAspectRatio);
+        updateZoomLabel();
+    }
+
+    void setZoomLabel(QLabel *label)
+    {
+        zoomLabel_ = label;
+        updateZoomLabel();
+    }
+
+protected:
+    void wheelEvent(QWheelEvent *event) override
+    {
+        if (event->angleDelta().y() == 0) {
+            QGraphicsView::wheelEvent(event);
+            return;
+        }
+
+        const qreal factor = event->angleDelta().y() > 0 ? 1.15 : (1.0 / 1.15);
+        scale(factor, factor);
+        updateZoomLabel();
+        event->accept();
+    }
+
+private:
+    void updateZoomLabel()
+    {
+        if (!zoomLabel_)
+            return;
+        const qreal zoom = transform().m11() * 100.0;
+        zoomLabel_->setText(QString("%1%").arg(qRound(zoom)));
+    }
+
+    QLabel *zoomLabel_ = nullptr;
+};
+
 class NodeSettingsDialog final : public QDialog {
 public:
     explicit NodeSettingsDialog(NodeItem *node, QWidget *parent = nullptr) : QDialog(parent), node_(node)
@@ -213,25 +285,42 @@ public:
         auto *add = new QPushButton("+ Add Node", this);
         auto *edit = new QPushButton("Edit Node", this);
         auto *link = new QPushButton("Link Selected Nodes", this);
+        auto *zoomOut = new QPushButton("−", this);
+        auto *zoomReset = new QPushButton("100%", this);
+        auto *zoomIn = new QPushButton("+", this);
+        auto *fit = new QPushButton("Fit All", this);
         auto *close = new QPushButton("Close", this);
+
         toolbar->addWidget(add);
         toolbar->addWidget(edit);
         toolbar->addWidget(link);
         toolbar->addStretch();
+        toolbar->addWidget(zoomOut);
+        toolbar->addWidget(zoomReset);
+        toolbar->addWidget(zoomIn);
+        toolbar->addWidget(fit);
         toolbar->addWidget(close);
         root->addLayout(toolbar);
 
         auto *hint = new QLabel(
-            "Add nodes, drag them around the canvas, double-click a node for settings, then select two nodes and link them.", this);
+            "Add nodes, drag them around the canvas, double-click a node for settings, then select two nodes and link them. "
+            "Use the mouse wheel or the zoom controls to navigate larger workflows.", this);
         hint->setWordWrap(true);
         root->addWidget(hint);
 
         scene_ = new EditorScene(this);
         scene_->setSceneRect(0, 0, 2000, 1400);
-        view_ = new QGraphicsView(scene_, this);
-        view_->setRenderHint(QPainter::Antialiasing);
-        view_->setDragMode(QGraphicsView::RubberBandDrag);
+        view_ = new WorkflowGraphicsView(scene_, this);
         root->addWidget(view_, 1);
+
+        auto *status = new QHBoxLayout;
+        status->addStretch();
+        auto *zoomText = new QLabel("Zoom:", this);
+        zoomLabel_ = new QLabel("100%", this);
+        status->addWidget(zoomText);
+        status->addWidget(zoomLabel_);
+        root->addLayout(status);
+        view_->setZoomLabel(zoomLabel_);
 
         connect(add, &QPushButton::clicked, this, [this] {
             bool ok = false;
@@ -243,6 +332,10 @@ public:
 
         connect(edit, &QPushButton::clicked, this, [this] { editSelectedNode(); });
         connect(link, &QPushButton::clicked, this, [this] { linkSelectedNodes(); });
+        connect(zoomOut, &QPushButton::clicked, view_, &WorkflowGraphicsView::zoomOut);
+        connect(zoomReset, &QPushButton::clicked, view_, &WorkflowGraphicsView::resetZoom);
+        connect(zoomIn, &QPushButton::clicked, view_, &WorkflowGraphicsView::zoomIn);
+        connect(fit, &QPushButton::clicked, view_, &WorkflowGraphicsView::fitAll);
         connect(close, &QPushButton::clicked, this, &QDialog::close);
         connect(scene_, &QGraphicsScene::selectionChanged, this, [this] { scene_->updateConnections(); });
         connect(scene_, &EditorScene::nodeDoubleClicked, this, [this](NodeItem *node) { editNode(node); });
@@ -274,7 +367,8 @@ private:
     }
 
     EditorScene *scene_ = nullptr;
-    QGraphicsView *view_ = nullptr;
+    WorkflowGraphicsView *view_ = nullptr;
+    QLabel *zoomLabel_ = nullptr;
 };
 
 QPointer<EditorWindow> window;
