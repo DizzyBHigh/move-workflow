@@ -2,6 +2,7 @@
 #include "workflow-model.h"
 
 #include <obs-frontend-api.h>
+#include <obs.h>
 
 #include <QAction>
 #include <QAbstractItemView>
@@ -74,6 +75,27 @@ static void set_node_list(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QL
     }
 }
 
+static workflow_move_kind_t workflow_kind_from_filter_id(const char *id)
+{
+    if (!id)
+        return WORKFLOW_MOVE_ACTION;
+    if (std::strcmp(id, "move_source_filter") == 0)
+        return WORKFLOW_MOVE_SOURCE;
+    if (std::strcmp(id, "move_source_swap_filter") == 0)
+        return WORKFLOW_MOVE_SWAP;
+    if (std::strcmp(id, "move_value_filter") == 0)
+        return WORKFLOW_MOVE_VALUE;
+    return WORKFLOW_MOVE_ACTION;
+}
+
+static bool is_supported_move_filter(const char *id)
+{
+    return id && (std::strcmp(id, "move_action_filter") == 0 ||
+                  std::strcmp(id, "move_source_filter") == 0 ||
+                  std::strcmp(id, "move_source_swap_filter") == 0 ||
+                  std::strcmp(id, "move_value_filter") == 0);
+}
+
 struct EditorNode {
     workflow_node_t workflow{};
     int numeric_id = 0;
@@ -85,7 +107,7 @@ public:
     NodeItem(EditorNode node, QGraphicsItem *parent = nullptr)
         : QGraphicsRectItem(parent), node_(std::move(node))
     {
-        setRect(0, 0, 250, 112);
+        setRect(0, 0, 250, 126);
         setBrush(QColor(42, 45, 50));
         setPen(QPen(QColor(110, 120, 135), 1));
         setFlag(QGraphicsItem::ItemIsMovable);
@@ -121,19 +143,21 @@ public:
         if (!details_)
             return;
 
-        const QString action = read_text(node_.workflow.action.filter_name).isEmpty()
-                                   ? "No existing action selected"
+        const QString filter = read_text(node_.workflow.action.filter_name).isEmpty()
+                                   ? "No Move action selected"
                                    : read_text(node_.workflow.action.filter_name);
         const QString kind = QString::fromUtf8(workflow_move_kind_name(node_.workflow.action.kind));
+        const QString trigger = read_text(node_.workflow.trigger.action);
         const QString duration = node_.workflow.duration.mode == WORKFLOW_OVERRIDE
                                      ? QString("Duration: %1 ms").arg((qulonglong)node_.workflow.duration.duration_ms)
                                      : "Duration: existing";
         const QString end = QString("End: %1").arg((qulonglong)node_.workflow.end_node_count);
         const QString simultaneous = QString("Simultaneous: %1").arg((qulonglong)node_.workflow.simultaneous_node_count);
         const QString next = QString("Next: %1").arg((qulonglong)node_.workflow.next_node_count);
+        const QString triggerLine = trigger.isEmpty() || trigger == "None" ? "Trigger: none" : QString("Trigger: %1").arg(trigger);
 
-        details_->setPlainText(QString("%1\n%2\n%3\n%4  %5  %6")
-                                   .arg(action, kind, duration, end, simultaneous, next));
+        details_->setPlainText(QString("%1\n%2\n%3\n%4\n%5  %6  %7")
+                                   .arg(filter, kind, triggerLine, duration, end, simultaneous, next));
     }
 
 protected:
@@ -165,6 +189,7 @@ public:
         const QString id = QString("node-%1").arg(node.numeric_id);
         copy_text(node.workflow.id, WORKFLOW_MAX_NAME, id);
         copy_text(node.workflow.name, WORKFLOW_MAX_NAME, name);
+        copy_text(node.workflow.trigger.action, WORKFLOW_MAX_NAME, "None");
         node.workflow.duration.mode = WORKFLOW_USE_EXISTING;
         node.workflow.start_delay.mode = WORKFLOW_USE_EXISTING;
         node.workflow.end_actions_mode = WORKFLOW_OVERRIDE;
@@ -174,7 +199,7 @@ public:
         node.workflow.next_actions_mode = WORKFLOW_OVERRIDE;
         node.workflow.next_move_on_mode = WORKFLOW_USE_EXISTING;
         node.position = QPointF(80 + ((node.numeric_id - 1) % 4) * 290,
-                                80 + ((node.numeric_id - 1) / 4) * 160);
+                                80 + ((node.numeric_id - 1) / 4) * 170);
 
         auto *item = new NodeItem(std::move(node));
         addItem(item);
@@ -422,7 +447,7 @@ public:
         : QDialog(parent), node_(node), nodes_(nodes)
     {
         setWindowTitle(QString("Node Settings - %1").arg(node ? node->nodeName() : "Node"));
-        resize(560, 760);
+        resize(560, 800);
 
         auto *root = new QVBoxLayout(this);
 
@@ -435,27 +460,41 @@ public:
 
         auto *actionBox = new QGroupBox("Existing Move / Swap / Value Action", this);
         auto *actionLayout = new QVBoxLayout(actionBox);
-        scene_ = new QLineEdit(actionBox);
-        source_ = new QLineEdit(actionBox);
-        filter_ = new QLineEdit(actionBox);
-        kind_ = new QComboBox(actionBox);
-        kind_->addItem("Move Action", WORKFLOW_MOVE_ACTION);
-        kind_->addItem("Move Source", WORKFLOW_MOVE_SOURCE);
-        kind_->addItem("Move Source Swap", WORKFLOW_MOVE_SWAP);
-        kind_->addItem("Move Value", WORKFLOW_MOVE_VALUE);
+
+        triggerAction_ = new QComboBox(actionBox);
+        triggerAction_->addItem("None");
+        triggerAction_->addItem("Frontend Action");
+        triggerAction_->addItem("Source Visibility");
+        triggerAction_->addItem("Source Mute");
+        triggerAction_->addItem("Source Audio Track");
+        triggerAction_->addItem("Source Hotkey");
+        triggerAction_->addItem("Filter Enable");
+        triggerAction_->addItem("Frontend Hotkey");
+        triggerAction_->addItem("Setting");
+        triggerAction_->addItem("UDP packet");
+        triggerAction_->addItem("Websocket Request");
+        triggerAction_->addItem("Websocket Event");
+
+        source_ = new QComboBox(actionBox);
+        source_->setEditable(false);
+        filter_ = new QComboBox(actionBox);
+        filter_->setEditable(false);
+
         if (node) {
-            scene_->setText(read_text(node->workflowNode()->action.scene_name));
-            source_->setText(read_text(node->workflowNode()->action.source_name));
-            filter_->setText(read_text(node->workflowNode()->action.filter_name));
-            const int index = kind_->findData((int)node->workflowNode()->action.kind);
-            if (index >= 0)
-                kind_->setCurrentIndex(index);
+            const int triggerIndex = triggerAction_->findText(read_text(node->workflowNode()->trigger.action));
+            if (triggerIndex >= 0)
+                triggerAction_->setCurrentIndex(triggerIndex);
         }
-        addLabeled(actionLayout, "Scene", scene_);
+
+        addLabeled(actionLayout, "Action", triggerAction_);
+        actionLayout->addWidget(new QLabel("For the first node only: this is the action that will trigger the workflow.", actionBox));
         addLabeled(actionLayout, "Source", source_);
-        addLabeled(actionLayout, "Filter / Action", filter_);
-        addLabeled(actionLayout, "Action type", kind_);
+        addLabeled(actionLayout, "Filter", filter_);
         root->addWidget(actionBox);
+
+        populateSources(node ? read_text(node->workflowNode()->action.scene_name) : QString());
+        connect(source_, &QComboBox::currentIndexChanged, this, [this] { populateFilters(); });
+        populateFilters(node ? read_text(node->workflowNode()->action.filter_name) : QString());
 
         auto *durationBox = new QGroupBox("Duration", this);
         auto *durationLayout = new QHBoxLayout(durationBox);
@@ -484,7 +523,6 @@ public:
         delayLayout->addWidget(startDelayMode_);
         delayLayout->addWidget(startDelayMs_);
         root->addWidget(startDelayBox_);
-        connect(kind_, &QComboBox::currentIndexChanged, this, [this] { updateDelayAvailability(); });
         updateDelayAvailability();
 
         auto *triggerBox = new QGroupBox("Start / Stop Triggers", this);
@@ -548,18 +586,39 @@ public:
     {
         if (!node_)
             return false;
+
         workflow_node_t *wf = node_->workflowNode();
         const QString name = name_->text().trimmed();
-        const QString filter = filter_->text().trimmed();
-        if (name.isEmpty() || filter.isEmpty())
+        const QString parentSource = source_->currentData().toString();
+        const QString filterName = filter_->currentData().toString();
+        if (name.isEmpty() || parentSource.isEmpty() || filterName.isEmpty())
             return false;
 
+        obs_source_t *parent = obs_get_source_by_name(parentSource.toUtf8().constData());
+        if (!parent)
+            return false;
+        obs_source_t *filter = obs_source_get_filter_by_name(parent, filterName.toUtf8().constData());
+        if (!filter) {
+            obs_source_release(parent);
+            return false;
+        }
+
+        const char *filterId = obs_source_get_id(filter);
+        if (!is_supported_move_filter(filterId)) {
+            obs_source_release(filter);
+            obs_source_release(parent);
+            return false;
+        }
+
         copy_text(wf->name, WORKFLOW_MAX_NAME, name);
-        copy_text(wf->action.scene_name, WORKFLOW_MAX_NAME, scene_->text().trimmed());
-        copy_text(wf->action.source_name, WORKFLOW_MAX_NAME, source_->text().trimmed());
-        copy_text(wf->action.filter_name, WORKFLOW_MAX_NAME, filter);
-        wf->action.kind = (workflow_move_kind_t)kind_->currentData().toInt();
-        copy_text(wf->action.filter_id, WORKFLOW_MAX_NAME, workflow_expected_filter_id(wf->action.kind));
+        copy_text(wf->trigger.action, WORKFLOW_MAX_NAME, triggerAction_->currentText());
+
+        /* The parent OBS source is the object the existing Move filter is attached to. */
+        copy_text(wf->action.scene_name, WORKFLOW_MAX_NAME, parentSource);
+        wf->action.source_name[0] = '\0';
+        copy_text(wf->action.filter_name, WORKFLOW_MAX_NAME, filterName);
+        copy_text(wf->action.filter_id, WORKFLOW_MAX_NAME, filterId);
+        wf->action.kind = workflow_kind_from_filter_id(filterId);
 
         wf->duration.mode = (workflow_value_mode_t)durationMode_->currentData().toInt();
         wf->duration.duration_ms = (uint64_t)durationMs_->value();
@@ -580,6 +639,9 @@ public:
         set_node_list(wf->simultaneous_node_count, wf->simultaneous_node_ids, simultaneous_);
         set_node_list(wf->end_node_count, wf->end_node_ids, endActions_);
         set_node_list(wf->next_node_count, wf->next_node_ids, nextActions_);
+
+        obs_source_release(filter);
+        obs_source_release(parent);
         return true;
     }
 
@@ -631,20 +693,93 @@ private:
         return list;
     }
 
+    static bool addSourceToCombo(void *data, obs_source_t *source)
+    {
+        auto *combo = static_cast<QComboBox *>(data);
+        if (!combo || !source)
+            return true;
+        const QString name = QString::fromUtf8(obs_source_get_name(source));
+        if (combo->findData(name) < 0)
+            combo->addItem(name, name);
+        return true;
+    }
+
+    void populateSources(const QString &wanted)
+    {
+        source_->blockSignals(true);
+        source_->clear();
+        obs_enum_scenes(addSourceToCombo, source_);
+        obs_enum_sources(addSourceToCombo, source_);
+        source_->blockSignals(false);
+
+        const int index = source_->findData(wanted);
+        if (index >= 0)
+            source_->setCurrentIndex(index);
+        else if (source_->count() > 0)
+            source_->setCurrentIndex(0);
+    }
+
+    static void addFilterToCombo(obs_source_t *parent, obs_source_t *filter, void *param)
+    {
+        Q_UNUSED(parent);
+        auto *combo = static_cast<QComboBox *>(param);
+        if (!combo || !filter)
+            return;
+        const char *id = obs_source_get_id(filter);
+        if (!is_supported_move_filter(id))
+            return;
+        const QString name = QString::fromUtf8(obs_source_get_name(filter));
+        combo->addItem(name, name);
+    }
+
+    void populateFilters(const QString &wanted = QString())
+    {
+        filter_->blockSignals(true);
+        filter_->clear();
+        const QString parentName = source_->currentData().toString();
+        if (!parentName.isEmpty()) {
+            obs_source_t *parent = obs_get_source_by_name(parentName.toUtf8().constData());
+            if (parent) {
+                obs_source_enum_filters(parent, addFilterToCombo, filter_);
+                obs_source_release(parent);
+            }
+        }
+        filter_->blockSignals(false);
+
+        const int index = filter_->findData(wanted);
+        if (index >= 0)
+            filter_->setCurrentIndex(index);
+        else if (filter_->count() > 0)
+            filter_->setCurrentIndex(0);
+        updateDelayAvailability();
+    }
+
     void updateDelayAvailability()
     {
-        const int kind = kind_->currentData().toInt();
-        const bool relevant = kind == WORKFLOW_MOVE_SOURCE || kind == WORKFLOW_MOVE_SWAP;
+        const QString parentName = source_->currentData().toString();
+        const QString filterName = filter_->currentData().toString();
+        bool relevant = false;
+        if (!parentName.isEmpty() && !filterName.isEmpty()) {
+            obs_source_t *parent = obs_get_source_by_name(parentName.toUtf8().constData());
+            if (parent) {
+                obs_source_t *filter = obs_source_get_filter_by_name(parent, filterName.toUtf8().constData());
+                if (filter) {
+                    const workflow_move_kind_t kind = workflow_kind_from_filter_id(obs_source_get_id(filter));
+                    relevant = kind == WORKFLOW_MOVE_SOURCE || kind == WORKFLOW_MOVE_SWAP;
+                    obs_source_release(filter);
+                }
+                obs_source_release(parent);
+            }
+        }
         startDelayBox_->setEnabled(relevant);
     }
 
     NodeItem *node_ = nullptr;
     QList<NodeItem *> nodes_;
     QLineEdit *name_ = nullptr;
-    QLineEdit *scene_ = nullptr;
-    QLineEdit *source_ = nullptr;
-    QLineEdit *filter_ = nullptr;
-    QComboBox *kind_ = nullptr;
+    QComboBox *triggerAction_ = nullptr;
+    QComboBox *source_ = nullptr;
+    QComboBox *filter_ = nullptr;
     QComboBox *durationMode_ = nullptr;
     QSpinBox *durationMs_ = nullptr;
     QGroupBox *startDelayBox_ = nullptr;
