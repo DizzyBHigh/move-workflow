@@ -10,7 +10,7 @@
       "name": "template",
       "hidden": true,
       "cacheVariables": {
-        "ENABLE_FRONTEND_API": false,
+        "ENABLE_FRONTEND_API": true,
         "ENABLE_QT": false
       }
     },
@@ -64,7 +64,7 @@
       "name": "windows-ci-x64",
       "inherits": ["windows-x64"],
       "displayName": "Windows x64 CI build",
-      "description": "Build for Windows x64 on CI",
+      "description": "Build for Windows x64 on Windows",
       "cacheVariables": {
         "CMAKE_COMPILE_WARNING_AS_ERROR": true
       }
@@ -91,7 +91,7 @@
       "name": "ubuntu-ci-x86_64",
       "inherits": ["ubuntu-x86_64"],
       "displayName": "Ubuntu x86_64 CI build",
-      "description": "Build for Ubuntu x86_64 on CI",
+      "description": "Build for Ubuntu x86_64 on Ubuntu",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_COMPILE_WARNING_AS_ERROR": true,
@@ -130,7 +130,6 @@
     },
     {
       "name": "ubuntu-x86_64",
-      "configurePreset": "ubuntu-x86_64",
       "displayName": "Ubuntu x86_64",
       "description": "Ubuntu build for x86_64",
       "configuration": "RelWithDebInfo"
@@ -138,7 +137,7 @@
     {
       "name": "ubuntu-ci-x86_64",
       "configurePreset": "ubuntu-ci-x86_64",
-      "displayName": "Ubuntu x86_64 CI",
+      "displayName": "Ubuntu CI",
       "description": "Ubuntu CI build for x86_64",
       "configuration": "RelWithDebInfo"
     }
