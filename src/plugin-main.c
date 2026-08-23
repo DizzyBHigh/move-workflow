@@ -3,12 +3,12 @@ Move Workflow - Integration Test
 
 Phase 3 tests whether an existing Exeldro Move filter can be invoked through
 OBS's own hotkey system without simulating a physical keyboard. The test
-temporarily assigns an unused OBS key combination to the target Move filter,
-injects that combination through libobs, then restores the original binding.
+temporarily assigns an OBS key combination to the target Move filter, injects
+that combination through libobs, then restores the original binding.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
+the Free Software Foundation, either version 2 of the License, or
 (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -104,7 +104,7 @@ static bool find_first_move_filter_callback(obs_source_t *parent, obs_source_t *
 
 	struct find_move_context *ctx = param;
 	if (ctx->filter)
-		return true;
+		return false;
 
 	if (move_filter_type(obs_source_get_id(filter))) {
 		ctx->filter = obs_source_get_ref(filter);
@@ -124,6 +124,32 @@ static bool find_first_move_source_callback(void *param, obs_source_t *source)
 	return ctx->filter == NULL;
 }
 
+struct hotkey_find_context {
+	obs_source_t *source;
+	obs_hotkey_id id;
+};
+
+static bool find_move_hotkey_callback(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey)
+{
+	struct hotkey_find_context *state = data;
+	if (state->id != OBS_INVALID_HOTKEY_ID)
+		return false;
+
+	if (obs_hotkey_get_registerer_type(hotkey) != OBS_HOTKEY_REGISTERER_SOURCE)
+		return true;
+
+	if (obs_hotkey_get_registerer(hotkey) != state->source)
+		return true;
+
+	const char *name = obs_hotkey_get_name(hotkey);
+	if (name && strcmp(name, obs_source_get_name(state->source)) == 0) {
+		state->id = id;
+		return false;
+	}
+
+	return true;
+}
+
 static void trigger_first_move_filter(void)
 {
 	struct find_move_context ctx = {0};
@@ -141,37 +167,12 @@ static void trigger_first_move_filter(void)
 		filter_name ? filter_name : "<unnamed>",
 		filter_id ? filter_id : "<null>");
 
-	struct find_move_context binding_ctx = {0};
-	UNUSED_PARAMETER(binding_ctx);
+	struct hotkey_find_context find_ctx = {
+		.source = ctx.filter,
+		.id = OBS_INVALID_HOTKEY_ID,
+	};
 
-	/* Find the OBS hotkey registered by Exeldro for this Move filter. */
-	struct hotkey_find_context {
-		obs_source_t *source;
-		obs_hotkey_id id;
-	} find_ctx = {ctx.filter, OBS_INVALID_HOTKEY_ID};
-
-	bool enum_hotkeys(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey)
-	{
-		struct hotkey_find_context *state = data;
-		if (state->id != OBS_INVALID_HOTKEY_ID)
-			return false;
-
-		if (obs_hotkey_get_registerer_type(hotkey) != OBS_HOTKEY_REGISTERER_SOURCE)
-			return true;
-
-		if (obs_hotkey_get_registerer(hotkey) != state->source)
-			return true;
-
-		const char *name = obs_hotkey_get_name(hotkey);
-		if (name && strcmp(name, obs_source_get_name(state->source)) == 0) {
-			state->id = id;
-			return false;
-		}
-
-		return true;
-	}
-
-	obs_enum_hotkeys(enum_hotkeys, &find_ctx);
+	obs_enum_hotkeys(find_move_hotkey_callback, &find_ctx);
 
 	if (find_ctx.id == OBS_INVALID_HOTKEY_ID) {
 		obs_log(LOG_WARNING,
@@ -183,7 +184,7 @@ static void trigger_first_move_filter(void)
 
 	obs_data_array_t *original_bindings = obs_hotkey_save(find_ctx.id);
 
-	/* F24 is used only for this experiment. It is restored immediately after. */
+	/* F24 is used only for this experiment and is restored immediately. */
 	obs_key_combination_t test_key = {
 		.modifiers = 0,
 		.key = OBS_KEY_F24,
