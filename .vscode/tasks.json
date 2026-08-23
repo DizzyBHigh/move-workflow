@@ -28,13 +28,12 @@
         },
         {
             "label": "Move Workflow: Build + Copy to OBS",
-            "type": "shell",
+            "type": "process",
             "command": "powershell.exe",
             "args": [
                 "-NoProfile",
                 "-ExecutionPolicy", "Bypass",
-                "-Command",
-                "$dll='build_x64\\RelWithDebInfo\\plugintemplate-for-obs.dll'; $pdb='build_x64\\RelWithDebInfo\\plugintemplate-for-obs.pdb'; $dest='C:\\PORTABLE APPS\\OBS Studio - RTS\\obs-plugins\\64bit'; if (!(Test-Path $dll)) { throw 'Build output DLL was not found.' }; Copy-Item $dll,$pdb $dest -Force; Write-Host 'Move Workflow copied to OBS.'"
+                "-File", "${workspaceFolder}\\.vscode\\copy-to-obs.ps1"
             ],
             "problemMatcher": [],
             "group": {
