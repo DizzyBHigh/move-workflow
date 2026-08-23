@@ -11,9 +11,13 @@
 
 /*
  * The workflow layer does not recreate Move/Swap/Value actions. A node
- * references an action the OBS user has already built, then optionally
- * overrides the director-level settings that are safe for the workflow to
- * control.
+ * references an action the OBS user has already built, then controls the
+ * workflow around that action.
+ *
+ * The selected action supplies the primitive operation (move/source/swap/
+ * value). Workflow orchestration is owned by the director and is NOT copied
+ * from the selected Move filter: start/end actions, triggers, simultaneous
+ * actions, next actions, next-move-on, and delays are director concerns.
  */
 typedef enum workflow_move_kind {
 	WORKFLOW_MOVE_ACTION = 0,
@@ -36,16 +40,22 @@ typedef struct workflow_action_ref {
 	workflow_move_kind_t kind;
 } workflow_action_ref_t;
 
-/* Duration is one of the director-controlled settings. */
+/* Duration is a director-controlled setting. */
 typedef struct workflow_duration_override {
 	workflow_value_mode_t mode;
 	uint64_t duration_ms;
 } workflow_duration_override_t;
 
+/* Director-owned delay; meaningful for Move Source / Move Source Swap. */
+typedef struct workflow_delay_override {
+	workflow_value_mode_t mode;
+	uint64_t delay_ms;
+} workflow_delay_override_t;
+
 /*
  * A node is the reusable director representation of one prebuilt action.
- * Every node has the same shape, so end/next/simultaneous actions can each be
- * independently configured nodes rather than special one-off action types.
+ * Relationships point to other nodes, so every chained action is configured
+ * through the same director model.
  */
 typedef struct workflow_node {
 	char id[WORKFLOW_MAX_NAME];
@@ -54,8 +64,10 @@ typedef struct workflow_node {
 	/* The existing action selected by this node. */
 	workflow_action_ref_t action;
 
-	/* Director-level overrides. USE_EXISTING leaves the selected action as-is. */
+	/* Director-owned settings. */
 	workflow_duration_override_t duration;
+	workflow_delay_override_t start_delay;
+	workflow_delay_override_t end_delay;
 	workflow_value_mode_t end_actions_mode;
 	workflow_value_mode_t start_trigger_mode;
 	workflow_value_mode_t stop_trigger_mode;
@@ -70,8 +82,7 @@ typedef struct workflow_node {
 
 	/*
 	 * Relationships refer to other node IDs. The referenced nodes carry their
-	 * own action selection and overrides, so every configured action is treated
-	 * consistently by the director.
+	 * own action selection and overrides.
 	 */
 	size_t end_node_count;
 	char end_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
