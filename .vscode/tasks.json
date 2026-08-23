@@ -1,0 +1,61 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Move Workflow: Configure",
+            "type": "shell",
+            "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
+            "args": [
+                "-S", ".",
+                "-B", "build_x64",
+                "-DENABLE_QT=ON"
+            ],
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Move Workflow: Build",
+            "type": "shell",
+            "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
+            "args": [
+                "--build", "build_x64",
+                "--config", "RelWithDebInfo"
+            ],
+            "problemMatcher": [],
+            "group": "build",
+            "dependsOn": "Move Workflow: Configure",
+            "dependsOrder": "sequence"
+        },
+        {
+            "label": "Move Workflow: Build + Copy to OBS",
+            "type": "shell",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-Command",
+                "$dll='build_x64\\RelWithDebInfo\\plugintemplate-for-obs.dll'; $pdb='build_x64\\RelWithDebInfo\\plugintemplate-for-obs.pdb'; $dest='C:\\PORTABLE APPS\\OBS Studio - RTS\\obs-plugins\\64bit'; if (!(Test-Path $dll)) { throw 'Build output DLL was not found.' }; Copy-Item $dll,$pdb $dest -Force; Write-Host 'Move Workflow copied to OBS.'"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": "Move Workflow: Build",
+            "dependsOrder": "sequence"
+        },
+        {
+            "label": "Move Workflow: Clean + Rebuild",
+            "type": "shell",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-Command",
+                "$cmake='C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe'; & $cmake -S . -B build_x64 -DENABLE_QT=ON --fresh; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & $cmake --build build_x64 --config RelWithDebInfo; exit $LASTEXITCODE"
+            ],
+            "problemMatcher": [],
+            "group": "build"
+        }
+    ]
+}
