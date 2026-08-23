@@ -4,7 +4,6 @@
 #include <obs-frontend-api.h>
 #include <obs.h>
 
-#include <QAction>
 #include <QAbstractItemView>
 #include <QComboBox>
 #include <QDialog>
@@ -15,7 +14,6 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsTextItem>
 #include <QGraphicsView>
-#include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QInputDialog>
@@ -23,6 +21,8 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMainWindow>
+#include <QMessageBox>
+#include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPen>
@@ -36,8 +36,9 @@
 #include <QVBoxLayout>
 #include <QWheelEvent>
 
+#include <cmath>
 #include <cstring>
-#include <memory>
+#include <utility>
 
 namespace {
 
@@ -63,6 +64,20 @@ static bool list_contains(const char ids[][WORKFLOW_MAX_NAME], size_t count, con
             return true;
     }
     return false;
+}
+
+static void remove_id(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QString &id)
+{
+    const QByteArray wanted = id.toUtf8();
+    size_t write = 0;
+    for (size_t read = 0; read < count; ++read) {
+        if (std::strcmp(ids[read], wanted.constData()) != 0) {
+            if (write != read)
+                std::memcpy(ids[write], ids[read], WORKFLOW_MAX_NAME);
+            ++write;
+        }
+    }
+    count = write;
 }
 
 static void set_node_list(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QListWidget *list)
@@ -109,57 +124,59 @@ public:
     NodeItem(EditorNode node, QGraphicsItem *parent = nullptr)
         : QGraphicsRectItem(parent), node_(std::move(node))
     {
-        setRect(0, 0, 250, 126);
-        setBrush(QColor(42, 45, 50));
-        setPen(QPen(QColor(110, 120, 135), 1));
+        setRect(0, 0, 270, 142);
         setFlag(QGraphicsItem::ItemIsMovable);
         setFlag(QGraphicsItem::ItemIsSelectable);
         setFlag(QGraphicsItem::ItemSendsGeometryChanges);
         setPos(node_.position);
+        refreshStyle();
 
         title_ = new QGraphicsTextItem(read_text(node_.workflow.name), this);
         title_->setDefaultTextColor(Qt::white);
-        title_->setPos(12, 9);
+        title_->setPos(14, 10);
+
+        type_ = new QGraphicsTextItem(this);
+        type_->setDefaultTextColor(QColor(175, 185, 200));
+        type_->setPos(14, 34);
 
         details_ = new QGraphicsTextItem(this);
-        details_->setDefaultTextColor(QColor(185, 190, 200));
-        details_->setPos(12, 35);
+        details_->setDefaultTextColor(QColor(210, 215, 220));
+        details_->setPos(14, 56);
         refreshDisplay();
     }
 
-    int numericId() const { return node_.numeric_id; }
     QString id() const { return read_text(node_.workflow.id); }
     QString nodeName() const { return read_text(node_.workflow.name); }
     workflow_node_t *workflowNode() { return &node_.workflow; }
     const workflow_node_t *workflowNode() const { return &node_.workflow; }
 
-    void setNodeName(const QString &name)
-    {
-        copy_text(node_.workflow.name, WORKFLOW_MAX_NAME, name);
-        title_->setPlainText(name);
-        refreshDisplay();
-    }
-
     void refreshDisplay()
     {
-        if (!details_)
+        if (!title_ || !type_ || !details_)
             return;
 
-        const QString filter = read_text(node_.workflow.action.filter_name).isEmpty()
-                                   ? "No Move action selected"
-                                   : read_text(node_.workflow.action.filter_name);
-        const QString kind = QString::fromUtf8(workflow_move_kind_name(node_.workflow.action.kind));
-        const QString trigger = read_text(node_.workflow.trigger.action);
-        const QString duration = node_.workflow.duration.mode == WORKFLOW_OVERRIDE
-                                     ? QString("Duration: %1 ms").arg((qulonglong)node_.workflow.duration.duration_ms)
-                                     : "Duration: existing";
-        const QString end = QString("End: %1").arg((qulonglong)node_.workflow.end_node_count);
-        const QString simultaneous = QString("Simultaneous: %1").arg((qulonglong)node_.workflow.simultaneous_node_count);
-        const QString next = QString("Next: %1").arg((qulonglong)node_.workflow.next_node_count);
-        const QString triggerLine = trigger.isEmpty() || trigger == "None" ? "Trigger: none" : QString("Trigger: %1").arg(trigger);
+        title_->setPlainText(read_text(node_.workflow.name));
+        type_->setPlainText(node_.workflow.type == WORKFLOW_NODE_TRIGGER ? "TRIGGER" : "ACTION");
 
-        details_->setPlainText(QString("%1\n%2\n%3\n%4\n%5  %6  %7")
-                                   .arg(filter, kind, triggerLine, duration, end, simultaneous, next));
+        if (node_.workflow.type == WORKFLOW_NODE_TRIGGER) {
+            const QString trigger = read_text(node_.workflow.trigger.action);
+            details_->setPlainText(QString("Trigger: %1\nConnections: %2")
+                                       .arg(trigger.isEmpty() ? "None" : trigger)
+                                       .arg((qulonglong)(node_.workflow.end_node_count +
+                                                         node_.workflow.simultaneous_node_count +
+                                                         node_.workflow.next_node_count)));
+        } else {
+            const QString source = read_text(node_.workflow.action.scene_name);
+            const QString filter = read_text(node_.workflow.action.filter_name);
+            details_->setPlainText(QString("%1\n%2\nDelay %3 ms   Duration %4 ms\nSimultaneous %5   End %6   Next %7")
+                                       .arg(source.isEmpty() ? "No source selected" : source,
+                                            filter.isEmpty() ? "No Move filter selected" : filter)
+                                       .arg((qulonglong)node_.workflow.start_delay.delay_ms)
+                                       .arg((qulonglong)node_.workflow.duration.duration_ms)
+                                       .arg((qulonglong)node_.workflow.simultaneous_node_count)
+                                       .arg((qulonglong)node_.workflow.end_node_count)
+                                       .arg((qulonglong)node_.workflow.next_node_count));
+        }
     }
 
 protected:
@@ -171,8 +188,20 @@ protected:
     }
 
 private:
+    void refreshStyle()
+    {
+        if (node_.workflow.type == WORKFLOW_NODE_TRIGGER) {
+            setBrush(QColor(35, 70, 85));
+            setPen(QPen(QColor(70, 180, 220), 2));
+        } else {
+            setBrush(QColor(42, 45, 50));
+            setPen(QPen(QColor(110, 120, 135), 1));
+        }
+    }
+
     EditorNode node_;
     QGraphicsTextItem *title_ = nullptr;
+    QGraphicsTextItem *type_ = nullptr;
     QGraphicsTextItem *details_ = nullptr;
 };
 
@@ -184,24 +213,22 @@ public:
         connect(this, &QGraphicsScene::changed, this, [this] { updateConnectionGeometry(); });
     }
 
-    NodeItem *addNode(const QString &name)
+    NodeItem *addNode(workflow_node_type_t type, const QString &name)
     {
         EditorNode node;
         node.numeric_id = ++nextId_;
-        const QString id = QString("node-%1").arg(node.numeric_id);
-        copy_text(node.workflow.id, WORKFLOW_MAX_NAME, id);
+        copy_text(node.workflow.id, WORKFLOW_MAX_NAME, QString("node-%1").arg(node.numeric_id));
         copy_text(node.workflow.name, WORKFLOW_MAX_NAME, name);
+        node.workflow.type = type;
         copy_text(node.workflow.trigger.action, WORKFLOW_MAX_NAME, "None");
-        node.workflow.duration.mode = WORKFLOW_USE_EXISTING;
-        node.workflow.start_delay.mode = WORKFLOW_USE_EXISTING;
-        node.workflow.end_actions_mode = WORKFLOW_OVERRIDE;
-        node.workflow.start_trigger_mode = WORKFLOW_USE_EXISTING;
-        node.workflow.stop_trigger_mode = WORKFLOW_USE_EXISTING;
+        node.workflow.duration.mode = WORKFLOW_OVERRIDE;
+        node.workflow.start_delay.mode = WORKFLOW_OVERRIDE;
+        node.workflow.end_delay.mode = WORKFLOW_OVERRIDE;
         node.workflow.simultaneous_actions_mode = WORKFLOW_OVERRIDE;
+        node.workflow.end_actions_mode = WORKFLOW_OVERRIDE;
         node.workflow.next_actions_mode = WORKFLOW_OVERRIDE;
-        node.workflow.next_move_on_mode = WORKFLOW_USE_EXISTING;
-        node.position = QPointF(80 + ((node.numeric_id - 1) % 4) * 290,
-                                80 + ((node.numeric_id - 1) / 4) * 170);
+        node.position = QPointF(80 + ((node.numeric_id - 1) % 4) * 310,
+                                80 + ((node.numeric_id - 1) / 4) * 190);
 
         auto *item = new NodeItem(std::move(node));
         addItem(item);
@@ -221,16 +248,33 @@ public:
 
     QList<NodeItem *> nodes() const { return nodes_; }
 
-    void refreshConnectionsFor(NodeItem *changedNode)
+    void deleteNode(NodeItem *node)
     {
-        Q_UNUSED(changedNode);
+        if (!node)
+            return;
+        const QString id = node->id();
+        for (NodeItem *candidate : nodes_) {
+            workflow_node_t *wf = candidate->workflowNode();
+            remove_id(wf->end_node_count, wf->end_node_ids, id);
+            remove_id(wf->simultaneous_node_count, wf->simultaneous_node_ids, id);
+            remove_id(wf->next_node_count, wf->next_node_ids, id);
+        }
+        nodes_.removeAll(node);
+        removeItem(node);
+        delete node;
+        rebuildConnections();
+        updateSceneBounds();
+    }
+
+    void refreshConnectionsFor(NodeItem *)
+    {
         rebuildConnections();
         updateSceneBounds();
     }
 
     void rebuildConnections()
     {
-        for (Connection &connection : connections_) {
+        for (const Connection &connection : std::as_const(connections_)) {
             removeItem(connection.line);
             delete connection.line;
         }
@@ -245,16 +289,39 @@ public:
         updateConnections();
     }
 
-    void updateConnectionGeometry()
-    {
-        for (const Connection &connection : connections_)
-            updateConnection(connection.line, connection.from, connection.to);
-    }
-
     void updateConnections()
     {
-        updateConnectionGeometry();
+        for (const Connection &connection : std::as_const(connections_))
+            updateConnection(connection.line, connection.from, connection.to);
         updateSceneBounds();
+    }
+
+    void updateSceneBounds()
+    {
+        if (nodes_.isEmpty()) {
+            setSceneRect(0, 0, 2000, 1400);
+            return;
+        }
+        QRectF bounds;
+        bool valid = false;
+        for (NodeItem *node : nodes_) {
+            const QRectF rect = node->sceneBoundingRect();
+            bounds = valid ? bounds.united(rect) : rect;
+            valid = true;
+        }
+        constexpr qreal margin = 160.0;
+        constexpr qreal minimumWidth = 900.0;
+        constexpr qreal minimumHeight = 600.0;
+        bounds.adjust(-margin, -margin, margin, margin);
+        if (bounds.width() < minimumWidth) {
+            const qreal extra = (minimumWidth - bounds.width()) * 0.5;
+            bounds.adjust(-extra, 0, extra, 0);
+        }
+        if (bounds.height() < minimumHeight) {
+            const qreal extra = (minimumHeight - bounds.height()) * 0.5;
+            bounds.adjust(0, -extra, 0, extra);
+        }
+        setSceneRect(bounds);
     }
 
 signals:
@@ -263,17 +330,16 @@ signals:
 protected:
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) override
     {
-        QGraphicsItem *item = itemAt(event->scenePos(), QTransform());
-        if (auto *node = dynamic_cast<NodeItem *>(item))
+        if (auto *node = dynamic_cast<NodeItem *>(itemAt(event->scenePos(), QTransform())))
             emit nodeDoubleClicked(node);
         QGraphicsScene::mouseDoubleClickEvent(event);
     }
 
 private:
     struct Connection {
-        NodeItem *from;
-        NodeItem *to;
-        QGraphicsPathItem *line;
+        NodeItem *from = nullptr;
+        NodeItem *to = nullptr;
+        QGraphicsPathItem *line = nullptr;
         QString type;
     };
 
@@ -293,64 +359,30 @@ private:
             NodeItem *to = findNodeById(ids[i]);
             if (!to || to == from)
                 continue;
-
             auto *line = new QGraphicsPathItem;
-            QPen pen;
             if (type == "Simultaneous")
-                pen = QPen(QColor(90, 190, 120), 2);
+                line->setPen(QPen(QColor(90, 190, 120), 2));
             else if (type == "Next Action")
-                pen = QPen(QColor(230, 170, 70), 2);
+                line->setPen(QPen(QColor(230, 170, 70), 2));
             else
-                pen = QPen(QColor(70, 160, 230), 2);
-            line->setPen(pen);
+                line->setPen(QPen(QColor(70, 160, 230), 2));
             line->setZValue(-1);
-            connections_.push_back({from, to, line, type});
             addItem(line);
+            connections_.push_back({from, to, line, type});
+            updateConnection(line, from, to);
         }
     }
 
     static void updateConnection(QGraphicsPathItem *line, NodeItem *from, NodeItem *to)
     {
-        const QPointF a = from->sceneBoundingRect().center();
-        const QPointF b = to->sceneBoundingRect().center();
-        const qreal dx = (b.x() - a.x()) * 0.5;
+        const QRectF aRect = from->sceneBoundingRect();
+        const QRectF bRect = to->sceneBoundingRect();
+        const QPointF a = QPointF(aRect.right(), aRect.center().y());
+        const QPointF b = QPointF(bRect.left(), bRect.center().y());
+        const qreal dx = qMax<qreal>(40.0, qAbs(b.x() - a.x()) * 0.45);
         QPainterPath path(a);
         path.cubicTo(a + QPointF(dx, 0), b - QPointF(dx, 0), b);
         line->setPath(path);
-    }
-
-    void updateSceneBounds()
-    {
-        if (nodes_.isEmpty()) {
-            setSceneRect(0, 0, 2000, 1400);
-            return;
-        }
-
-        QRectF bounds;
-        bool haveBounds = false;
-        for (NodeItem *node : nodes_) {
-            const QRectF nodeBounds = node->sceneBoundingRect();
-            bounds = haveBounds ? bounds.united(nodeBounds) : nodeBounds;
-            haveBounds = true;
-        }
-        if (!haveBounds || !bounds.isValid()) {
-            setSceneRect(0, 0, 2000, 1400);
-            return;
-        }
-
-        constexpr qreal margin = 160.0;
-        constexpr qreal minimumWidth = 900.0;
-        constexpr qreal minimumHeight = 600.0;
-        bounds.adjust(-margin, -margin, margin, margin);
-        if (bounds.width() < minimumWidth) {
-            const qreal extra = (minimumWidth - bounds.width()) * 0.5;
-            bounds.adjust(-extra, 0, extra, 0);
-        }
-        if (bounds.height() < minimumHeight) {
-            const qreal extra = (minimumHeight - bounds.height()) * 0.5;
-            bounds.adjust(0, -extra, 0, extra);
-        }
-        setSceneRect(bounds);
     }
 
     int nextId_ = 0;
@@ -390,11 +422,12 @@ public:
 protected:
     void wheelEvent(QWheelEvent *event) override
     {
-        if (event->angleDelta().y() == 0) {
+        const int delta = event->angleDelta().y();
+        if (delta == 0) {
             QGraphicsView::wheelEvent(event);
             return;
         }
-        const qreal factor = event->angleDelta().y() > 0 ? 1.15 : (1.0 / 1.15);
+        const qreal factor = delta > 0 ? 1.15 : (1.0 / 1.15);
         scale(factor, factor);
         updateZoomLabel();
         event->accept();
@@ -459,151 +492,37 @@ public:
 
         auto *root = new QVBoxLayout(this);
         root->setContentsMargins(8, 8, 8, 8);
-        root->setSpacing(8);
 
         auto *contentArea = new QScrollArea(this);
         contentArea->setWidgetResizable(true);
         contentArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         contentArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        auto *content = new QWidget;
+        auto *layout = new QVBoxLayout(content);
+        layout->setContentsMargins(2, 2, 2, 2);
+        layout->setSpacing(8);
 
-        auto *contentWidget = new QWidget;
-        auto *contentLayout = new QVBoxLayout(contentWidget);
-        contentLayout->setContentsMargins(2, 2, 2, 2);
-        contentLayout->setSpacing(8);
-        contentWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+        auto *nodeBox = new QGroupBox("Node", content);
+        auto *nodeLayout = new QVBoxLayout(nodeBox);
+        name_ = new QLineEdit(node ? node->nodeName() : QString(), nodeBox);
+        nodeLayout->addWidget(new QLabel("Name", nodeBox));
+        nodeLayout->addWidget(name_);
+        layout->addWidget(nodeBox);
 
-        auto *nameBox = new QGroupBox("Node", contentWidget);
-        auto *nameLayout = new QVBoxLayout(nameBox);
-        name_ = new QLineEdit(node ? node->nodeName() : QString(), nameBox);
-        nameLayout->addWidget(new QLabel("Name", nameBox));
-        nameLayout->addWidget(name_);
-        contentLayout->addWidget(nameBox);
+        if (node && node->workflowNode()->type == WORKFLOW_NODE_TRIGGER)
+            buildTriggerEditor(nodeBox, nodeLayout);
+        else
+            buildActionEditor(content, layout);
 
-        auto *actionBox = new QGroupBox("Existing Move / Swap / Value Action", contentWidget);
-        auto *actionLayout = new QVBoxLayout(actionBox);
-
-        triggerAction_ = new QComboBox(actionBox);
-        triggerAction_->addItem("None");
-        triggerAction_->addItem("Frontend Action");
-        triggerAction_->addItem("Source Visibility");
-        triggerAction_->addItem("Source Mute");
-        triggerAction_->addItem("Source Audio Track");
-        triggerAction_->addItem("Source Hotkey");
-        triggerAction_->addItem("Filter Enable");
-        triggerAction_->addItem("Frontend Hotkey");
-        triggerAction_->addItem("Setting");
-        triggerAction_->addItem("UDP packet");
-        triggerAction_->addItem("Websocket Request");
-        triggerAction_->addItem("Websocket Event");
-
-        source_ = new QComboBox(actionBox);
-        source_->setEditable(false);
-        filter_ = new QComboBox(actionBox);
-        filter_->setEditable(false);
-
-        if (node) {
-            const int triggerIndex = triggerAction_->findText(read_text(node->workflowNode()->trigger.action));
-            if (triggerIndex >= 0)
-                triggerAction_->setCurrentIndex(triggerIndex);
-        }
-
-        addLabeled(actionLayout, "Action", triggerAction_);
-        actionLayout->addWidget(new QLabel("For the first node only: this is the action that will trigger the workflow.", actionBox));
-        addLabeled(actionLayout, "Source", source_);
-        addLabeled(actionLayout, "Filter", filter_);
-        contentLayout->addWidget(actionBox);
-
-        populateSources(node ? read_text(node->workflowNode()->action.scene_name) : QString());
-        connect(source_, &QComboBox::currentIndexChanged, this, [this] { populateFilters(); });
-        populateFilters(node ? read_text(node->workflowNode()->action.filter_name) : QString());
-
-        auto *durationBox = new QGroupBox("Duration", contentWidget);
-        auto *durationLayout = new QHBoxLayout(durationBox);
-        durationMode_ = makeModeCombo(durationBox);
-        durationMs_ = new QSpinBox(durationBox);
-        durationMs_->setRange(0, 3600000);
-        durationMs_->setSuffix(" ms");
-        if (node) {
-            setMode(durationMode_, node->workflowNode()->duration.mode);
-            durationMs_->setValue((int)node->workflowNode()->duration.duration_ms);
-        }
-        durationLayout->addWidget(durationMode_);
-        durationLayout->addWidget(durationMs_);
-        contentLayout->addWidget(durationBox);
-
-        startDelayBox_ = new QGroupBox("Start Delay", contentWidget);
-        auto *delayLayout = new QHBoxLayout(startDelayBox_);
-        startDelayMode_ = makeModeCombo(startDelayBox_);
-        startDelayMs_ = new QSpinBox(startDelayBox_);
-        startDelayMs_->setRange(0, 3600000);
-        startDelayMs_->setSuffix(" ms");
-        if (node) {
-            setMode(startDelayMode_, node->workflowNode()->start_delay.mode);
-            startDelayMs_->setValue((int)node->workflowNode()->start_delay.delay_ms);
-        }
-        delayLayout->addWidget(startDelayMode_);
-        delayLayout->addWidget(startDelayMs_);
-        contentLayout->addWidget(startDelayBox_);
-        updateDelayAvailability();
-
-        auto *triggerBox = new QGroupBox("Start / Stop Triggers", contentWidget);
-        auto *triggerLayout = new QGridLayout(triggerBox);
-        startTriggerMode_ = makeModeCombo(triggerBox);
-        stopTriggerMode_ = makeModeCombo(triggerBox);
-        startTriggerValue_ = new QLineEdit(triggerBox);
-        stopTriggerValue_ = new QLineEdit(triggerBox);
-        triggerLayout->addWidget(new QLabel("Start Trigger", triggerBox), 0, 0);
-        triggerLayout->addWidget(startTriggerMode_, 0, 1);
-        triggerLayout->addWidget(startTriggerValue_, 0, 2);
-        triggerLayout->addWidget(new QLabel("Stop Trigger", triggerBox), 1, 0);
-        triggerLayout->addWidget(stopTriggerMode_, 1, 1);
-        triggerLayout->addWidget(stopTriggerValue_, 1, 2);
-        if (node) {
-            setMode(startTriggerMode_, node->workflowNode()->start_trigger_mode);
-            setMode(stopTriggerMode_, node->workflowNode()->stop_trigger_mode);
-            startTriggerValue_->setText(read_text(node->workflowNode()->start_trigger_value));
-            stopTriggerValue_->setText(read_text(node->workflowNode()->stop_trigger_value));
-        }
-        contentLayout->addWidget(triggerBox);
-
-        simultaneous_ = makeNodeList(node, node ? node->workflowNode()->simultaneous_node_ids : nullptr,
-                                     node ? node->workflowNode()->simultaneous_node_count : 0);
-        endActions_ = makeNodeList(node, node ? node->workflowNode()->end_node_ids : nullptr,
-                                   node ? node->workflowNode()->end_node_count : 0);
-        nextActions_ = makeNodeList(node, node ? node->workflowNode()->next_node_ids : nullptr,
-                                    node ? node->workflowNode()->next_node_count : 0);
-
-        contentLayout->addWidget(makeListBox("Simultaneous Actions", simultaneous_,
-                                    "Selected nodes start with this node. Each node keeps its own settings."));
-        contentLayout->addWidget(makeListBox("End Actions", endActions_,
-                                    "Selected nodes start when this node finishes. Each selected node's Start Delay applies."));
-        contentLayout->addWidget(makeListBox("Next Actions", nextActions_,
-                                    "Director chaining. This does not inherit the selected Move filter's own Next Action."));
-
-        auto *nextBox = new QGroupBox("Next Move On", contentWidget);
-        auto *nextLayout = new QGridLayout(nextBox);
-        nextMoveOnMode_ = makeModeCombo(nextBox);
-        nextMoveOnValue_ = new QComboBox(nextBox);
-        nextMoveOnValue_->addItems({"Move End", "Move Start", "Move Start or End"});
-        nextLayout->addWidget(new QLabel("Mode", nextBox), 0, 0);
-        nextLayout->addWidget(nextMoveOnMode_, 0, 1);
-        nextLayout->addWidget(new QLabel("Value", nextBox), 1, 0);
-        nextLayout->addWidget(nextMoveOnValue_, 1, 1);
-        if (node) {
-            setMode(nextMoveOnMode_, node->workflowNode()->next_move_on_mode);
-            const int index = nextMoveOnValue_->findText(read_text(node->workflowNode()->next_move_on_value));
-            if (index >= 0)
-                nextMoveOnValue_->setCurrentIndex(index);
-        }
-        contentLayout->addWidget(nextBox);
-        contentLayout->addStretch(1);
-
-        contentArea->setWidget(contentWidget);
+        layout->addStretch(1);
+        contentArea->setWidget(content);
         root->addWidget(contentArea, 1);
 
         auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-        buttons->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-        connect(buttons, &QDialogButtonBox::accepted, this, [this] { if (apply()) accept(); });
+        connect(buttons, &QDialogButtonBox::accepted, this, [this] {
+            if (apply())
+                accept();
+        });
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
         root->addWidget(buttons);
     }
@@ -612,15 +531,24 @@ public:
     {
         if (!node_)
             return false;
-
-        workflow_node_t *wf = node_->workflowNode();
         const QString name = name_->text().trimmed();
-        const QString parentSource = source_->currentData().toString();
-        const QString filterName = filter_->currentData().toString();
-        if (name.isEmpty() || parentSource.isEmpty() || filterName.isEmpty())
+        if (name.isEmpty())
             return false;
 
-        obs_source_t *parent = obs_get_source_by_name(parentSource.toUtf8().constData());
+        workflow_node_t *wf = node_->workflowNode();
+        copy_text(wf->name, WORKFLOW_MAX_NAME, name);
+
+        if (wf->type == WORKFLOW_NODE_TRIGGER) {
+            copy_text(wf->trigger.action, WORKFLOW_MAX_NAME, triggerAction_->currentText());
+            return true;
+        }
+
+        const QString parentName = source_->currentData().toString();
+        const QString filterName = filter_->currentData().toString();
+        if (parentName.isEmpty() || filterName.isEmpty())
+            return false;
+
+        obs_source_t *parent = obs_get_source_by_name(parentName.toUtf8().constData());
         if (!parent)
             return false;
         obs_source_t *filter = obs_source_get_filter_by_name(parent, filterName.toUtf8().constData());
@@ -636,27 +564,18 @@ public:
             return false;
         }
 
-        copy_text(wf->name, WORKFLOW_MAX_NAME, name);
-        copy_text(wf->trigger.action, WORKFLOW_MAX_NAME, triggerAction_->currentText());
-
-        copy_text(wf->action.scene_name, WORKFLOW_MAX_NAME, parentSource);
+        copy_text(wf->action.scene_name, WORKFLOW_MAX_NAME, parentName);
         wf->action.source_name[0] = '\0';
         copy_text(wf->action.filter_name, WORKFLOW_MAX_NAME, filterName);
         copy_text(wf->action.filter_id, WORKFLOW_MAX_NAME, filterId);
         wf->action.kind = workflow_kind_from_filter_id(filterId);
 
-        wf->duration.mode = (workflow_value_mode_t)durationMode_->currentData().toInt();
-        wf->duration.duration_ms = (uint64_t)durationMs_->value();
-
-        wf->start_delay.mode = (workflow_value_mode_t)startDelayMode_->currentData().toInt();
+        wf->start_delay.mode = WORKFLOW_OVERRIDE;
         wf->start_delay.delay_ms = (uint64_t)startDelayMs_->value();
-
-        wf->start_trigger_mode = (workflow_value_mode_t)startTriggerMode_->currentData().toInt();
-        wf->stop_trigger_mode = (workflow_value_mode_t)stopTriggerMode_->currentData().toInt();
-        wf->next_move_on_mode = (workflow_value_mode_t)nextMoveOnMode_->currentData().toInt();
-        copy_text(wf->start_trigger_value, WORKFLOW_MAX_VALUE, startTriggerValue_->text());
-        copy_text(wf->stop_trigger_value, WORKFLOW_MAX_VALUE, stopTriggerValue_->text());
-        copy_text(wf->next_move_on_value, WORKFLOW_MAX_VALUE, nextMoveOnValue_->currentText());
+        wf->duration.mode = WORKFLOW_OVERRIDE;
+        wf->duration.duration_ms = (uint64_t)durationMs_->value();
+        wf->end_delay.mode = WORKFLOW_OVERRIDE;
+        wf->end_delay.delay_ms = (uint64_t)endDelayMs_->value();
 
         wf->simultaneous_actions_mode = WORKFLOW_OVERRIDE;
         wf->end_actions_mode = WORKFLOW_OVERRIDE;
@@ -671,27 +590,84 @@ public:
     }
 
 private:
-    static void addLabeled(QLayout *layout, const QString &label, QWidget *widget)
+    void buildTriggerEditor(QWidget *parent, QVBoxLayout *layout)
+    {
+        auto *box = new QGroupBox("Trigger", parent);
+        auto *boxLayout = new QVBoxLayout(box);
+        triggerAction_ = new QComboBox(box);
+        triggerAction_->addItems({"None", "Frontend Action", "Source Visibility", "Source Mute",
+                                  "Source Audio Track", "Source Hotkey", "Filter Enable",
+                                  "Frontend Hotkey", "Setting", "UDP packet", "Websocket Request",
+                                  "Websocket Event"});
+        const int index = triggerAction_->findText(read_text(node_->workflowNode()->trigger.action));
+        if (index >= 0)
+            triggerAction_->setCurrentIndex(index);
+        boxLayout->addWidget(new QLabel("Trigger Action", box));
+        boxLayout->addWidget(triggerAction_);
+        boxLayout->addWidget(new QLabel("A Trigger Node can start a workflow branch from anywhere in the graph.", box));
+        layout->addWidget(box);
+    }
+
+    void buildActionEditor(QWidget *parent, QVBoxLayout *layout)
+    {
+        auto *targetBox = new QGroupBox("Existing Move / Swap / Value Action", parent);
+        auto *targetLayout = new QVBoxLayout(targetBox);
+        source_ = new QComboBox(targetBox);
+        filter_ = new QComboBox(targetBox);
+        targetLayout->addWidget(new QLabel("Source", targetBox));
+        targetLayout->addWidget(source_);
+        targetLayout->addWidget(new QLabel("Filter", targetBox));
+        targetLayout->addWidget(filter_);
+        layout->addWidget(targetBox);
+
+        populateSources(read_text(node_->workflowNode()->action.scene_name));
+        connect(source_, &QComboBox::currentIndexChanged, this, [this] { populateFilters(); });
+        populateFilters(read_text(node_->workflowNode()->action.filter_name));
+
+        auto *timingBox = new QGroupBox("Timing", parent);
+        auto *timingLayout = new QVBoxLayout(timingBox);
+        startDelayMs_ = makeMilliseconds(timingBox, "Start Delay");
+        durationMs_ = makeMilliseconds(timingBox, "Duration");
+        endDelayMs_ = makeMilliseconds(timingBox, "End Delay");
+        if (node_) {
+            startDelayMs_->setValue((int)node_->workflowNode()->start_delay.delay_ms);
+            durationMs_->setValue((int)node_->workflowNode()->duration.duration_ms);
+            endDelayMs_->setValue((int)node_->workflowNode()->end_delay.delay_ms);
+        }
+        addSpinRow(timingLayout, "Start Delay", startDelayMs_);
+        addSpinRow(timingLayout, "Duration", durationMs_);
+        addSpinRow(timingLayout, "End Delay", endDelayMs_);
+        layout->addWidget(timingBox);
+
+        simultaneous_ = makeNodeList(node_, node_->workflowNode()->simultaneous_node_ids,
+                                     node_->workflowNode()->simultaneous_node_count);
+        endActions_ = makeNodeList(node_, node_->workflowNode()->end_node_ids,
+                                   node_->workflowNode()->end_node_count);
+        nextActions_ = makeNodeList(node_, node_->workflowNode()->next_node_ids,
+                                    node_->workflowNode()->next_node_count);
+
+        layout->addWidget(makeListBox("Simultaneous Actions", simultaneous_,
+                                      "These nodes start together with this Action."));
+        layout->addWidget(makeListBox("End Actions", endActions_,
+                                      "These nodes start after this Action completes and its End Delay has elapsed."));
+        layout->addWidget(makeListBox("Next Actions", nextActions_,
+                                      "These are the next workflow nodes after this Action."));
+    }
+
+    static QSpinBox *makeMilliseconds(QWidget *parent, const QString &)
+    {
+        auto *spin = new QSpinBox(parent);
+        spin->setRange(0, 3600000);
+        spin->setSuffix(" ms");
+        return spin;
+    }
+
+    static void addSpinRow(QVBoxLayout *layout, const QString &label, QSpinBox *spin)
     {
         auto *row = new QHBoxLayout;
         row->addWidget(new QLabel(label));
-        row->addWidget(widget, 1);
-        layout->addItem(row);
-    }
-
-    static QComboBox *makeModeCombo(QWidget *parent)
-    {
-        auto *combo = new QComboBox(parent);
-        combo->addItem("Use existing", WORKFLOW_USE_EXISTING);
-        combo->addItem("Override", WORKFLOW_OVERRIDE);
-        return combo;
-    }
-
-    static void setMode(QComboBox *combo, workflow_value_mode_t mode)
-    {
-        const int index = combo->findData((int)mode);
-        if (index >= 0)
-            combo->setCurrentIndex(index);
+        row->addWidget(spin, 1);
+        layout->addLayout(row);
     }
 
     QWidget *makeListBox(const QString &title, QListWidget *list, const QString &hint)
@@ -715,7 +691,7 @@ private:
             if (ids && list_contains(ids, count, candidate->id()))
                 item->setSelected(true);
         }
-        list->setMinimumHeight(110);
+        list->setMinimumHeight(90);
         list->setMaximumHeight(180);
         return list;
     }
@@ -738,7 +714,6 @@ private:
         obs_enum_scenes(addSourceToCombo, source_);
         obs_enum_sources(addSourceToCombo, source_);
         source_->blockSignals(false);
-
         const int index = source_->findData(wanted);
         if (index >= 0)
             source_->setCurrentIndex(index);
@@ -772,36 +747,11 @@ private:
             }
         }
         filter_->blockSignals(false);
-
         const int index = filter_->findData(wanted);
         if (index >= 0)
             filter_->setCurrentIndex(index);
         else if (filter_->count() > 0)
             filter_->setCurrentIndex(0);
-        updateDelayAvailability();
-    }
-
-    void updateDelayAvailability()
-    {
-        if (!startDelayBox_)
-            return;
-
-        const QString parentName = source_->currentData().toString();
-        const QString filterName = filter_->currentData().toString();
-        bool relevant = false;
-        if (!parentName.isEmpty() && !filterName.isEmpty()) {
-            obs_source_t *parent = obs_get_source_by_name(parentName.toUtf8().constData());
-            if (parent) {
-                obs_source_t *filter = obs_source_get_filter_by_name(parent, filterName.toUtf8().constData());
-                if (filter) {
-                    const workflow_move_kind_t kind = workflow_kind_from_filter_id(obs_source_get_id(filter));
-                    relevant = kind == WORKFLOW_MOVE_SOURCE || kind == WORKFLOW_MOVE_SWAP;
-                    obs_source_release(filter);
-                }
-                obs_source_release(parent);
-            }
-        }
-        startDelayBox_->setEnabled(relevant);
     }
 
     NodeItem *node_ = nullptr;
@@ -810,17 +760,9 @@ private:
     QComboBox *triggerAction_ = nullptr;
     QComboBox *source_ = nullptr;
     QComboBox *filter_ = nullptr;
-    QComboBox *durationMode_ = nullptr;
-    QSpinBox *durationMs_ = nullptr;
-    QGroupBox *startDelayBox_ = nullptr;
-    QComboBox *startDelayMode_ = nullptr;
     QSpinBox *startDelayMs_ = nullptr;
-    QComboBox *startTriggerMode_ = nullptr;
-    QComboBox *stopTriggerMode_ = nullptr;
-    QComboBox *nextMoveOnMode_ = nullptr;
-    QLineEdit *startTriggerValue_ = nullptr;
-    QLineEdit *stopTriggerValue_ = nullptr;
-    QComboBox *nextMoveOnValue_ = nullptr;
+    QSpinBox *durationMs_ = nullptr;
+    QSpinBox *endDelayMs_ = nullptr;
     QListWidget *simultaneous_ = nullptr;
     QListWidget *endActions_ = nullptr;
     QListWidget *nextActions_ = nullptr;
@@ -835,15 +777,17 @@ public:
 
         auto *root = new QVBoxLayout(this);
         auto *toolbar = new QHBoxLayout;
-        auto *add = new QPushButton("+ Add Node", this);
+        addButton_ = new QPushButton("+ Add Node", this);
         auto *edit = new QPushButton("Edit Node", this);
+        deleteButton_ = new QPushButton("Delete Node", this);
         auto *zoomOut = new QPushButton("−", this);
         auto *zoomReset = new QPushButton("100%", this);
         auto *zoomIn = new QPushButton("+", this);
         auto *fit = new QPushButton("Fit All", this);
         auto *close = new QPushButton("Close", this);
-        toolbar->addWidget(add);
+        toolbar->addWidget(addButton_);
         toolbar->addWidget(edit);
+        toolbar->addWidget(deleteButton_);
         toolbar->addStretch();
         toolbar->addWidget(zoomOut);
         toolbar->addWidget(zoomReset);
@@ -853,8 +797,8 @@ public:
         root->addLayout(toolbar);
 
         auto *hint = new QLabel(
-            "Add nodes, drag them around the canvas, then double-click a node to configure its existing action and Director settings. "
-            "End, simultaneous and next relationships are selected directly in the node settings. Mouse wheel zooms; middle mouse pans.", this);
+            "Trigger nodes start workflow branches. Action nodes reference an existing Move / Swap / Value filter. "
+            "Drag nodes, double-click to edit, use the mouse wheel to zoom and middle mouse to pan.", this);
         hint->setWordWrap(true);
         root->addWidget(hint);
 
@@ -870,24 +814,40 @@ public:
         root->addLayout(status);
         view_->setZoomLabel(zoomLabel_);
 
-        connect(add, &QPushButton::clicked, this, [this] {
-            bool ok = false;
-            const QString name = QInputDialog::getText(this, "Add Node", "Node name:", QLineEdit::Normal,
-                                                        "New Node", &ok);
-            if (ok && !name.trimmed().isEmpty())
-                scene_->addNode(name.trimmed());
-        });
+        connect(addButton_, &QPushButton::clicked, this, [this] { showAddNodeMenu(); });
         connect(edit, &QPushButton::clicked, this, [this] { editSelectedNode(); });
+        connect(deleteButton_, &QPushButton::clicked, this, [this] { deleteSelectedNode(); });
         connect(zoomOut, &QPushButton::clicked, view_, &WorkflowGraphicsView::zoomOut);
         connect(zoomReset, &QPushButton::clicked, view_, &WorkflowGraphicsView::resetZoom);
         connect(zoomIn, &QPushButton::clicked, view_, &WorkflowGraphicsView::zoomIn);
         connect(fit, &QPushButton::clicked, view_, &WorkflowGraphicsView::fitAll);
         connect(close, &QPushButton::clicked, this, &QDialog::hide);
-        connect(scene_, &QGraphicsScene::selectionChanged, this, [this] { scene_->updateConnections(); });
+        connect(scene_, &QGraphicsScene::selectionChanged, this, [this] { updateButtonState(); });
         connect(scene_, &EditorScene::nodeDoubleClicked, this, [this](NodeItem *node) { editNode(node); });
+        updateButtonState();
     }
 
 private:
+    void showAddNodeMenu()
+    {
+        QMenu menu(this);
+        QAction *trigger = menu.addAction("Add Trigger Node");
+        QAction *action = menu.addAction("Add Action Node");
+        QAction *chosen = menu.exec(addButton_->mapToGlobal(QPoint(0, addButton_->height())));
+        if (!chosen)
+            return;
+
+        bool ok = false;
+        const QString name = QInputDialog::getText(this,
+                                                    chosen == trigger ? "Add Trigger Node" : "Add Action Node",
+                                                    "Node name:", QLineEdit::Normal,
+                                                    chosen == trigger ? "New Trigger" : "New Action", &ok);
+        if (!ok || name.trimmed().isEmpty())
+            return;
+
+        scene_->addNode(chosen == trigger ? WORKFLOW_NODE_TRIGGER : WORKFLOW_NODE_ACTION, name.trimmed());
+    }
+
     void editNode(NodeItem *node)
     {
         if (!node)
@@ -901,9 +861,31 @@ private:
 
     void editSelectedNode() { editNode(scene_->selectedNode()); }
 
+    void deleteSelectedNode()
+    {
+        NodeItem *node = scene_->selectedNode();
+        if (!node)
+            return;
+        const QString name = node->nodeName();
+        if (QMessageBox::question(this, "Delete Node",
+                                  QString("Delete '%1'?\n\nAny connections to this node will also be removed.").arg(name),
+                                  QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
+            return;
+        scene_->deleteNode(node);
+        updateButtonState();
+    }
+
+    void updateButtonState()
+    {
+        const bool selected = scene_ && scene_->selectedNode();
+        deleteButton_->setEnabled(selected);
+    }
+
     EditorScene *scene_ = nullptr;
     WorkflowGraphicsView *view_ = nullptr;
     QLabel *zoomLabel_ = nullptr;
+    QPushButton *addButton_ = nullptr;
+    QPushButton *deleteButton_ = nullptr;
 };
 
 QPointer<EditorWindow> window;
@@ -928,10 +910,7 @@ void register_menu()
 }
 
 struct AutoRegister {
-    AutoRegister()
-    {
-        QTimer::singleShot(0, register_menu);
-    }
+    AutoRegister() { QTimer::singleShot(0, register_menu); }
 };
 
 AutoRegister auto_register;
