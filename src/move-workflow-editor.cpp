@@ -381,7 +381,10 @@ signals:
 protected:
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) override
     {
-        if (auto *node = dynamic_cast<NodeItem *>(itemAt(event->scenePos(), QTransform())))
+        QGraphicsItem *item = itemAt(event->scenePos(), QTransform());
+        while (item && !dynamic_cast<NodeItem *>(item))
+            item = item->parentItem();
+        if (auto *node = dynamic_cast<NodeItem *>(item))
             emit nodeDoubleClicked(node);
         QGraphicsScene::mouseDoubleClickEvent(event);
     }
@@ -599,7 +602,7 @@ public:
         layout->addWidget(nodeBox);
 
         if (isTrigger)
-            buildTriggerEditor(nodeLayout);
+            buildTriggerEditor(nodeLayout, layout);
         else
             buildActionEditor(content, layout);
 
@@ -679,7 +682,7 @@ public:
     }
 
 private:
-    void buildTriggerEditor(QVBoxLayout *layout)
+    void buildTriggerEditor(QVBoxLayout *layout, QVBoxLayout *contentLayout)
     {
         triggerAction_ = new QComboBox(this);
         const QList<QPair<QString, workflow_trigger_type_t>> triggerTypes = {
@@ -723,12 +726,18 @@ private:
                 [this](int) { rebuildTriggerSettings(); });
 
         rebuildTriggerSettings();
+
+        startActions_ = makeNodeList(node_, node_->workflowNode()->simultaneous_node_ids,
+                                      node_->workflowNode()->simultaneous_node_count);
+        contentLayout->addWidget(makeListBox("Start Actions", startActions_,
+                                             "Selected actions start when this Trigger fires. Multiple actions run in parallel."));
+
         auto *hint = new QLabel(
             "The trigger identifies the OBS event that starts this workflow branch. "
             "A Trigger Node may be connected anywhere in the graph.", this);
         hint->setWordWrap(true);
         hint->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        layout->addWidget(hint);
+        contentLayout->addWidget(hint);
     }
 
     void clearTriggerSettings()
@@ -975,6 +984,8 @@ private:
             trigger.filter_id[0] = '\0';
         }
 
+        wf->simultaneous_actions_mode = WORKFLOW_OVERRIDE;
+        set_node_list(wf->simultaneous_node_count, wf->simultaneous_node_ids, startActions_);
         return true;
     }
 
@@ -1234,6 +1245,7 @@ private:
     QListWidget *simultaneous_ = nullptr;
     QListWidget *endActions_ = nullptr;
     QListWidget *nextActions_ = nullptr;
+    QListWidget *startActions_ = nullptr;
 };
 
 class EditorWindow final : public QDialog {
