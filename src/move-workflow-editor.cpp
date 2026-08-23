@@ -28,7 +28,9 @@
 #include <QPen>
 #include <QPointer>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QScrollBar>
+#include <QSizePolicy>
 #include <QSpinBox>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -453,17 +455,31 @@ public:
     {
         setWindowTitle(QString("Node Settings - %1").arg(node ? node->nodeName() : "Node"));
         resize(560, 800);
+        setMinimumSize(500, 400);
 
         auto *root = new QVBoxLayout(this);
+        root->setContentsMargins(8, 8, 8, 8);
+        root->setSpacing(8);
 
-        auto *nameBox = new QGroupBox("Node", this);
+        auto *contentArea = new QScrollArea(this);
+        contentArea->setWidgetResizable(true);
+        contentArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        contentArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+
+        auto *contentWidget = new QWidget;
+        auto *contentLayout = new QVBoxLayout(contentWidget);
+        contentLayout->setContentsMargins(2, 2, 2, 2);
+        contentLayout->setSpacing(8);
+        contentWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+
+        auto *nameBox = new QGroupBox("Node", contentWidget);
         auto *nameLayout = new QVBoxLayout(nameBox);
         name_ = new QLineEdit(node ? node->nodeName() : QString(), nameBox);
         nameLayout->addWidget(new QLabel("Name", nameBox));
         nameLayout->addWidget(name_);
-        root->addWidget(nameBox);
+        contentLayout->addWidget(nameBox);
 
-        auto *actionBox = new QGroupBox("Existing Move / Swap / Value Action", this);
+        auto *actionBox = new QGroupBox("Existing Move / Swap / Value Action", contentWidget);
         auto *actionLayout = new QVBoxLayout(actionBox);
 
         triggerAction_ = new QComboBox(actionBox);
@@ -495,13 +511,13 @@ public:
         actionLayout->addWidget(new QLabel("For the first node only: this is the action that will trigger the workflow.", actionBox));
         addLabeled(actionLayout, "Source", source_);
         addLabeled(actionLayout, "Filter", filter_);
-        root->addWidget(actionBox);
+        contentLayout->addWidget(actionBox);
 
         populateSources(node ? read_text(node->workflowNode()->action.scene_name) : QString());
         connect(source_, &QComboBox::currentIndexChanged, this, [this] { populateFilters(); });
         populateFilters(node ? read_text(node->workflowNode()->action.filter_name) : QString());
 
-        auto *durationBox = new QGroupBox("Duration", this);
+        auto *durationBox = new QGroupBox("Duration", contentWidget);
         auto *durationLayout = new QHBoxLayout(durationBox);
         durationMode_ = makeModeCombo(durationBox);
         durationMs_ = new QSpinBox(durationBox);
@@ -513,9 +529,9 @@ public:
         }
         durationLayout->addWidget(durationMode_);
         durationLayout->addWidget(durationMs_);
-        root->addWidget(durationBox);
+        contentLayout->addWidget(durationBox);
 
-        startDelayBox_ = new QGroupBox("Start Delay", this);
+        startDelayBox_ = new QGroupBox("Start Delay", contentWidget);
         auto *delayLayout = new QHBoxLayout(startDelayBox_);
         startDelayMode_ = makeModeCombo(startDelayBox_);
         startDelayMs_ = new QSpinBox(startDelayBox_);
@@ -527,10 +543,10 @@ public:
         }
         delayLayout->addWidget(startDelayMode_);
         delayLayout->addWidget(startDelayMs_);
-        root->addWidget(startDelayBox_);
+        contentLayout->addWidget(startDelayBox_);
         updateDelayAvailability();
 
-        auto *triggerBox = new QGroupBox("Start / Stop Triggers", this);
+        auto *triggerBox = new QGroupBox("Start / Stop Triggers", contentWidget);
         auto *triggerLayout = new QGridLayout(triggerBox);
         startTriggerMode_ = makeModeCombo(triggerBox);
         stopTriggerMode_ = makeModeCombo(triggerBox);
@@ -548,7 +564,7 @@ public:
             startTriggerValue_->setText(read_text(node->workflowNode()->start_trigger_value));
             stopTriggerValue_->setText(read_text(node->workflowNode()->stop_trigger_value));
         }
-        root->addWidget(triggerBox);
+        contentLayout->addWidget(triggerBox);
 
         simultaneous_ = makeNodeList(node, node ? node->workflowNode()->simultaneous_node_ids : nullptr,
                                      node ? node->workflowNode()->simultaneous_node_count : 0);
@@ -557,14 +573,14 @@ public:
         nextActions_ = makeNodeList(node, node ? node->workflowNode()->next_node_ids : nullptr,
                                     node ? node->workflowNode()->next_node_count : 0);
 
-        root->addWidget(makeListBox("Simultaneous Actions", simultaneous_,
+        contentLayout->addWidget(makeListBox("Simultaneous Actions", simultaneous_,
                                     "Selected nodes start with this node. Each node keeps its own settings."));
-        root->addWidget(makeListBox("End Actions", endActions_,
+        contentLayout->addWidget(makeListBox("End Actions", endActions_,
                                     "Selected nodes start when this node finishes. Each selected node's Start Delay applies."));
-        root->addWidget(makeListBox("Next Actions", nextActions_,
+        contentLayout->addWidget(makeListBox("Next Actions", nextActions_,
                                     "Director chaining. This does not inherit the selected Move filter's own Next Action."));
 
-        auto *nextBox = new QGroupBox("Next Move On", this);
+        auto *nextBox = new QGroupBox("Next Move On", contentWidget);
         auto *nextLayout = new QGridLayout(nextBox);
         nextMoveOnMode_ = makeModeCombo(nextBox);
         nextMoveOnValue_ = new QComboBox(nextBox);
@@ -579,9 +595,14 @@ public:
             if (index >= 0)
                 nextMoveOnValue_->setCurrentIndex(index);
         }
-        root->addWidget(nextBox);
+        contentLayout->addWidget(nextBox);
+        contentLayout->addStretch(1);
+
+        contentArea->setWidget(contentWidget);
+        root->addWidget(contentArea, 1);
 
         auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+        buttons->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
         connect(buttons, &QDialogButtonBox::accepted, this, [this] { if (apply()) accept(); });
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
         root->addWidget(buttons);
@@ -618,7 +639,6 @@ public:
         copy_text(wf->name, WORKFLOW_MAX_NAME, name);
         copy_text(wf->trigger.action, WORKFLOW_MAX_NAME, triggerAction_->currentText());
 
-        /* The parent OBS source is the object the existing Move filter is attached to. */
         copy_text(wf->action.scene_name, WORKFLOW_MAX_NAME, parentSource);
         wf->action.source_name[0] = '\0';
         copy_text(wf->action.filter_name, WORKFLOW_MAX_NAME, filterName);
@@ -695,6 +715,8 @@ private:
             if (ids && list_contains(ids, count, candidate->id()))
                 item->setSelected(true);
         }
+        list->setMinimumHeight(110);
+        list->setMaximumHeight(180);
         return list;
     }
 
@@ -762,8 +784,8 @@ private:
     void updateDelayAvailability()
     {
         if (!startDelayBox_)
-        return;
-        
+            return;
+
         const QString parentName = source_->currentData().toString();
         const QString filterName = filter_->currentData().toString();
         bool relevant = false;
@@ -906,7 +928,10 @@ void register_menu()
 }
 
 struct AutoRegister {
-    AutoRegister() { QTimer::singleShot(0, register_menu); }
+    AutoRegister()
+    {
+        QTimer::singleShot(0, register_menu);
+    }
 };
 
 AutoRegister auto_register;
