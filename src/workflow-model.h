@@ -1,13 +1,20 @@
 #pragma once
 
-#include <obs-module.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define WORKFLOW_MAX_NAME 256
 #define WORKFLOW_MAX_VALUE 1024
+#define WORKFLOW_MAX_NODES 32
+#define WORKFLOW_MAX_LINKS 8
 
-/* The four Move filter families our workflow layer can target. */
+/*
+ * The workflow layer does not recreate Move/Swap/Value actions. A node
+ * references an action the OBS user has already built, then optionally
+ * overrides the director-level settings that are safe for the workflow to
+ * control.
+ */
 typedef enum workflow_move_kind {
 	WORKFLOW_MOVE_ACTION = 0,
 	WORKFLOW_MOVE_SOURCE,
@@ -15,29 +22,79 @@ typedef enum workflow_move_kind {
 	WORKFLOW_MOVE_VALUE,
 } workflow_move_kind_t;
 
-/* A field can inherit the settings already configured on the Move filter,
- * or be supplied by the workflow as an override. */
 typedef enum workflow_value_mode {
 	WORKFLOW_USE_EXISTING = 0,
 	WORKFLOW_OVERRIDE,
 } workflow_value_mode_t;
 
-typedef struct workflow_move_action {
+/* A reference to an existing Move-family filter/action in OBS. */
+typedef struct workflow_action_ref {
 	char scene_name[WORKFLOW_MAX_NAME];
+	char source_name[WORKFLOW_MAX_NAME];
 	char filter_name[WORKFLOW_MAX_NAME];
 	char filter_id[WORKFLOW_MAX_NAME];
-
 	workflow_move_kind_t kind;
+} workflow_action_ref_t;
 
-	workflow_value_mode_t source_mode;
-	char source_value[WORKFLOW_MAX_VALUE];
+/* Duration is one of the director-controlled settings. */
+typedef struct workflow_duration_override {
+	workflow_value_mode_t mode;
+	uint64_t duration_ms;
+} workflow_duration_override_t;
 
-	workflow_value_mode_t swap_mode;
-	char swap_value[WORKFLOW_MAX_VALUE];
+/*
+ * A node is the reusable director representation of one prebuilt action.
+ * Every node has the same shape, so end/next/simultaneous actions can each be
+ * independently configured nodes rather than special one-off action types.
+ */
+typedef struct workflow_node {
+	char id[WORKFLOW_MAX_NAME];
+	char name[WORKFLOW_MAX_NAME];
 
-	workflow_value_mode_t value_mode;
-	char value_value[WORKFLOW_MAX_VALUE];
-} workflow_move_action_t;
+	/* The existing action selected by this node. */
+	workflow_action_ref_t action;
+
+	/* Director-level overrides. USE_EXISTING leaves the selected action as-is. */
+	workflow_duration_override_t duration;
+	workflow_value_mode_t end_actions_mode;
+	workflow_value_mode_t start_trigger_mode;
+	workflow_value_mode_t stop_trigger_mode;
+	workflow_value_mode_t simultaneous_actions_mode;
+	workflow_value_mode_t next_actions_mode;
+	workflow_value_mode_t next_move_on_mode;
+
+	/* Values used only when the corresponding setting is overridden. */
+	char start_trigger_value[WORKFLOW_MAX_VALUE];
+	char stop_trigger_value[WORKFLOW_MAX_VALUE];
+	char next_move_on_value[WORKFLOW_MAX_VALUE];
+
+	/*
+	 * Relationships refer to other node IDs. The referenced nodes carry their
+	 * own action selection and overrides, so every configured action is treated
+	 * consistently by the director.
+	 */
+	size_t end_node_count;
+	char end_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
+
+	size_t simultaneous_node_count;
+	char simultaneous_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
+
+	size_t next_node_count;
+	char next_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
+} workflow_node_t;
+
+typedef struct workflow {
+	char id[WORKFLOW_MAX_NAME];
+	char name[WORKFLOW_MAX_NAME];
+	bool enabled;
+
+	/* Entry node(s) for the workflow. */
+	size_t entry_node_count;
+	char entry_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
+
+	size_t node_count;
+	workflow_node_t nodes[WORKFLOW_MAX_NODES];
+} workflow_t;
 
 static inline const char *workflow_move_kind_name(workflow_move_kind_t kind)
 {
