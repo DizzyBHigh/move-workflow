@@ -1,8 +1,10 @@
 /*
 Move Workflow - Integration Test
 
-Phase 2 discovers the four Exeldro Move filter types and reports them
-separately. It still does not start, stop, or modify any filter.
+Phase 3 tests whether an existing Exeldro Move filter can be invoked through
+OBS's own hotkey system without simulating a physical keyboard. The test
+temporarily assigns an unused OBS key combination to the target Move filter,
+injects that combination through libobs, then restores the original binding.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,12 +22,14 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 
 #include <obs-module.h>
 #include <obs-frontend-api.h>
+#include <obs-hotkey.h>
 #include <plugin-support.h>
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
 static void scan_filters(void);
+static void trigger_first_move_filter(void);
 
 static const char *move_filter_type(const char *filter_id)
 {
@@ -90,6 +94,117 @@ static void scan_filters(void)
 	obs_log(LOG_INFO, "[Move Workflow Test] ===== END MOVE FILTER SCAN =====");
 }
 
+struct find_move_context {
+	obs_source_t *filter;
+};
+
+static bool find_first_move_filter_callback(obs_source_t *parent, obs_source_t *filter, void *param)
+{
+	UNUSED_PARAMETER(parent);
+
+	struct find_move_context *ctx = param;
+	if (ctx->filter)
+		return true;
+
+	if (move_filter_type(obs_source_get_id(filter))) {
+		ctx->filter = obs_source_get_ref(filter);
+		return false;
+	}
+
+	return true;
+}
+
+static bool find_first_move_source_callback(void *param, obs_source_t *source)
+{
+	struct find_move_context *ctx = param;
+	if (ctx->filter)
+		return false;
+
+	obs_source_enum_filters(source, find_first_move_filter_callback, ctx);
+	return ctx->filter == NULL;
+}
+
+static void trigger_first_move_filter(void)
+{
+	struct find_move_context ctx = {0};
+	obs_enum_sources(find_first_move_source_callback, &ctx);
+
+	if (!ctx.filter) {
+		obs_log(LOG_WARNING, "[Move Workflow Test] No Exeldro Move filter found to trigger");
+		return;
+	}
+
+	const char *filter_name = obs_source_get_name(ctx.filter);
+	const char *filter_id = obs_source_get_id(ctx.filter);
+	obs_log(LOG_INFO,
+		"[Move Workflow Test] HOTKEY TEST target=\"%s\" id=\"%s\"",
+		filter_name ? filter_name : "<unnamed>",
+		filter_id ? filter_id : "<null>");
+
+	struct find_move_context binding_ctx = {0};
+	UNUSED_PARAMETER(binding_ctx);
+
+	/* Find the OBS hotkey registered by Exeldro for this Move filter. */
+	struct hotkey_find_context {
+		obs_source_t *source;
+		obs_hotkey_id id;
+	} find_ctx = {ctx.filter, OBS_INVALID_HOTKEY_ID};
+
+	bool enum_hotkeys(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey)
+	{
+		struct hotkey_find_context *state = data;
+		if (state->id != OBS_INVALID_HOTKEY_ID)
+			return false;
+
+		if (obs_hotkey_get_registerer_type(hotkey) != OBS_HOTKEY_REGISTERER_SOURCE)
+			return true;
+
+		if (obs_hotkey_get_registerer(hotkey) != state->source)
+			return true;
+
+		const char *name = obs_hotkey_get_name(hotkey);
+		if (name && strcmp(name, obs_source_get_name(state->source)) == 0) {
+			state->id = id;
+			return false;
+		}
+
+		return true;
+	}
+
+	obs_enum_hotkeys(enum_hotkeys, &find_ctx);
+
+	if (find_ctx.id == OBS_INVALID_HOTKEY_ID) {
+		obs_log(LOG_WARNING,
+			"[Move Workflow Test] Could not find an OBS hotkey registered for \"%s\"",
+			filter_name ? filter_name : "<unnamed>");
+		obs_source_release(ctx.filter);
+		return;
+	}
+
+	obs_data_array_t *original_bindings = obs_hotkey_save(find_ctx.id);
+
+	/* F24 is used only for this experiment. It is restored immediately after. */
+	obs_key_combination_t test_key = {
+		.modifiers = 0,
+		.key = OBS_KEY_F24,
+	};
+
+	obs_hotkey_load_bindings(find_ctx.id, &test_key, 1);
+	obs_log(LOG_INFO, "[Move Workflow Test] Injecting temporary F24 binding for hotkey id=%zu", find_ctx.id);
+	obs_hotkey_inject_event(test_key, true);
+	obs_hotkey_inject_event(test_key, false);
+
+	if (original_bindings) {
+		obs_hotkey_load(find_ctx.id, original_bindings);
+		obs_data_array_release(original_bindings);
+	} else {
+		obs_hotkey_load_bindings(find_ctx.id, NULL, 0);
+	}
+
+	obs_log(LOG_INFO, "[Move Workflow Test] Restored original hotkey binding");
+	obs_source_release(ctx.filter);
+}
+
 static void frontend_event_callback(enum obs_frontend_event event, void *private_data)
 {
 	UNUSED_PARAMETER(private_data);
@@ -104,12 +219,19 @@ static void scan_menu_callback(void *private_data)
 	scan_filters();
 }
 
+static void trigger_menu_callback(void *private_data)
+{
+	UNUSED_PARAMETER(private_data);
+	trigger_first_move_filter();
+}
+
 bool obs_module_load(void)
 {
 	obs_log(LOG_INFO, "Move Workflow integration test loaded (version %s)", PLUGIN_VERSION);
 
 	obs_frontend_add_event_callback(frontend_event_callback, NULL);
 	obs_frontend_add_tools_menu_item("Move Workflow: Scan Move Filters", scan_menu_callback, NULL);
+	obs_frontend_add_tools_menu_item("Move Workflow: Test Trigger First Move Filter", trigger_menu_callback, NULL);
 
 	return true;
 }
