@@ -98,6 +98,7 @@ public:
         auto *item = new NodeItem(node);
         addItem(item);
         nodes_.push_back(item);
+        updateSceneBounds();
         return item;
     }
 
@@ -121,12 +122,18 @@ public:
         connections_.push_back({from, to, line});
         addItem(line);
         updateConnection(line, from, to);
+        updateSceneBounds();
     }
 
     void updateConnections()
     {
         for (const Connection &connection : connections_)
             updateConnection(connection.line, connection.from, connection.to);
+
+        // Keep the scene bounds tied to the actual node positions. This lets a
+        // node be dragged beyond the previous edge and automatically expands
+        // the canvas instead of leaving the node outside the scrollable area.
+        updateSceneBounds();
     }
 
 signals:
@@ -156,6 +163,55 @@ private:
         QPainterPath path(a);
         path.cubicTo(a + QPointF(dx, 0), b - QPointF(dx, 0), b);
         line->setPath(path);
+    }
+
+    void updateSceneBounds()
+    {
+        if (nodes_.isEmpty()) {
+            setSceneRect(0, 0, 2000, 1400);
+            return;
+        }
+
+        QRectF bounds;
+        bool haveBounds = false;
+
+        for (NodeItem *node : nodes_) {
+            if (!node)
+                continue;
+
+            const QRectF nodeBounds = node->sceneBoundingRect();
+            if (!haveBounds) {
+                bounds = nodeBounds;
+                haveBounds = true;
+            } else {
+                bounds = bounds.united(nodeBounds);
+            }
+        }
+
+        if (!haveBounds || !bounds.isValid()) {
+            setSceneRect(0, 0, 2000, 1400);
+            return;
+        }
+
+        // Give the editor a comfortable working margin around the outermost
+        // nodes. The margin is part of the scene, so nodes can sit at any edge
+        // without becoming clipped or inaccessible.
+        constexpr qreal margin = 160.0;
+        bounds.adjust(-margin, -margin, margin, margin);
+
+        // Keep a sensible minimum canvas size when only one or two nodes exist.
+        constexpr qreal minimumWidth = 900.0;
+        constexpr qreal minimumHeight = 600.0;
+        if (bounds.width() < minimumWidth) {
+            const qreal extra = (minimumWidth - bounds.width()) * 0.5;
+            bounds.adjust(-extra, 0, extra, 0);
+        }
+        if (bounds.height() < minimumHeight) {
+            const qreal extra = (minimumHeight - bounds.height()) * 0.5;
+            bounds.adjust(0, -extra, 0, extra);
+        }
+
+        setSceneRect(bounds);
     }
 
     int nextId_ = 0;
