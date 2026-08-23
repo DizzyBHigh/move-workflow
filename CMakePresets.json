@@ -64,7 +64,7 @@
       "name": "windows-ci-x64",
       "inherits": ["windows-x64"],
       "displayName": "Windows x64 CI build",
-      "description": "Build for Windows x64 on Windows",
+      "description": "Build for Windows x64 on CI",
       "cacheVariables": {
         "CMAKE_COMPILE_WARNING_AS_ERROR": true
       }
@@ -72,7 +72,7 @@
     {
       "name": "ubuntu-x86_64",
       "displayName": "Ubuntu x86_64",
-      "description": "Build for Ubuntu x86_64",
+      "description": "Ubuntu build for x86_64",
       "inherits": ["template"],
       "binaryDir": "${sourceDir}/build_x86_64",
       "condition": {
@@ -124,15 +124,15 @@
     {
       "name": "windows-ci-x64",
       "configurePreset": "windows-ci-x64",
-      "displayName": "Windows x64 CI",
+      "displayName": "Windows x64 CI build",
       "description": "Windows CI build for x64 (RelWithDebInfo configuration)",
       "configuration": "RelWithDebInfo"
     },
     {
       "name": "ubuntu-x86_64",
+      "configurePreset": "ubuntu-x86_64",
       "displayName": "Ubuntu x86_64",
-      "description": "Ubuntu x86_64 build",
-      "inherits": ["ubuntu-x86_64"],
+      "description": "Ubuntu build for x86_64",
       "configuration": "RelWithDebInfo"
     },
     {
