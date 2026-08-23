@@ -87,6 +87,19 @@ typedef struct workflow_node {
 	workflow_value_mode_t next_actions_mode;
 
 	/*
+	 * These legacy fields remain in the model temporarily so the existing
+	 * editor/director implementation continues to compile while the UI is
+	 * migrated to the explicit Trigger/Action node model. They are no longer
+	 * part of the intended Action Node settings surface.
+	 */
+	workflow_value_mode_t start_trigger_mode;
+	workflow_value_mode_t stop_trigger_mode;
+	workflow_value_mode_t next_move_on_mode;
+	char start_trigger_value[WORKFLOW_MAX_VALUE];
+	char stop_trigger_value[WORKFLOW_MAX_VALUE];
+	char next_move_on_value[WORKFLOW_MAX_VALUE];
+
+	/*
 	 * Relationships refer to other node IDs. Simultaneous nodes start with
 	 * this node; end/next nodes are downstream actions.
 	 */
