@@ -1,6 +1,8 @@
+#include <QAbstractItemView>
 #include <QApplication>
 #include <QDialog>
 #include <QFrame>
+#include <QFont>
 #include <QGraphicsItem>
 #include <QGraphicsRectItem>
 #include <QGraphicsScene>
@@ -12,6 +14,7 @@
 #include <QListWidgetItem>
 #include <QPushButton>
 #include <QSignalBlocker>
+#include <QSizePolicy>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QVariant>
