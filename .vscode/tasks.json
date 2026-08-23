@@ -44,6 +44,18 @@
             "dependsOrder": "sequence"
         },
         {
+            "label": "Move Workflow: Copy to OBS",
+            "type": "process",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-File", "${workspaceFolder}\\.vscode\\copy-to-obs.ps1"
+            ],
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
             "label": "Move Workflow: Clean + Rebuild",
             "type": "shell",
             "command": "powershell.exe",
