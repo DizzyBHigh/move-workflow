@@ -25,6 +25,7 @@
 #include <QWheelEvent>
 #include <QVBoxLayout>
 #include <QMouseEvent>
+#include <QScrollBar>
 
 #include <memory>
 
