@@ -13,6 +13,7 @@
 #include <QTimer>
 #include <QPointer>
 #include <QMainWindow>
+#include <QStringList>
 
 #include <cstdint>
 
@@ -82,9 +83,6 @@ void end_actions_with_delay()
 
 void start_trigger_test()
 {
-    /* The existing Top Left director node is the Phase 15 Start Trigger test:
-     * start_trigger_mode=OVERRIDE and start_trigger_value=Enable. Triggering
-     * its existing test action therefore exercises the real director path. */
     trigger_director_menu("Move Workflow: Test Left");
 }
 
@@ -152,8 +150,36 @@ void show_tests()
     window->activateWindow();
 }
 
+void hide_legacy_test_menu_items()
+{
+    auto *mainWindow = static_cast<QMainWindow *>(obs_frontend_get_main_window());
+    if (!mainWindow)
+        return;
+
+    const QStringList legacyNames = {
+        "Move Workflow: Test Left",
+        "Move Workflow: Test Center",
+        "Move Workflow: Test Right",
+        "Move Workflow: Test Duration Override (Left)",
+        "Move Workflow: Test End Action Left -> Center",
+        "Move Workflow: Test Multiple End Actions (Top Left -> Bottom Center + Bottom Right)",
+        "Move Workflow: Test End Actions with Start Delay (Bottom Right +1000ms)",
+    };
+
+    const auto actions = mainWindow->findChildren<QAction *>();
+    for (QAction *action : actions) {
+        if (action && legacyNames.contains(action->text())) {
+            action->setVisible(false);
+            blog(LOG_INFO, "[Move Workflow Tests] Hidden legacy Tools menu item: %s",
+                 action->text().toUtf8().constData());
+        }
+    }
+}
+
 void register_menu()
 {
+    hide_legacy_test_menu_items();
+
     QAction *action = static_cast<QAction *>(obs_frontend_add_tools_menu_qaction("Move Workflow Tests"));
     if (!action)
         return;
@@ -164,6 +190,7 @@ struct AutoRegister {
     AutoRegister()
     {
         QTimer::singleShot(0, register_menu);
+        QTimer::singleShot(250, hide_legacy_test_menu_items);
     }
 };
 
