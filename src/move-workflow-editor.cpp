@@ -81,7 +81,13 @@ private:
 class EditorScene final : public QGraphicsScene {
     Q_OBJECT
 public:
-    explicit EditorScene(QObject *parent = nullptr) : QGraphicsScene(parent) {}
+    explicit EditorScene(QObject *parent = nullptr) : QGraphicsScene(parent)
+    {
+        // QGraphicsScene emits changed() continuously while an item is dragged.
+        // Use that notification to keep workflow connection lines attached to
+        // the nodes rather than waiting for a canvas click.
+        connect(this, &QGraphicsScene::changed, this, [this] { updateConnections(); });
+    }
 
     NodeItem *addNode(const QString &name)
     {
