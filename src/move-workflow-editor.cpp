@@ -24,6 +24,7 @@
 #include <QPointer>
 #include <QWheelEvent>
 #include <QVBoxLayout>
+#include <QMouseEvent>
 
 #include <memory>
 
@@ -223,6 +224,42 @@ protected:
         event->accept();
     }
 
+    void mousePressEvent(QMouseEvent *event) override
+    {
+        if (event->button() == Qt::MiddleButton) {
+            panning_ = true;
+            panStart_ = event->pos();
+            setCursor(Qt::ClosedHandCursor);
+            event->accept();
+            return;
+        }
+        QGraphicsView::mousePressEvent(event);
+    }
+
+    void mouseMoveEvent(QMouseEvent *event) override
+    {
+        if (panning_) {
+            const QPoint delta = event->pos() - panStart_;
+            panStart_ = event->pos();
+            horizontalScrollBar()->setValue(horizontalScrollBar()->value() - delta.x());
+            verticalScrollBar()->setValue(verticalScrollBar()->value() - delta.y());
+            event->accept();
+            return;
+        }
+        QGraphicsView::mouseMoveEvent(event);
+    }
+
+    void mouseReleaseEvent(QMouseEvent *event) override
+    {
+        if (event->button() == Qt::MiddleButton && panning_) {
+            panning_ = false;
+            unsetCursor();
+            event->accept();
+            return;
+        }
+        QGraphicsView::mouseReleaseEvent(event);
+    }
+
 private:
     void updateZoomLabel()
     {
@@ -233,6 +270,8 @@ private:
     }
 
     QLabel *zoomLabel_ = nullptr;
+    bool panning_ = false;
+    QPoint panStart_;
 };
 
 class NodeSettingsDialog final : public QDialog {
@@ -304,7 +343,7 @@ public:
 
         auto *hint = new QLabel(
             "Add nodes, drag them around the canvas, double-click a node for settings, then select two nodes and link them. "
-            "Use the mouse wheel or the zoom controls to navigate larger workflows.", this);
+            "Use the mouse wheel or the zoom controls to navigate larger workflows. Hold the middle mouse button to pan the canvas.", this);
         hint->setWordWrap(true);
         root->addWidget(hint);
 
@@ -336,7 +375,7 @@ public:
         connect(zoomReset, &QPushButton::clicked, view_, &WorkflowGraphicsView::resetZoom);
         connect(zoomIn, &QPushButton::clicked, view_, &WorkflowGraphicsView::zoomIn);
         connect(fit, &QPushButton::clicked, view_, &WorkflowGraphicsView::fitAll);
-        connect(close, &QPushButton::clicked, this, &QDialog::close);
+        connect(close, &QPushButton::clicked, this, &QDialog::hide);
         connect(scene_, &QGraphicsScene::selectionChanged, this, [this] { scene_->updateConnections(); });
         connect(scene_, &EditorScene::nodeDoubleClicked, this, [this](NodeItem *node) { editNode(node); });
     }
@@ -378,7 +417,6 @@ void show_editor()
     if (!window) {
         auto *mainWindow = static_cast<QMainWindow *>(obs_frontend_get_main_window());
         window = new EditorWindow(mainWindow);
-        window->setAttribute(Qt::WA_DeleteOnClose);
     }
     window->show();
     window->raise();
