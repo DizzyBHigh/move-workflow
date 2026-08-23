@@ -38,6 +38,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/plugin-main.c
   src/move-workflow-tests.cpp
   src/move-workflow-tests.h
+  src/move-workflow-editor.cpp
+  src/move-workflow-editor.h
   src/move-workflow-menu-cleanup.cpp
 )
 
