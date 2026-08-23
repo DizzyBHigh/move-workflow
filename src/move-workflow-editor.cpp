@@ -15,15 +15,13 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMainWindow>
-#include <QMenu>
 #include <QPainter>
 #include <QPen>
 #include <QPushButton>
-#include <QSplitter>
-#include <QToolBar>
-#include <QVBoxLayout>
+#include <QTimer>
 #include <QVector>
 #include <QPointer>
+#include <QMouseEvent>
 
 #include <memory>
 
@@ -59,6 +57,11 @@ public:
 
     int nodeId() const { return node_.id; }
     const QString &nodeName() const { return node_.name; }
+    void setNodeName(const QString &name)
+    {
+        node_.name = name;
+        title_->setPlainText(name);
+    }
 
 protected:
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override
@@ -75,6 +78,7 @@ private:
 };
 
 class EditorScene final : public QGraphicsScene {
+    Q_OBJECT
 public:
     explicit EditorScene(QObject *parent = nullptr) : QGraphicsScene(parent) {}
 
@@ -116,6 +120,18 @@ public:
     {
         for (const Connection &connection : connections_)
             updateConnection(connection.line, connection.from, connection.to);
+    }
+
+signals:
+    void nodeDoubleClicked(NodeItem *node);
+
+protected:
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) override
+    {
+        QGraphicsItem *item = itemAt(event->scenePos(), QTransform());
+        if (auto *node = dynamic_cast<NodeItem *>(item))
+            emit nodeDoubleClicked(node);
+        QGraphicsScene::mouseDoubleClickEvent(event);
     }
 
 private:
@@ -165,6 +181,14 @@ public:
         layout->addWidget(buttons);
     }
 
+    bool apply()
+    {
+        if (!node_)
+            return false;
+        node_->setNodeName(name_->text().trimmed());
+        return true;
+    }
+
 private:
     NodeItem *node_;
     QLineEdit *name_ = nullptr;
@@ -181,7 +205,7 @@ public:
         auto *toolbar = new QHBoxLayout;
         auto *add = new QPushButton("+ Add Node", this);
         auto *edit = new QPushButton("Edit Node", this);
-        auto *link = new QPushButton("Link Selected → Selected", this);
+        auto *link = new QPushButton("Link Selected Nodes", this);
         auto *close = new QPushButton("Close", this);
         toolbar->addWidget(add);
         toolbar->addWidget(edit);
@@ -214,22 +238,22 @@ public:
         connect(link, &QPushButton::clicked, this, [this] { linkSelectedNodes(); });
         connect(close, &QPushButton::clicked, this, &QDialog::close);
         connect(scene_, &QGraphicsScene::selectionChanged, this, [this] { scene_->updateConnections(); });
-    }
-
-protected:
-    void mouseDoubleClickEvent(QMouseEvent *event) override
-    {
-        QDialog::mouseDoubleClickEvent(event);
+        connect(scene_, &EditorScene::nodeDoubleClicked, this, [this](NodeItem *node) { editNode(node); });
     }
 
 private:
-    void editSelectedNode()
+    void editNode(NodeItem *node)
     {
-        NodeItem *node = scene_->selectedNode();
         if (!node)
             return;
         NodeSettingsDialog dialog(node, this);
-        dialog.exec();
+        if (dialog.exec() == QDialog::Accepted)
+            dialog.apply();
+    }
+
+    void editSelectedNode()
+    {
+        editNode(scene_->selectedNode());
     }
 
     void linkSelectedNodes()
@@ -278,6 +302,8 @@ struct AutoRegister {
 AutoRegister auto_register;
 
 } // namespace
+
+#include "move-workflow-editor.moc"
 
 void move_workflow_register_editor(void)
 {
