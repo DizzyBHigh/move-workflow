@@ -43,7 +43,8 @@ static workflow_t workflow = {
 			.action = {.scene_name = TEST_SCENE_NAME, .source_name = "", .filter_name = "Move Source - Top - Left", .filter_id = "move_source_filter", .kind = WORKFLOW_MOVE_SOURCE},
 			.duration = {.mode = WORKFLOW_USE_EXISTING},
 			.end_actions_mode = WORKFLOW_OVERRIDE,
-			.start_trigger_mode = WORKFLOW_USE_EXISTING,
+			.start_trigger_mode = WORKFLOW_OVERRIDE,
+			.start_trigger_value = "Enable",
 			.stop_trigger_mode = WORKFLOW_USE_EXISTING,
 			.simultaneous_actions_mode = WORKFLOW_OVERRIDE,
 			.next_actions_mode = WORKFLOW_OVERRIDE,
@@ -294,6 +295,23 @@ static void schedule_end_actions(workflow_t *wf, const workflow_node_t *node)
 	}
 }
 
+static void apply_start_trigger_override(obs_source_t *filter, const workflow_node_t *node)
+{
+	if (node->start_trigger_mode == WORKFLOW_OVERRIDE && strcmp(node->start_trigger_value, "Enable") == 0) {
+		blog(LOG_INFO,
+		     "[Move Workflow Phase 15] Applying director Start Trigger override: Enable -> \"%s\"",
+		     node->name);
+		obs_source_set_enabled(filter, false);
+		obs_source_set_enabled(filter, true);
+		return;
+	}
+
+	/* The current phase only defines the Enable override. Other trigger modes
+	 * remain outside this test and will be added as their own director phases. */
+	obs_source_set_enabled(filter, false);
+	obs_source_set_enabled(filter, true);
+}
+
 static void execute_node(workflow_node_t *node)
 {
 	obs_source_t *filter = find_move_filter(&node->action);
@@ -321,8 +339,7 @@ static void execute_node(workflow_node_t *node)
 	}
 
 	/* Director-owned chaining: the selected filter's own next/end workflow is not inherited. */
-	obs_source_set_enabled(filter, false);
-	obs_source_set_enabled(filter, true);
+	apply_start_trigger_override(filter, node);
 	obs_source_release(filter);
 
 	/* End Actions start after the parent action completes, with each child owning its own Start Delay. */
