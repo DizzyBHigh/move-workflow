@@ -179,7 +179,7 @@ class EditorScene final : public QGraphicsScene {
 public:
     explicit EditorScene(QObject *parent = nullptr) : QGraphicsScene(parent)
     {
-        connect(this, &QGraphicsScene::changed, this, [this] { updateConnections(); });
+        connect(this, &QGraphicsScene::changed, this, [this] { updateConnectionGeometry(); });
     }
 
     NodeItem *addNode(const QString &name)
@@ -243,10 +243,15 @@ public:
         updateConnections();
     }
 
-    void updateConnections()
+    void updateConnectionGeometry()
     {
         for (const Connection &connection : connections_)
             updateConnection(connection.line, connection.from, connection.to);
+    }
+
+    void updateConnections()
+    {
+        updateConnectionGeometry();
         updateSceneBounds();
     }
 
