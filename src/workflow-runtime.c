@@ -1,4 +1,5 @@
 #include "workflow-runtime.h"
+#include "workflow-shortcuts.h"
 
 #include <obs.h>
 #include <obs-module.h>
@@ -120,6 +121,7 @@ static void execute_node(workflow_node_t *node)
     }
     apply_start_trigger_override(filter, node);
     obs_source_release(filter);
+    workflow_shortcuts_begin(&workflow, node);
 }
 
 void workflow_runtime_execute_node_by_id(workflow_t *workflow, const char *node_id)
