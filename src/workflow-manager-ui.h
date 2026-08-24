@@ -1,7 +1,6 @@
 #pragma once
 
 #include "workflow-manager.h"
-
 #include <functional>
 
 class QWidget;
@@ -11,4 +10,5 @@ QWidget *create_workflow_manager_ui(
     QWidget *parent = nullptr,
     std::function<void(const char *)> selectionChanged = {},
     std::function<bool(const char *)> createWorkflow = {},
-    std::function<bool(const char *)> duplicateWorkflow = {});
+    std::function<bool(const char *)> duplicateWorkflow = {},
+    std::function<void()> stateChanged = {});
