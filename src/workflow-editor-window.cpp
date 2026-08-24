@@ -42,7 +42,7 @@ public:
         duplicateButton_=new QPushButton("Duplicate Node",this); deleteButton_=new QPushButton("Delete Node",this);
         auto *zoomOut=new QPushButton("−",this); auto *zoomReset=new QPushButton("100%",this); auto *zoomIn=new QPushButton("+",this); auto *fit=new QPushButton("Fit All",this); auto *close=new QPushButton("Close",this);
         toolbar->addWidget(addButton_); toolbar->addWidget(edit); toolbar->addWidget(copyButton_); toolbar->addWidget(pasteButton_); toolbar->addWidget(duplicateButton_); toolbar->addWidget(deleteButton_); toolbar->addStretch(); toolbar->addWidget(zoomOut); toolbar->addWidget(zoomReset); toolbar->addWidget(zoomIn); toolbar->addWidget(fit); toolbar->addWidget(close); root->addLayout(toolbar);
-        scene_=new EditorScene(this); view_=new WorkflowGraphicsView(scene_,this); view_->installEventFilter(this); workspace_.scene=scene_; workflow_workspace_init(&workspace_,scene_); resetUndo();
+        scene_=new EditorScene(this); view_=new WorkflowGraphicsView(scene_,this); view_->viewport()->installEventFilter(this); workspace_.scene=scene_; workflow_workspace_init(&workspace_,scene_); resetUndo();
         managerUi_=create_workflow_manager_ui(workflow_workspace_manager(&workspace_),this,
             [this](const char *id){ if(workflow_workspace_select(&workspace_,id)) resetUndo(); },
             [this](const char *name){const bool ok=workflow_workspace_create(&workspace_,name); if(ok)resetUndo(); return ok;},
@@ -63,11 +63,11 @@ public:
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override
     {
-        if (watched == view_ && event->type() == QEvent::KeyPress) {
+        if (watched == view_->viewport() && event->type() == QEvent::KeyPress) {
             auto *key = static_cast<QKeyEvent *>(event);
             if (key->key() == Qt::Key_Delete && !key->isAutoRepeat()) { deleteSelectedNodes(); return true; }
             if (!key->isAutoRepeat() && key->modifiers() == Qt::ControlModifier && key->key() == Qt::Key_Y) {
-                qDebug() << "[Move Workflow] Ctrl+Y received by editor view";
+                qDebug() << "[Move Workflow] Ctrl+Y received by workflow viewport";
                 redoWorkflow();
                 return true;
             }
