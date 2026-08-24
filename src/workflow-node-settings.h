@@ -2,7 +2,9 @@
 
 #include "workflow-node.h"
 
+#include <QDialog>
 #include <QList>
+#include <QString>
 
 class QCheckBox;
 class QComboBox;
@@ -21,22 +23,20 @@ public:
 private:
     bool apply();
     bool applyTrigger();
-    void buildTriggerEditor(QVBoxLayout *layout, QVBoxLayout *contentLayout);
-    void buildActionEditor(QWidget *parent, QVBoxLayout *layout);
-
+    void buildTriggerEditor(QVBoxLayout *, QVBoxLayout *);
+    void buildActionEditor(QWidget *, QVBoxLayout *);
     void rebuildTriggerSettings();
     void clearTriggerSettings();
-    void addTriggerRow(const QString &label, QWidget *widget);
-    void buildSourceStateSettings(const QString &label, workflow_trigger_state_t state);
-    void buildSourceAudioTrackSettings(const workflow_trigger_ref_t &trigger);
-    void buildSourceHotkeySettings(const workflow_trigger_ref_t &trigger);
-    void buildFilterEnableSettings(const workflow_trigger_ref_t &trigger);
-    void buildSettingSettings(const workflow_trigger_ref_t &trigger);
-    void populateTriggerSources(const QString &wanted = QString());
-    void populateTriggerFilters(const QString &wanted = QString());
-
-    void populateSources(const QString &wanted);
-    void populateFilters(const QString &wanted = QString());
+    void addTriggerRow(const QString &, QWidget *);
+    void buildSourceStateSettings(const QString &, workflow_trigger_state_t);
+    void buildSourceAudioTrackSettings(const workflow_trigger_ref_t &);
+    void buildSourceHotkeySettings(const workflow_trigger_ref_t &);
+    void buildFilterEnableSettings(const workflow_trigger_ref_t &);
+    void buildSettingSettings(const workflow_trigger_ref_t &);
+    void populateTriggerSources(const QString & = QString());
+    void populateTriggerFilters(const QString & = QString());
+    void populateSources(const QString &);
+    void populateFilters(const QString & = QString());
 
     NodeItem *node_ = nullptr;
     QList<NodeItem *> nodes_;
