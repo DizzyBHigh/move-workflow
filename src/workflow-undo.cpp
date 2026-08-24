@@ -38,7 +38,7 @@ WorkflowUndo::WorkflowUndo() : stack_(new QUndoStack) {}
 WorkflowUndo::~WorkflowUndo() { delete stack_; }
 void WorkflowUndo::reset(workflow_t *workflow, workflow_manager_t *manager)
 {
-    workflow_ = workflow; manager_ = manager; stack_->clear();
+    workflow_ = workflow; manager_ = manager; stack_->clear(); suppressCapture_ = false;
     if (workflow_) last_ = *workflow_; else last_ = {};
     if (manager_) last_manager_ = std::make_unique<workflow_manager_t>(*manager_);
     else last_manager_.reset();
@@ -46,6 +46,11 @@ void WorkflowUndo::reset(workflow_t *workflow, workflow_manager_t *manager)
 void WorkflowUndo::capture()
 {
     if (!workflow_) return;
+    if (suppressCapture_) {
+        suppressCapture_ = false;
+        last_ = *workflow_;
+        return;
+    }
     if (std::memcmp(&last_, workflow_, sizeof(workflow_t)) == 0) return;
     auto before = std::make_unique<workflow_t>(last_);
     auto after = std::make_unique<workflow_t>(*workflow_);
@@ -72,7 +77,9 @@ bool WorkflowUndo::undo()
     qDebug() << "[Move Workflow] UNDO requested: canUndo=" << stack_->canUndo()
              << "canRedo=" << stack_->canRedo() << "index=" << stack_->index()
              << "count=" << stack_->count();
-    if (!stack_->canUndo()) return false; stack_->undo();
+    if (!stack_->canUndo()) return false;
+    stack_->undo();
+    suppressCapture_ = true;
     qDebug() << "[Move Workflow] UNDO complete: canUndo=" << stack_->canUndo()
              << "canRedo=" << stack_->canRedo() << "index=" << stack_->index()
              << "count=" << stack_->count();
@@ -86,7 +93,9 @@ bool WorkflowUndo::redo()
     qDebug() << "[Move Workflow] REDO requested: canUndo=" << stack_->canUndo()
              << "canRedo=" << stack_->canRedo() << "index=" << stack_->index()
              << "count=" << stack_->count();
-    if (!stack_->canRedo()) return false; stack_->redo();
+    if (!stack_->canRedo()) return false;
+    stack_->redo();
+    suppressCapture_ = true;
     qDebug() << "[Move Workflow] REDO complete: canUndo=" << stack_->canUndo()
              << "canRedo=" << stack_->canRedo() << "index=" << stack_->index()
              << "count=" << stack_->count();
