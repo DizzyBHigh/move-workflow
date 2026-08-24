@@ -81,7 +81,7 @@ private:
     void copySelectedNodes(){if(workflow_clipboard_copy(scene_))updateButtonState();}
     void pasteNodes(){if(workflow_clipboard_paste(scene_))updateButtonState();}
     void duplicateSelectedNode(){if(duplicate_selected_workflow_node(scene_))updateButtonState();}
-    void deleteSelectedNodes(){const QList<NodeItem *> nodes=scene_->selectedNodes();if(nodes.isEmpty())return;for(NodeItem *node:nodes)scene_->deleteNode(node);updateButtonState();}
+    void deleteSelectedNodes(){const QList<QGraphicsItem *> selected=scene_->selectedItems();QList<NodeItem *> nodes;for(QGraphicsItem *item:selected)if(auto *node=dynamic_cast<NodeItem *>(item))nodes.append(node);if(nodes.isEmpty())return;for(NodeItem *node:nodes)scene_->deleteNode(node);updateButtonState();}
     void updateButtonState(){const bool selected=scene_&&!scene_->selectedItems().isEmpty();deleteButton_->setEnabled(selected&&scene_->selectedNode());duplicateButton_->setEnabled(selected&&scene_->selectedNode());copyButton_->setEnabled(selected);pasteButton_->setEnabled(workflow_clipboard_has_data());}
     workflow_workspace_t workspace_{};WorkflowUndo undo_;QWidget *managerUi_=nullptr;EditorScene *scene_=nullptr;WorkflowGraphicsView *view_=nullptr;QLabel *zoomLabel_=nullptr;bool syncPending_=false;
     QPushButton *addButton_=nullptr;QPushButton *copyButton_=nullptr;QPushButton *pasteButton_=nullptr;QPushButton *duplicateButton_=nullptr;QPushButton *deleteButton_=nullptr;
