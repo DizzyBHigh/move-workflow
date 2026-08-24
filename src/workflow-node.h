@@ -21,16 +21,22 @@ public:
     const workflow_node_t *workflowNode() const;
 
     void refreshDisplay();
+    bool isOnConnectionHandle(const QPointF &scenePos) const;
 
 protected:
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
+               QWidget *widget = nullptr) override;
 
 private:
     static constexpr qreal nodeWidth = 300.0;
     static constexpr qreal minimumHeight = 142.0;
+    static constexpr qreal handleRadius = 7.0;
 
     void updateGeometryForText();
     void refreshStyle();
+    QPointF inputHandlePos() const;
+    QPointF outputHandlePos() const;
 
     EditorNode node_;
     QGraphicsTextItem *title_ = nullptr;
