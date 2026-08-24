@@ -36,6 +36,9 @@ endif()
 
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/plugin-main.c
+  src/workflow-model.h
+  src/workflow-manager.c
+  src/workflow-manager.h
   src/workflow-runtime.c
   src/workflow-runtime.h
   src/workflow-shortcuts.c
