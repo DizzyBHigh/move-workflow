@@ -6,7 +6,6 @@
 #include <obs.h>
 
 #include <QCheckBox>
-#include <QCompleter>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -32,14 +31,15 @@ static void spin_row(QVBoxLayout *layout, const QString &label,
     layout->addLayout(row);
 }
 
-static void add_source(void *data, obs_source_t *source)
+static bool add_source(void *data, obs_source_t *source)
 {
     auto *combo = static_cast<QComboBox *>(data);
     if (!combo || !source)
-        return;
+        return true;
     const QString name = QString::fromUtf8(obs_source_get_name(source));
     if (combo->findData(name) < 0)
         combo->addItem(name, name);
+    return true;
 }
 
 static void add_filter(obs_source_t *, obs_source_t *filter, void *data)
