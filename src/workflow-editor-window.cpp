@@ -4,6 +4,7 @@
 #include "workflow-model.h"
 #include "workflow-node-dialog.h"
 #include "workflow-node-duplicate-ui.h"
+#include "workflow-clipboard.h"
 #include "workflow-scene.h"
 #include "workflow-workspace.h"
 #include <obs-frontend-api.h>
@@ -28,10 +29,12 @@ public:
         setWindowTitle("Move Workflow Editor"); resize(1050, 700);
         auto *root = new QVBoxLayout(this); auto *toolbar = new QHBoxLayout;
         addButton_ = new QPushButton("+ Add Node", this); auto *edit = new QPushButton("Edit Node", this);
+        copyButton_ = new QPushButton("Copy", this); pasteButton_ = new QPushButton("Paste", this);
         duplicateButton_ = new QPushButton("Duplicate Node", this); deleteButton_ = new QPushButton("Delete Node", this);
         auto *zoomOut = new QPushButton("−", this); auto *zoomReset = new QPushButton("100%", this);
         auto *zoomIn = new QPushButton("+", this); auto *fit = new QPushButton("Fit All", this); auto *close = new QPushButton("Close", this);
-        toolbar->addWidget(addButton_); toolbar->addWidget(edit); toolbar->addWidget(duplicateButton_); toolbar->addWidget(deleteButton_);
+        toolbar->addWidget(addButton_); toolbar->addWidget(edit); toolbar->addWidget(copyButton_); toolbar->addWidget(pasteButton_);
+        toolbar->addWidget(duplicateButton_); toolbar->addWidget(deleteButton_);
         toolbar->addStretch(); toolbar->addWidget(zoomOut); toolbar->addWidget(zoomReset); toolbar->addWidget(zoomIn); toolbar->addWidget(fit); toolbar->addWidget(close);
         root->addLayout(toolbar);
         scene_ = new EditorScene(this); view_ = new WorkflowGraphicsView(scene_, this); workspace_.scene = scene_; workflow_workspace_init(&workspace_, scene_);
@@ -43,6 +46,7 @@ public:
         hint->setWordWrap(true); root->addWidget(hint); root->addWidget(view_, 1);
         auto *status = new QHBoxLayout; status->addStretch(); status->addWidget(new QLabel("Zoom:", this)); zoomLabel_ = new QLabel("100%", this); status->addWidget(zoomLabel_); root->addLayout(status); view_->setZoomLabel(zoomLabel_);
         connect(addButton_, &QPushButton::clicked, this, [this] { showAddNodeMenu(); }); connect(edit, &QPushButton::clicked, this, [this] { editSelectedNode(); });
+        connect(copyButton_, &QPushButton::clicked, this, [this] { copySelectedNodes(); }); connect(pasteButton_, &QPushButton::clicked, this, [this] { pasteNodes(); });
         connect(duplicateButton_, &QPushButton::clicked, this, [this] { duplicateSelectedNode(); }); connect(deleteButton_, &QPushButton::clicked, this, [this] { deleteSelectedNode(); });
         connect(zoomOut, &QPushButton::clicked, view_, &WorkflowGraphicsView::zoomOut); connect(zoomReset, &QPushButton::clicked, view_, &WorkflowGraphicsView::resetZoom);
         connect(zoomIn, &QPushButton::clicked, view_, &WorkflowGraphicsView::zoomIn); connect(fit, &QPushButton::clicked, view_, &WorkflowGraphicsView::fitAll); connect(close, &QPushButton::clicked, this, &QDialog::hide);
@@ -57,6 +61,8 @@ private:
     }
     void editNode(NodeItem *node) { if (!node) return; if (edit_node_settings(node, scene_->nodes(), this)) { node->refreshDisplay(); scene_->refreshConnectionsFor(node); } }
     void editSelectedNode() { editNode(scene_->selectedNode()); }
+    void copySelectedNodes() { if (workflow_clipboard_copy(scene_)) updateButtonState(); }
+    void pasteNodes() { if (workflow_clipboard_paste(scene_)) updateButtonState(); }
     void duplicateSelectedNode() { if (duplicate_selected_workflow_node(scene_)) updateButtonState(); }
     void deleteSelectedNode()
     {
@@ -64,9 +70,16 @@ private:
         if (QMessageBox::question(this, "Delete Node", QString("Delete '%1'?\n\nAny connections to this node will also be removed.").arg(name), QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes) return;
         scene_->deleteNode(node); updateButtonState();
     }
-    void updateButtonState() { const bool selected = scene_ && scene_->selectedNode(); deleteButton_->setEnabled(selected); duplicateButton_->setEnabled(selected); }
+    void updateButtonState()
+    {
+        const bool selected = scene_ && !scene_->selectedItems().isEmpty();
+        deleteButton_->setEnabled(selected && scene_->selectedNode());
+        duplicateButton_->setEnabled(selected && scene_->selectedNode());
+        copyButton_->setEnabled(selected);
+        pasteButton_->setEnabled(workflow_clipboard_has_data());
+    }
     workflow_workspace_t workspace_{}; EditorScene *scene_ = nullptr; WorkflowGraphicsView *view_ = nullptr; QLabel *zoomLabel_ = nullptr;
-    QPushButton *addButton_ = nullptr; QPushButton *duplicateButton_ = nullptr; QPushButton *deleteButton_ = nullptr;
+    QPushButton *addButton_ = nullptr; QPushButton *copyButton_ = nullptr; QPushButton *pasteButton_ = nullptr; QPushButton *duplicateButton_ = nullptr; QPushButton *deleteButton_ = nullptr;
 };
 QPointer<EditorWindow> window;
 }
