@@ -46,7 +46,9 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-editor-view.h
   src/workflow-node.cpp
   src/workflow-node.h
-  src/workflow-node-dialog.cpp
+  src/workflow-action-list.cpp
+  src/workflow-action-list.h
+  src/workflow-node-settings.cpp
   src/workflow-node-dialog.h
   src/workflow-scene.cpp
   src/workflow-scene.h
