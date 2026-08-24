@@ -6,7 +6,6 @@
 #include <QGraphicsItem>
 #include <QPointF>
 #include <QList>
-#include <cstdio>
 #include <cstring>
 #include <vector>
 
@@ -17,28 +16,20 @@ struct ClipNode {
 };
 std::vector<ClipNode> clipboard;
 
-bool selected(NodeItem *node, const QList<QGraphicsItem *> &items)
-{
-    return node && items.contains(node);
-}
-
 void remap(char ids[][WORKFLOW_MAX_NAME], size_t &count,
            const std::vector<QString> &oldIds, const std::vector<QString> &newIds)
 {
-    size_t write = 0;
     for (size_t i = 0; i < count; ++i) {
+        const QString oldId = QString::fromUtf8(ids[i]);
         for (size_t j = 0; j < oldIds.size(); ++j) {
-            if (QString::fromUtf8(ids[i]) == oldIds[j]) {
-                const QByteArray value = newIds[j].toUtf8();
-                strncpy(ids[write], value.constData(), WORKFLOW_MAX_NAME - 1);
-                ids[write][WORKFLOW_MAX_NAME - 1] = '\0';
-                ++write;
-                goto next_id;
-            }
+            if (oldId != oldIds[j])
+                continue;
+            const QByteArray value = newIds[j].toUtf8();
+            std::strncpy(ids[i], value.constData(), WORKFLOW_MAX_NAME - 1);
+            ids[i][WORKFLOW_MAX_NAME - 1] = '\0';
+            break;
         }
-next_id:;
     }
-    count = write;
 }
 }
 
@@ -47,9 +38,8 @@ bool workflow_clipboard_copy(EditorScene *scene)
     clipboard.clear();
     if (!scene)
         return false;
-    const QList<QGraphicsItem *> items = scene->selectedItems();
     for (NodeItem *node : scene->nodes()) {
-        if (!selected(node, items))
+        if (!node || !node->isSelected())
             continue;
         ClipNode copy;
         copy.node = *node->workflowNode();
@@ -68,6 +58,7 @@ bool workflow_clipboard_paste(EditorScene *scene)
     std::vector<QString> newIds;
     QList<NodeItem *> pasted;
     const QPointF offset(30.0, 30.0);
+    scene->clearSelection();
 
     for (const ClipNode &clip : clipboard) {
         QString id;
@@ -86,7 +77,7 @@ bool workflow_clipboard_paste(EditorScene *scene)
             return false;
         *node->workflowNode() = clip.node;
         const QByteArray idBytes = id.toUtf8();
-        strncpy(node->workflowNode()->id, idBytes.constData(), WORKFLOW_MAX_NAME - 1);
+        std::strncpy(node->workflowNode()->id, idBytes.constData(), WORKFLOW_MAX_NAME - 1);
         node->workflowNode()->id[WORKFLOW_MAX_NAME - 1] = '\0';
         node->setPos(clip.position + offset);
         oldIds.push_back(QString::fromUtf8(clip.node.id));
