@@ -14,6 +14,7 @@
 #include <QGraphicsScene>
 #include <QHBoxLayout>
 #include <QInputDialog>
+#include <QKeyEvent>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
@@ -59,6 +60,21 @@ public:
         auto *redoAltShortcut=new QShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Z")),this); redoAltShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(redoAltShortcut,&QShortcut::activated,this,&EditorWindow::redoWorkflow);
         auto *deleteShortcut=new QShortcut(QKeySequence::Delete,this); deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(deleteShortcut,&QShortcut::activated,this,&EditorWindow::deleteSelectedNodes);
         updateButtonState();
+    }
+protected:
+    void keyPressEvent(QKeyEvent *event) override
+    {
+        const bool control = event->modifiers() & Qt::ControlModifier;
+        const bool redoKey = event->key() == Qt::Key_Y || event->key() == Qt::Key_Z;
+        const bool redo = control && (event->key() == Qt::Key_Y ||
+            (event->key() == Qt::Key_Z && event->modifiers() & Qt::ShiftModifier));
+        if (redo && redoKey) {
+            qDebug() << "[Move Workflow] Editor keyPressEvent redo:" << event->key();
+            redoWorkflow();
+            event->accept();
+            return;
+        }
+        QDialog::keyPressEvent(event);
     }
 private:
     void scheduleSync(){if(syncPending_||applyingUndoRedo_)return;syncPending_=true;QTimer::singleShot(0,this,[this]{syncPending_=false;if(applyingUndoRedo_)return;workflow_workspace_sync_scene(&workspace_);undo_.capture();updateButtonState();});}
