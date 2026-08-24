@@ -36,6 +36,36 @@ endif()
 
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/plugin-main.c
+  src/workflow-model.h
+  src/workflow-manager.c
+  src/workflow-manager.h
+  src/workflow-manager-copy.c
+  src/workflow-manager-copy.h
+  src/workflow-manager-ui.cpp
+  src/workflow-manager-ui.h
+  src/workflow-workspace.cpp
+  src/workflow-workspace.h
+  src/workflow-node-copy.c
+  src/workflow-node-copy.h
+  src/workflow-node-duplicate-ui.cpp
+  src/workflow-node-duplicate-ui.h
+  src/workflow-clipboard.cpp
+  src/workflow-clipboard.h
+  src/workflow-persistence.cpp
+  src/workflow-persistence.h
+  src/workflow-persistence-json.cpp
+  src/workflow-persistence-json.h
+  src/workflow-undo.cpp
+  src/workflow-undo.h
+  src/workflow-runtime.c
+  src/workflow-runtime.h
+  src/workflow-shortcuts.c
+  src/workflow-shortcuts.h
+  src/workflow-test-data.c
+  src/workflow-test-menu.c
+  src/workflow-test-menu.h
+  src/workflow-hotkeys.c
+  src/workflow-hotkeys.h
   src/move-workflow-tests.cpp
   src/move-workflow-tests.h
   src/move-workflow-editor.cpp
@@ -46,7 +76,14 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-editor-view.h
   src/workflow-node.cpp
   src/workflow-node.h
-  src/workflow-node-dialog.cpp
+  src/workflow-action-list.cpp
+  src/workflow-action-list.h
+  src/workflow-node-settings.cpp
+  src/workflow-node-settings.h
+  src/workflow-node-settings-common.h
+  src/workflow-node-settings-action.cpp
+  src/workflow-node-settings-trigger.cpp
+  src/workflow-node-settings-trigger-data.cpp
   src/workflow-node-dialog.h
   src/workflow-scene.cpp
   src/workflow-scene.h

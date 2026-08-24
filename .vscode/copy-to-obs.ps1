@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
-$dll = Join-Path $PSScriptRoot '..\build_x64\RelWithDebInfo\plugintemplate-for-obs.dll'
-$pdb = Join-Path $PSScriptRoot '..\build_x64\RelWithDebInfo\plugintemplate-for-obs.pdb'
+$dll = Join-Path $PSScriptRoot '..\build_x64\RelWithDebInfo\obs-move-workflow.dll'
+$pdb = Join-Path $PSScriptRoot '..\build_x64\RelWithDebInfo\obs-move-workflow.pdb'
 $dest = 'C:\PORTABLE APPS\OBS Studio - RTS\obs-plugins\64bit'
 
 $dll = [System.IO.Path]::GetFullPath($dll)
@@ -15,6 +15,16 @@ if (!(Test-Path -LiteralPath $dest)) {
     throw "OBS plugin directory was not found: $dest"
 }
 
+$legacyDll = Join-Path $dest 'plugintemplate-for-obs.dll'
+$legacyPdb = Join-Path $dest 'plugintemplate-for-obs.pdb'
+
+foreach ($legacy in @($legacyDll, $legacyPdb)) {
+    if (Test-Path -LiteralPath $legacy) {
+        Remove-Item -LiteralPath $legacy -Force
+        Write-Host "Removed legacy plugin: $legacy"
+    }
+}
+
 Copy-Item -LiteralPath $dll -Destination $dest -Force
 
 if (Test-Path -LiteralPath $pdb) {
@@ -22,7 +32,7 @@ if (Test-Path -LiteralPath $pdb) {
 }
 
 Write-Host "Move Workflow copied to OBS:"
-Write-Host "  $dest\plugintemplate-for-obs.dll"
+Write-Host "  $dest\obs-move-workflow.dll"
 if (Test-Path -LiteralPath $pdb) {
-    Write-Host "  $dest\plugintemplate-for-obs.pdb"
+    Write-Host "  $dest\obs-move-workflow.pdb"
 }

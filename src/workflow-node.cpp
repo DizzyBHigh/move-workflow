@@ -1,6 +1,7 @@
 #include "workflow-node.h"
 
 #include <QGraphicsTextItem>
+#include <QPainter>
 #include <QPen>
 
 #include <QString>
@@ -107,6 +108,15 @@ void NodeItem::refreshDisplay()
     }
 
     updateGeometryForText();
+    update();
+}
+
+bool NodeItem::isOnConnectionHandle(const QPointF &scenePos) const
+{
+    const QPointF local = mapFromScene(scenePos);
+    const QRectF hitRect(rect().left(), rect().bottom() - dragBarHitHeight,
+                         rect().width(), dragBarHitHeight);
+    return hitRect.contains(local);
 }
 
 QVariant NodeItem::itemChange(GraphicsItemChange change, const QVariant &value)
@@ -114,6 +124,17 @@ QVariant NodeItem::itemChange(GraphicsItemChange change, const QVariant &value)
     if (change == ItemPositionHasChanged)
         node_.position = value.toPointF();
     return QGraphicsRectItem::itemChange(change, value);
+}
+
+void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+{
+    QGraphicsRectItem::paint(painter, option, widget);
+
+    const QRectF barRect(rect().left(), rect().bottom() - dragBarHeight,
+                         rect().width(), dragBarHeight);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(235, 145, 45));
+    painter->drawRect(barRect);
 }
 
 void NodeItem::updateGeometryForText()
