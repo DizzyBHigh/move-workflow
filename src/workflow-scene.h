@@ -15,9 +15,11 @@ public:
 
     NodeItem *addNode(workflow_node_type_t type, const QString &name);
     NodeItem *selectedNode() const;
+    QList<NodeItem *> selectedNodes() const;
     QList<NodeItem *> nodes() const;
 
     void deleteNode(NodeItem *node);
+    void deleteSelectedNodes();
     void refreshConnectionsFor(NodeItem *node);
     void rebuildConnections();
     void updateConnections();
