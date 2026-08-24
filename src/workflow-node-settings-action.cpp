@@ -92,15 +92,15 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent, QVBoxLayout *layout)
     simultaneous_ = new WorkflowActionList("Simultaneous Actions",
         "These actions start together with this Action.", node_, nodes_,
         wf->simultaneous_node_ids, wf->simultaneous_node_count, this);
-    endActions_ = new WorkflowActionList("End Actions",
-        "These actions start after this Action completes and its End Delay has elapsed.",
-        node_, nodes_, wf->end_node_ids, wf->end_node_count, this);
     nextActions_ = new WorkflowActionList("Next Actions",
-        "These actions are the next workflow nodes after this Action.",
+        "These actions start after this Action's duration and End Delay.",
         node_, nodes_, wf->next_node_ids, wf->next_node_count, this);
+    shortcutActions_ = new WorkflowActionList("Shortcut Actions",
+        "These actions wait for their configured OBS shortcut.",
+        node_, nodes_, wf->shortcut_node_ids, wf->shortcut_node_count, this);
     layout->addWidget(simultaneous_);
-    layout->addWidget(endActions_);
     layout->addWidget(nextActions_);
+    layout->addWidget(shortcutActions_);
 }
 
 void NodeSettingsDialog::populateSources(const QString &wanted)
