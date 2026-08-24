@@ -8,25 +8,28 @@
 #include <QPushButton>
 #include <QWidget>
 
-#include <cstdio>
-
 namespace {
 
 class WorkflowManagerWidget final : public QWidget {
 public:
     WorkflowManagerWidget(workflow_manager_t *manager, QWidget *parent,
-                          std::function<void(const char *)> selectionChanged)
-        : QWidget(parent), manager_(manager), selectionChanged_(std::move(selectionChanged))
+                          std::function<void(const char *)> selectionChanged,
+                          std::function<bool(const char *)> createWorkflow,
+                          std::function<bool(const char *)> duplicateWorkflow)
+        : QWidget(parent), manager_(manager), selectionChanged_(std::move(selectionChanged)),
+          createWorkflow_(std::move(createWorkflow)), duplicateWorkflow_(std::move(duplicateWorkflow))
     {
         auto *layout = new QHBoxLayout(this);
         layout->setContentsMargins(0, 0, 0, 0);
         combo_ = new QComboBox(this);
         add_ = new QPushButton("+ New", this);
+        duplicate_ = new QPushButton("Duplicate", this);
         rename_ = new QPushButton("Rename", this);
         remove_ = new QPushButton("Delete", this);
         enabled_ = new QCheckBox("Enabled", this);
         layout->addWidget(combo_, 1);
         layout->addWidget(add_);
+        layout->addWidget(duplicate_);
         layout->addWidget(rename_);
         layout->addWidget(remove_);
         layout->addWidget(enabled_);
@@ -40,6 +43,7 @@ public:
             refresh();
         });
         connect(add_, &QPushButton::clicked, this, [this] { addWorkflow(); });
+        connect(duplicate_, &QPushButton::clicked, this, [this] { duplicateWorkflow(); });
         connect(rename_, &QPushButton::clicked, this, [this] { renameWorkflow(); });
         connect(remove_, &QPushButton::clicked, this, [this] { removeWorkflow(); });
         connect(enabled_, &QCheckBox::toggled, this, [this](bool enabled) {
@@ -63,6 +67,7 @@ public:
         combo_->blockSignals(false);
         selected = workflow_manager_selected_const(manager_);
         const bool has = selected != nullptr;
+        duplicate_->setEnabled(has);
         rename_->setEnabled(has);
         remove_->setEnabled(has);
         enabled_->setEnabled(has);
@@ -79,13 +84,22 @@ private:
                                                    QLineEdit::Normal, "New Workflow", &ok);
         if (!ok || name.trimmed().isEmpty())
             return;
-        char id[WORKFLOW_MAX_NAME] = {};
-        snprintf(id, sizeof(id), "workflow_%zu", manager_->workflow_count + 1);
-        if (workflow_manager_create(manager_, id, name.trimmed().toUtf8().constData())) {
+        if (createWorkflow_ && createWorkflow_(name.trimmed().toUtf8().constData()))
             refresh();
-            if (selectionChanged_)
-                selectionChanged_(id);
-        }
+    }
+
+    void duplicateWorkflow()
+    {
+        bool ok = false;
+        const auto *selected = workflow_manager_selected_const(manager_);
+        const QString defaultName = selected
+            ? QString::fromUtf8(selected->name) + " Copy" : "Workflow Copy";
+        const QString name = QInputDialog::getText(this, "Duplicate Workflow", "Workflow name:",
+                                                   QLineEdit::Normal, defaultName, &ok);
+        if (!ok || name.trimmed().isEmpty())
+            return;
+        if (duplicateWorkflow_ && duplicateWorkflow_(name.trimmed().toUtf8().constData()))
+            refresh();
     }
 
     void renameWorkflow()
@@ -115,8 +129,11 @@ private:
 
     workflow_manager_t *manager_;
     std::function<void(const char *)> selectionChanged_;
+    std::function<bool(const char *)> createWorkflow_;
+    std::function<bool(const char *)> duplicateWorkflow_;
     QComboBox *combo_;
     QPushButton *add_;
+    QPushButton *duplicate_;
     QPushButton *rename_;
     QPushButton *remove_;
     QCheckBox *enabled_;
@@ -125,7 +142,10 @@ private:
 } // namespace
 
 QWidget *create_workflow_manager_ui(workflow_manager_t *manager, QWidget *parent,
-                                    std::function<void(const char *)> selectionChanged)
+                                    std::function<void(const char *)> selectionChanged,
+                                    std::function<bool(const char *)> createWorkflow,
+                                    std::function<bool(const char *)> duplicateWorkflow)
 {
-    return new WorkflowManagerWidget(manager, parent, std::move(selectionChanged));
+    return new WorkflowManagerWidget(manager, parent, std::move(selectionChanged),
+                                     std::move(createWorkflow), std::move(duplicateWorkflow));
 }
