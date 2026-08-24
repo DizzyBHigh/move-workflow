@@ -1,7 +1,6 @@
 #include "workflow-node.h"
 
 #include <QGraphicsTextItem>
-#include <QLineF>
 #include <QPainter>
 #include <QPen>
 
@@ -115,38 +114,9 @@ void NodeItem::refreshDisplay()
 bool NodeItem::isOnConnectionHandle(const QPointF &scenePos) const
 {
     const QPointF local = mapFromScene(scenePos);
-    const QPointF handles[] = {
-        inputHandlePos(),
-        outputHandlePos(),
-        topHandlePos(),
-        bottomHandlePos(),
-    };
-
-    for (const QPointF &handle : handles) {
-        if (QLineF(local, handle).length() <= handleHitRadius)
-            return true;
-    }
-    return false;
-}
-
-QPointF NodeItem::inputHandlePos() const
-{
-    return QPointF(rect().left(), rect().center().y());
-}
-
-QPointF NodeItem::outputHandlePos() const
-{
-    return QPointF(rect().right(), rect().center().y());
-}
-
-QPointF NodeItem::topHandlePos() const
-{
-    return QPointF(rect().center().x(), rect().top());
-}
-
-QPointF NodeItem::bottomHandlePos() const
-{
-    return QPointF(rect().center().x(), rect().bottom());
+    const QRectF hitRect(rect().left(), rect().bottom() - dragBarHitHeight,
+                         rect().width(), dragBarHitHeight);
+    return hitRect.contains(local);
 }
 
 QVariant NodeItem::itemChange(GraphicsItemChange change, const QVariant &value)
@@ -160,12 +130,11 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
 {
     QGraphicsRectItem::paint(painter, option, widget);
 
-    painter->setPen(QPen(QColor(235, 240, 245), 1));
-    painter->setBrush(QColor(75, 85, 100));
-    painter->drawEllipse(inputHandlePos(), handleRadius, handleRadius);
-    painter->drawEllipse(outputHandlePos(), handleRadius, handleRadius);
-    painter->drawEllipse(topHandlePos(), handleRadius, handleRadius);
-    painter->drawEllipse(bottomHandlePos(), handleRadius, handleRadius);
+    const QRectF barRect(rect().left(), rect().bottom() - dragBarHeight,
+                         rect().width(), dragBarHeight);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(235, 145, 45));
+    painter->drawRect(barRect);
 }
 
 void NodeItem::updateGeometryForText()
