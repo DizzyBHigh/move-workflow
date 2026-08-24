@@ -185,8 +185,6 @@ AutoRegister auto_register;
 
 } // namespace
 
-#include "move-workflow-editor.moc"
-
 void move_workflow_register_editor(void)
 {
     QTimer::singleShot(0, register_menu);
