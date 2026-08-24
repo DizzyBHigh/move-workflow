@@ -70,8 +70,8 @@ public:
     ~EditorWindow() override { workflow_hotkeys_set_redo_callback(nullptr); if(qApp) qApp->removeEventFilter(this); }
     static void redoFromHotkeyStatic(void)
     {
-        if (window)
-            window->redoWorkflow();
+        if (::window)
+            ::window->redoWorkflow();
     }
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override
