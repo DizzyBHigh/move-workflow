@@ -1,6 +1,7 @@
 #include "workflow-undo.h"
 #include <QUndoCommand>
 #include <QUndoStack>
+#include <QDebug>
 #include <cstring>
 #include <memory>
 
@@ -68,7 +69,13 @@ void WorkflowUndo::captureManager()
 }
 bool WorkflowUndo::undo()
 {
+    qDebug() << "[Move Workflow] UNDO requested: canUndo=" << stack_->canUndo()
+             << "canRedo=" << stack_->canRedo() << "index=" << stack_->index()
+             << "count=" << stack_->count();
     if (!stack_->canUndo()) return false; stack_->undo();
+    qDebug() << "[Move Workflow] UNDO complete: canUndo=" << stack_->canUndo()
+             << "canRedo=" << stack_->canRedo() << "index=" << stack_->index()
+             << "count=" << stack_->count();
     workflow_ = manager_ ? workflow_manager_selected(manager_) : workflow_;
     if (workflow_) last_ = *workflow_;
     if (manager_) last_manager_ = std::make_unique<workflow_manager_t>(*manager_);
@@ -76,7 +83,13 @@ bool WorkflowUndo::undo()
 }
 bool WorkflowUndo::redo()
 {
+    qDebug() << "[Move Workflow] REDO requested: canUndo=" << stack_->canUndo()
+             << "canRedo=" << stack_->canRedo() << "index=" << stack_->index()
+             << "count=" << stack_->count();
     if (!stack_->canRedo()) return false; stack_->redo();
+    qDebug() << "[Move Workflow] REDO complete: canUndo=" << stack_->canUndo()
+             << "canRedo=" << stack_->canRedo() << "index=" << stack_->index()
+             << "count=" << stack_->count();
     workflow_ = manager_ ? workflow_manager_selected(manager_) : workflow_;
     if (workflow_) last_ = *workflow_;
     if (manager_) last_manager_ = std::make_unique<workflow_manager_t>(*manager_);
