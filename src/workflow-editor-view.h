@@ -5,8 +5,6 @@
 class QLabel;
 
 class WorkflowGraphicsView final : public QGraphicsView {
-    Q_OBJECT
-
 public:
     explicit WorkflowGraphicsView(QGraphicsScene *scene, QWidget *parent = nullptr);
 
