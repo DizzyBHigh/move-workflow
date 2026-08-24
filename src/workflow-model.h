@@ -39,6 +39,7 @@ typedef enum workflow_trigger_type {
     WORKFLOW_TRIGGER_UDP_PACKET,
     WORKFLOW_TRIGGER_WEBSOCKET_REQUEST,
     WORKFLOW_TRIGGER_WEBSOCKET_EVENT,
+    WORKFLOW_TRIGGER_WORKFLOW,
 } workflow_trigger_type_t;
 
 typedef enum workflow_trigger_state {
@@ -57,6 +58,7 @@ typedef struct workflow_trigger_ref {
     char filter_id[WORKFLOW_MAX_NAME];
     char hotkey[WORKFLOW_MAX_NAME];
     char setting_name[WORKFLOW_MAX_NAME];
+    char target_workflow_id[WORKFLOW_MAX_NAME];
     char value[WORKFLOW_MAX_VALUE];
     char match[WORKFLOW_MAX_VALUE];
 } workflow_trigger_ref_t;
@@ -91,14 +93,12 @@ typedef struct workflow_node {
     workflow_value_mode_t simultaneous_actions_mode;
     workflow_value_mode_t end_actions_mode;
     workflow_value_mode_t next_actions_mode;
-
     workflow_value_mode_t start_trigger_mode;
     workflow_value_mode_t stop_trigger_mode;
     workflow_value_mode_t next_move_on_mode;
     char start_trigger_value[WORKFLOW_MAX_VALUE];
     char stop_trigger_value[WORKFLOW_MAX_VALUE];
     char next_move_on_value[WORKFLOW_MAX_VALUE];
-
     size_t end_node_count;
     char end_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
     size_t simultaneous_node_count;
@@ -153,6 +153,7 @@ static inline const char *workflow_trigger_type_name(workflow_trigger_type_t typ
     case WORKFLOW_TRIGGER_UDP_PACKET: return "UDP Packet";
     case WORKFLOW_TRIGGER_WEBSOCKET_REQUEST: return "WebSocket Request";
     case WORKFLOW_TRIGGER_WEBSOCKET_EVENT: return "WebSocket Event";
+    case WORKFLOW_TRIGGER_WORKFLOW: return "Workflow";
     default: return "None";
     }
 }
