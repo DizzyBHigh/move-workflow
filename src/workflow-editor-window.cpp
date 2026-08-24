@@ -9,6 +9,7 @@
 #include "workflow-scene.h"
 #include "workflow-undo.h"
 #include "workflow-workspace.h"
+#include "workflow-hotkeys.h"
 #include <obs-frontend-api.h>
 #include <QApplication>
 #include <QDialog>
@@ -33,6 +34,15 @@
 #include <cstring>
 
 namespace {
+class EditorWindow;
+QPointer<EditorWindow> window;
+
+void workflow_redo_hotkey_callback(void)
+{
+    if (window)
+        window->redoFromHotkey();
+}
+
 class EditorWindow final : public QDialog {
 public:
     explicit EditorWindow(QWidget *parent = nullptr) : QDialog(parent)
@@ -61,31 +71,25 @@ public:
         auto *redoAction=new QAction(tr("Redo"),this); redoAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Y"))); redoAction->setShortcutContext(Qt::WidgetWithChildrenShortcut); connect(redoAction,&QAction::triggered,this,[this]{qDebug()<<"[Move Workflow] Ctrl+Y redo action triggered";redoWorkflow();}); addAction(redoAction);
         auto *redoAltShortcut=new QShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Z")),this); redoAltShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(redoAltShortcut,&QShortcut::activated,this,&EditorWindow::redoWorkflow);
         auto *deleteShortcut=new QShortcut(QKeySequence::Delete,this); deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(deleteShortcut,&QShortcut::activated,this,&EditorWindow::deleteSelectedNodes);
-        updateButtonState();
+        workflow_hotkeys_set_redo_callback(workflow_redo_hotkey_callback); updateButtonState();
     }
-    ~EditorWindow() override { if(qApp) qApp->removeEventFilter(this); }
+    ~EditorWindow() override { workflow_hotkeys_set_redo_callback(nullptr); if(qApp) qApp->removeEventFilter(this); }
+    void redoFromHotkey() { redoWorkflow(); }
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override
     {
         if (event->type() == QEvent::KeyPress && isActiveWindow()) {
             auto *key = static_cast<QKeyEvent *>(event);
             const bool control = key->modifiers() & Qt::ControlModifier;
-            const bool redo = control && (key->key() == Qt::Key_Y ||
-                (key->key() == Qt::Key_Z && key->modifiers() & Qt::ShiftModifier));
-            if (redo) {
-                qDebug() << "[Move Workflow] Application redo key:" << key->key()
-                         << "focus=" << (QApplication::focusWidget() ? QApplication::focusWidget()->objectName() : QString());
-                redoWorkflow();
-                return true;
-            }
+            const bool redo = control && (key->key() == Qt::Key_Y || (key->key() == Qt::Key_Z && key->modifiers() & Qt::ShiftModifier));
+            if (redo) { qDebug() << "[Move Workflow] Application redo key:" << key->key(); redoWorkflow(); return true; }
         }
         return QDialog::eventFilter(watched, event);
     }
     void keyPressEvent(QKeyEvent *event) override
     {
         const bool control = event->modifiers() & Qt::ControlModifier;
-        const bool redo = control && (event->key() == Qt::Key_Y ||
-            (event->key() == Qt::Key_Z && event->modifiers() & Qt::ShiftModifier));
+        const bool redo = control && (event->key() == Qt::Key_Y || (event->key() == Qt::Key_Z && event->modifiers() & Qt::ShiftModifier));
         if (redo) { redoWorkflow(); event->accept(); return; }
         QDialog::keyPressEvent(event);
     }
@@ -108,6 +112,5 @@ private:
     workflow_workspace_t workspace_{};WorkflowUndo undo_;QWidget *managerUi_=nullptr;EditorScene *scene_=nullptr;WorkflowGraphicsView *view_=nullptr;QLabel *zoomLabel_=nullptr;bool syncPending_=false;bool applyingUndoRedo_=false;unsigned long long syncGeneration_=0;
     QPushButton *addButton_=nullptr;QPushButton *copyButton_=nullptr;QPushButton *pasteButton_=nullptr;QPushButton *duplicateButton_=nullptr;QPushButton *deleteButton_=nullptr;
 };
-QPointer<EditorWindow> window;
 }
 void show_move_workflow_editor(QWidget *parent){if(!window){auto *mainWindow=parent?parent:static_cast<QWidget *>(obs_frontend_get_main_window());window=new EditorWindow(mainWindow);}window->show();window->raise();window->activateWindow();}
