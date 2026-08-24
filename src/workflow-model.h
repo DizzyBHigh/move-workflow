@@ -26,7 +26,6 @@ typedef enum workflow_value_mode {
     WORKFLOW_OVERRIDE,
 } workflow_value_mode_t;
 
-/* The kind of event a Trigger Node watches. */
 typedef enum workflow_trigger_type {
     WORKFLOW_TRIGGER_NONE = 0,
     WORKFLOW_TRIGGER_FRONTEND_ACTION,
@@ -47,12 +46,6 @@ typedef enum workflow_trigger_state {
     WORKFLOW_TRIGGER_STATE_ENABLED = 1,
 } workflow_trigger_state_t;
 
-/*
- * A Trigger Node is an event definition. The type says what happened; the
- * remaining fields identify exactly what we are watching. The generic value
- * fields intentionally allow later trigger implementations to grow without
- * changing the node model again.
- */
 typedef struct workflow_trigger_ref {
     workflow_trigger_type_t type;
     workflow_trigger_state_t state;
@@ -68,7 +61,6 @@ typedef struct workflow_trigger_ref {
     char match[WORKFLOW_MAX_VALUE];
 } workflow_trigger_ref_t;
 
-/* A reference to an existing Move-family filter/action in OBS. */
 typedef struct workflow_action_ref {
     char scene_name[WORKFLOW_MAX_NAME];
     char source_name[WORKFLOW_MAX_NAME];
@@ -91,14 +83,8 @@ typedef struct workflow_node {
     char id[WORKFLOW_MAX_NAME];
     char name[WORKFLOW_MAX_NAME];
     workflow_node_type_t type;
-
-    /* Used by trigger nodes. */
     workflow_trigger_ref_t trigger;
-
-    /* Used by action nodes. References an existing OBS filter. */
     workflow_action_ref_t action;
-
-    /* Director-owned settings. */
     workflow_duration_override_t duration;
     workflow_delay_override_t start_delay;
     workflow_delay_override_t end_delay;
@@ -106,7 +92,6 @@ typedef struct workflow_node {
     workflow_value_mode_t end_actions_mode;
     workflow_value_mode_t next_actions_mode;
 
-    /* Legacy fields retained for compatibility with the existing director. */
     workflow_value_mode_t start_trigger_mode;
     workflow_value_mode_t stop_trigger_mode;
     workflow_value_mode_t next_move_on_mode;
@@ -116,22 +101,20 @@ typedef struct workflow_node {
 
     size_t end_node_count;
     char end_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
-
     size_t simultaneous_node_count;
     char simultaneous_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
-
     size_t next_node_count;
     char next_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
+    size_t shortcut_node_count;
+    char shortcut_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
 } workflow_node_t;
 
 typedef struct workflow {
     char id[WORKFLOW_MAX_NAME];
     char name[WORKFLOW_MAX_NAME];
     bool enabled;
-
     size_t entry_node_count;
     char entry_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
-
     size_t node_count;
     workflow_node_t nodes[WORKFLOW_MAX_NODES];
 } workflow_t;
@@ -139,28 +122,20 @@ typedef struct workflow {
 static inline const char *workflow_node_type_name(workflow_node_type_t type)
 {
     switch (type) {
-    case WORKFLOW_NODE_TRIGGER:
-        return "Trigger";
-    case WORKFLOW_NODE_ACTION:
-        return "Action";
-    default:
-        return "Unknown";
+    case WORKFLOW_NODE_TRIGGER: return "Trigger";
+    case WORKFLOW_NODE_ACTION: return "Action";
+    default: return "Unknown";
     }
 }
 
 static inline const char *workflow_move_kind_name(workflow_move_kind_t kind)
 {
     switch (kind) {
-    case WORKFLOW_MOVE_ACTION:
-        return "Move Action";
-    case WORKFLOW_MOVE_SOURCE:
-        return "Move Source";
-    case WORKFLOW_MOVE_SWAP:
-        return "Move Source Swap";
-    case WORKFLOW_MOVE_VALUE:
-        return "Move Value";
-    default:
-        return "Unknown";
+    case WORKFLOW_MOVE_ACTION: return "Move Action";
+    case WORKFLOW_MOVE_SOURCE: return "Move Source";
+    case WORKFLOW_MOVE_SWAP: return "Move Source Swap";
+    case WORKFLOW_MOVE_VALUE: return "Move Value";
+    default: return "Unknown";
     }
 }
 
