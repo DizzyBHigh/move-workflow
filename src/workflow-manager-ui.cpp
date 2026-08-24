@@ -24,7 +24,7 @@ public:
         rename_=new QPushButton("Rename",this); remove_=new QPushButton("Delete",this); enabled_=new QCheckBox("Enabled",this);
         layout->addWidget(combo_,1); layout->addWidget(add_); layout->addWidget(duplicate_); layout->addWidget(rename_); layout->addWidget(remove_); layout->addWidget(enabled_); refresh();
         connect(combo_,&QComboBox::currentIndexChanged,this,[this](int i){ if(i>=0&&selectionChanged_){const QByteArray id=combo_->itemData(i).toByteArray(); selectionChanged_(id.constData());} refresh(); });
-        connect(add_,&QPushButton::clicked,this,[this]{addWorkflow();}); connect(duplicate_,&QPushButton::clicked,this,[this]{duplicateWorkflow();});
+        connect(add_,&QPushButton::clicked,this,[this]{addWorkflow();}); connect(duplicate_,&QPushButton::clicked,this,[this]{this->duplicateWorkflow();});
         connect(rename_,&QPushButton::clicked,this,[this]{renameWorkflow();}); connect(remove_,&QPushButton::clicked,this,[this]{removeWorkflow();});
         connect(enabled_,&QCheckBox::toggled,this,[this](bool e){const auto *s=workflow_manager_selected_const(manager_); if(s) workflow_manager_set_enabled(manager_,s->id,e); if(stateChanged_) stateChanged_();});
     }
