@@ -64,16 +64,14 @@ public:
         connect(zoomOut,&QPushButton::clicked,view_,&WorkflowGraphicsView::zoomOut); connect(zoomReset,&QPushButton::clicked,view_,&WorkflowGraphicsView::resetZoom); connect(zoomIn,&QPushButton::clicked,view_,&WorkflowGraphicsView::zoomIn); connect(fit,&QPushButton::clicked,view_,&WorkflowGraphicsView::fitAll); connect(close,&QPushButton::clicked,this,&QDialog::hide);
         connect(scene_,&QGraphicsScene::selectionChanged,this,[this]{updateButtonState();}); connect(scene_,&EditorScene::nodeDoubleClicked,this,[this](NodeItem *node){editNode(node);}); connect(scene_,&QGraphicsScene::changed,this,[this]{scheduleSync();});
         auto *undoShortcut=new QShortcut(QKeySequence::Undo,this); undoShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(undoShortcut,&QShortcut::activated,this,&EditorWindow::undoWorkflow);
-        auto *redoAction=new QAction(tr("Redo"),this); redoAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Y"))); redoAction->setShortcutContext(Qt::WidgetWithChildrenShortcut); connect(redoAction,&QAction::triggered,this,&EditorWindow::redoWorkflow); addAction(redoAction);
-        auto *redoAltShortcut=new QShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Z")),this); redoAltShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(redoAltShortcut,&QShortcut::activated,this,&EditorWindow::redoWorkflow);
         auto *deleteShortcut=new QShortcut(QKeySequence::Delete,this); deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(deleteShortcut,&QShortcut::activated,this,&EditorWindow::deleteSelectedNodes); updateButtonState();
     }
     ~EditorWindow() override { if(qApp) qApp->removeEventFilter(this); }
 public slots:
     void redoFromHotkey() { blog(LOG_INFO,"[Move Workflow] Ctrl+Y Qt slot reached."); redoWorkflow(); }
 protected:
-    bool eventFilter(QObject *watched,QEvent *event) override { if(event->type()==QEvent::KeyPress&&isActiveWindow()){auto *key=static_cast<QKeyEvent *>(event);const bool control=key->modifiers()&Qt::ControlModifier;const bool redo=control&&(key->key()==Qt::Key_Y||(key->key()==Qt::Key_Z&&key->modifiers()&Qt::ShiftModifier));if(redo){redoWorkflow();return true;}}return QDialog::eventFilter(watched,event); }
-    void keyPressEvent(QKeyEvent *event) override {const bool control=event->modifiers()&Qt::ControlModifier;const bool redo=control&&(event->key()==Qt::Key_Y||(event->key()==Qt::Key_Z&&event->modifiers()&Qt::ShiftModifier));if(redo){redoWorkflow();event->accept();return;}QDialog::keyPressEvent(event);}
+    bool eventFilter(QObject *watched,QEvent *event) override { return QDialog::eventFilter(watched,event); }
+    void keyPressEvent(QKeyEvent *event) override { QDialog::keyPressEvent(event); }
 private:
     void scheduleSync(){if(syncPending_||applyingUndoRedo_)return;syncPending_=true;const auto generation=syncGeneration_;QTimer::singleShot(0,this,[this,generation]{syncPending_=false;if(applyingUndoRedo_||generation!=syncGeneration_)return;workflow_workspace_sync_scene(&workspace_);undo_.capture();updateButtonState();});}
     void resetUndo(){++syncGeneration_;undo_.reset(workflow_manager_selected(workflow_workspace_manager(&workspace_)),workflow_manager_selected(workflow_workspace_manager(&workspace_))?workflow_workspace_manager(&workspace_):workflow_workspace_manager(&workspace_));}
