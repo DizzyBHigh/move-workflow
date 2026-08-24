@@ -22,6 +22,7 @@ private:
     workflow_t *workflow_ = nullptr;
     workflow_manager_t *manager_ = nullptr;
     workflow_t last_{};
+    workflow_t replayState_{};
     std::unique_ptr<workflow_manager_t> last_manager_;
     QUndoStack *stack_ = nullptr;
     bool suppressCapture_ = false;
