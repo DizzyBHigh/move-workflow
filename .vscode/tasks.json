@@ -5,11 +5,7 @@
             "label": "Move Workflow: Configure",
             "type": "shell",
             "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
-            "args": [
-                "-S", ".",
-                "-B", "build_x64",
-                "-DENABLE_QT=ON"
-            ],
+            "args": ["-S", ".", "-B", "build_x64", "-DENABLE_QT=ON"],
             "problemMatcher": [],
             "group": "build"
         },
@@ -17,10 +13,7 @@
             "label": "Move Workflow: Build",
             "type": "shell",
             "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
-            "args": [
-                "--build", "build_x64",
-                "--config", "RelWithDebInfo"
-            ],
+            "args": ["--build", "build_x64", "--config", "RelWithDebInfo"],
             "problemMatcher": [],
             "group": "build",
             "dependsOn": "Move Workflow: Configure",
@@ -29,42 +22,21 @@
         {
             "label": "Move Workflow: Build + Copy to OBS",
             "type": "shell",
-            "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
+            "command": "powershell.exe",
             "args": [
-                "-S", ".",
-                "-B", "build_x64",
-                "-DENABLE_QT=ON",
-                "--fresh"
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-Command",
+                "$cmake='C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe'; $files=@('CMakeLists.txt','buildspec.json'); $files += Get-ChildItem 'cmake/common' -Recurse -File | ForEach-Object { $_.FullName.Substring((Get-Location).Path.Length+1) }; $hash=(Get-FileHash $files -Algorithm SHA256 | ForEach-Object Hash) -join ''; $stamp='build_x64\\.move-workflow-cmake-identity'; $old=if(Test-Path $stamp){Get-Content $stamp -Raw}else{''}; if($hash -ne $old){ Write-Host 'Project identity changed - refreshing CMake configuration'; & $cmake -S . -B build_x64 -DENABLE_QT=ON; if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; Set-Content $stamp $hash } else { Write-Host 'Project identity unchanged - using existing CMake configuration' }; & $cmake --build build_x64 --config RelWithDebInfo; if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File '.vscode\\copy-to-obs.ps1'; exit $LASTEXITCODE"
             ],
             "problemMatcher": [],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "dependsOn": "Move Workflow: Build + Copy to OBS (Build)",
-            "dependsOrder": "sequence"
-        },
-        {
-            "label": "Move Workflow: Build + Copy to OBS (Build)",
-            "type": "shell",
-            "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
-            "args": [
-                "--build", "build_x64",
-                "--config", "RelWithDebInfo"
-            ],
-            "problemMatcher": [],
-            "dependsOn": "Move Workflow: Copy to OBS",
-            "dependsOrder": "sequence"
+            "group": {"kind": "build", "isDefault": true}
         },
         {
             "label": "Move Workflow: Copy to OBS",
             "type": "process",
             "command": "powershell.exe",
-            "args": [
-                "-NoProfile",
-                "-ExecutionPolicy", "Bypass",
-                "-File", "${workspaceFolder}\\.vscode\\copy-to-obs.ps1"
-            ],
+            "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}\\.vscode\\copy-to-obs.ps1"],
             "problemMatcher": [],
             "group": "build"
         },
@@ -73,10 +45,8 @@
             "type": "shell",
             "command": "powershell.exe",
             "args": [
-                "-NoProfile",
-                "-ExecutionPolicy", "Bypass",
-                "-Command",
-                "$cmake='C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe'; & $cmake -S . -B build_x64 -DENABLE_QT=ON --fresh; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & $cmake --build build_x64 --config RelWithDebInfo; exit $LASTEXITCODE"
+                "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
+                "$cmake='C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe'; & $cmake -S . -B build_x64 -DENABLE_QT=ON; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & $cmake --build build_x64 --config RelWithDebInfo; exit $LASTEXITCODE"
             ],
             "problemMatcher": [],
             "group": "build"
