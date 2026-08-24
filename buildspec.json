@@ -33,13 +33,13 @@
     },
     "platformConfig": {
         "macos": {
-            "bundleId": "com.example.plugintemplate-for-obs"
+            "bundleId": "com.dizzybhigh.obs-move-workflow"
         }
     },
-    "name": "plugintemplate-for-obs",
-    "displayName": "Plugin Template for OBS",
+    "name": "obs-move-workflow",
+    "displayName": "OBS Move Workflow",
     "version": "1.0.0",
-    "author": "Your Name Here",
-    "website": "https://example.com",
+    "author": "DizzyBHigh",
+    "website": "https://github.com/DizzyBHigh/obs-move-workflow",
     "email": "me@example.com"
 }
