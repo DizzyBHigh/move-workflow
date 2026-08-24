@@ -47,9 +47,9 @@ void WorkflowUndo::capture()
 {
     if (!workflow_) return;
     if (suppressCapture_) {
+        if (std::memcmp(&replayState_, workflow_, sizeof(workflow_t)) == 0)
+            return;
         suppressCapture_ = false;
-        last_ = *workflow_;
-        return;
     }
     if (std::memcmp(&last_, workflow_, sizeof(workflow_t)) == 0) return;
     auto before = std::make_unique<workflow_t>(last_);
@@ -79,6 +79,7 @@ bool WorkflowUndo::undo()
              << "count=" << stack_->count();
     if (!stack_->canUndo()) return false;
     stack_->undo();
+    replayState_ = workflow_ ? *workflow_ : workflow_t{};
     suppressCapture_ = true;
     qDebug() << "[Move Workflow] UNDO complete: canUndo=" << stack_->canUndo()
              << "canRedo=" << stack_->canRedo() << "index=" << stack_->index()
@@ -95,6 +96,7 @@ bool WorkflowUndo::redo()
              << "count=" << stack_->count();
     if (!stack_->canRedo()) return false;
     stack_->redo();
+    replayState_ = workflow_ ? *workflow_ : workflow_t{};
     suppressCapture_ = true;
     qDebug() << "[Move Workflow] REDO complete: canUndo=" << stack_->canUndo()
              << "canRedo=" << stack_->canRedo() << "index=" << stack_->index()
