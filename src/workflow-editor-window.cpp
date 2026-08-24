@@ -14,7 +14,6 @@
 #include <QGraphicsScene>
 #include <QHBoxLayout>
 #include <QInputDialog>
-#include <QKeyEvent>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
@@ -42,7 +41,7 @@ public:
         duplicateButton_=new QPushButton("Duplicate Node",this); deleteButton_=new QPushButton("Delete Node",this);
         auto *zoomOut=new QPushButton("−",this); auto *zoomReset=new QPushButton("100%",this); auto *zoomIn=new QPushButton("+",this); auto *fit=new QPushButton("Fit All",this); auto *close=new QPushButton("Close",this);
         toolbar->addWidget(addButton_); toolbar->addWidget(edit); toolbar->addWidget(copyButton_); toolbar->addWidget(pasteButton_); toolbar->addWidget(duplicateButton_); toolbar->addWidget(deleteButton_); toolbar->addStretch(); toolbar->addWidget(zoomOut); toolbar->addWidget(zoomReset); toolbar->addWidget(zoomIn); toolbar->addWidget(fit); toolbar->addWidget(close); root->addLayout(toolbar);
-        scene_=new EditorScene(this); view_=new WorkflowGraphicsView(scene_,this); view_->viewport()->installEventFilter(this); workspace_.scene=scene_; workflow_workspace_init(&workspace_,scene_); resetUndo();
+        scene_=new EditorScene(this); view_=new WorkflowGraphicsView(scene_,this); workspace_.scene=scene_; workflow_workspace_init(&workspace_,scene_); resetUndo();
         managerUi_=create_workflow_manager_ui(workflow_workspace_manager(&workspace_),this,
             [this](const char *id){ if(workflow_workspace_select(&workspace_,id)) resetUndo(); },
             [this](const char *name){const bool ok=workflow_workspace_create(&workspace_,name); if(ok)resetUndo(); return ok;},
@@ -55,28 +54,11 @@ public:
         connect(addButton_,&QPushButton::clicked,this,[this]{showAddNodeMenu();}); connect(edit,&QPushButton::clicked,this,[this]{editSelectedNode();}); connect(copyButton_,&QPushButton::clicked,this,[this]{copySelectedNodes();}); connect(pasteButton_,&QPushButton::clicked,this,[this]{pasteNodes();}); connect(duplicateButton_,&QPushButton::clicked,this,[this]{duplicateSelectedNode();}); connect(deleteButton_,&QPushButton::clicked,this,[this]{deleteSelectedNodes();});
         connect(zoomOut,&QPushButton::clicked,view_,&WorkflowGraphicsView::zoomOut); connect(zoomReset,&QPushButton::clicked,view_,&WorkflowGraphicsView::resetZoom); connect(zoomIn,&QPushButton::clicked,view_,&WorkflowGraphicsView::zoomIn); connect(fit,&QPushButton::clicked,view_,&WorkflowGraphicsView::fitAll); connect(close,&QPushButton::clicked,this,&QDialog::hide);
         connect(scene_,&QGraphicsScene::selectionChanged,this,[this]{updateButtonState();}); connect(scene_,&EditorScene::nodeDoubleClicked,this,[this](NodeItem *node){editNode(node);}); connect(scene_,&QGraphicsScene::changed,this,[this]{scheduleSync();});
-        auto *undoAction=new QAction(tr("Undo"),this); undoAction->setShortcut(QKeySequence::Undo); undoAction->setShortcutContext(Qt::WidgetWithChildrenShortcut); connect(undoAction,&QAction::triggered,this,&EditorWindow::undoWorkflow); addAction(undoAction);
-        auto *redoAction=new QAction(tr("Redo"),this); redoAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Y"))); redoAction->setShortcutContext(Qt::WidgetWithChildrenShortcut); connect(redoAction,&QAction::triggered,this,&EditorWindow::redoWorkflow); addAction(redoAction);
-        auto *redoAltAction=new QAction(tr("Redo"),this); redoAltAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Z"))); redoAltAction->setShortcutContext(Qt::WidgetWithChildrenShortcut); connect(redoAltAction,&QAction::triggered,this,&EditorWindow::redoWorkflow); addAction(redoAltAction);
+        auto *undoShortcut=new QShortcut(QKeySequence::Undo,this); undoShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(undoShortcut,&QShortcut::activated,this,&EditorWindow::undoWorkflow);
+        auto *redoShortcut=new QShortcut(QKeySequence(QStringLiteral("Ctrl+Y")),this); redoShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(redoShortcut,&QShortcut::activated,this,&EditorWindow::redoWorkflow);
+        auto *redoAltShortcut=new QShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Z")),this); redoAltShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(redoAltShortcut,&QShortcut::activated,this,&EditorWindow::redoWorkflow);
+        auto *deleteShortcut=new QShortcut(QKeySequence::Delete,this); deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(deleteShortcut,&QShortcut::activated,this,&EditorWindow::deleteSelectedNodes);
         updateButtonState();
-    }
-protected:
-    bool eventFilter(QObject *watched, QEvent *event) override
-    {
-        if (watched == view_->viewport() && event->type() == QEvent::KeyPress) {
-            auto *key = static_cast<QKeyEvent *>(event);
-            if (key->key() == Qt::Key_Delete && !key->isAutoRepeat()) { deleteSelectedNodes(); return true; }
-            if (!key->isAutoRepeat() && key->modifiers() == Qt::ControlModifier && key->key() == Qt::Key_Y) {
-                qDebug() << "[Move Workflow] Ctrl+Y received by workflow viewport";
-                redoWorkflow();
-                return true;
-            }
-            if (!key->isAutoRepeat() && key->modifiers() == (Qt::ControlModifier | Qt::ShiftModifier) && key->key() == Qt::Key_Z) {
-                redoWorkflow();
-                return true;
-            }
-        }
-        return QDialog::eventFilter(watched, event);
     }
 private:
     void scheduleSync(){if(syncPending_||applyingUndoRedo_)return;syncPending_=true;QTimer::singleShot(0,this,[this]{syncPending_=false;if(applyingUndoRedo_)return;workflow_workspace_sync_scene(&workspace_);undo_.capture();updateButtonState();});}
