@@ -1,20 +1,22 @@
 #include "workflow-manager-ui.h"
 
-#include "workflow-manager.h"
-
 #include <QCheckBox>
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QInputDialog>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QWidget>
+
+#include <cstdio>
 
 namespace {
 
 class WorkflowManagerWidget final : public QWidget {
 public:
-    WorkflowManagerWidget(workflow_manager *manager, QWidget *parent)
-        : QWidget(parent), manager_(manager)
+    WorkflowManagerWidget(workflow_manager_t *manager, QWidget *parent,
+                          std::function<void(const char *)> selectionChanged)
+        : QWidget(parent), manager_(manager), selectionChanged_(std::move(selectionChanged))
     {
         auto *layout = new QHBoxLayout(this);
         layout->setContentsMargins(0, 0, 0, 0);
@@ -30,8 +32,11 @@ public:
         layout->addWidget(enabled_);
         refresh();
         connect(combo_, &QComboBox::currentIndexChanged, this, [this](int index) {
-            if (index >= 0)
-                workflow_manager_set_selected(manager_, combo_->itemData(index).toString().toUtf8().constData());
+            if (index >= 0) {
+                const QByteArray id = combo_->itemData(index).toByteArray();
+                if (workflow_manager_set_selected(manager_, id.constData()) && selectionChanged_)
+                    selectionChanged_(id.constData());
+            }
             refresh();
         });
         connect(add_, &QPushButton::clicked, this, [this] { addWorkflow(); });
@@ -76,8 +81,11 @@ private:
             return;
         char id[WORKFLOW_MAX_NAME] = {};
         snprintf(id, sizeof(id), "workflow_%zu", manager_->workflow_count + 1);
-        if (workflow_manager_create(manager_, id, name.trimmed().toUtf8().constData()))
+        if (workflow_manager_create(manager_, id, name.trimmed().toUtf8().constData())) {
             refresh();
+            if (selectionChanged_)
+                selectionChanged_(id);
+        }
     }
 
     void renameWorkflow()
@@ -100,9 +108,13 @@ private:
         if (selected)
             workflow_manager_remove(manager_, selected->id);
         refresh();
+        const auto *next = workflow_manager_selected_const(manager_);
+        if (next && selectionChanged_)
+            selectionChanged_(next->id);
     }
 
-    workflow_manager *manager_;
+    workflow_manager_t *manager_;
+    std::function<void(const char *)> selectionChanged_;
     QComboBox *combo_;
     QPushButton *add_;
     QPushButton *rename_;
@@ -112,7 +124,8 @@ private:
 
 } // namespace
 
-QWidget *create_workflow_manager_ui(workflow_manager *manager, QWidget *parent)
+QWidget *create_workflow_manager_ui(workflow_manager_t *manager, QWidget *parent,
+                                    std::function<void(const char *)> selectionChanged)
 {
-    return new WorkflowManagerWidget(manager, parent);
+    return new WorkflowManagerWidget(manager, parent, std::move(selectionChanged));
 }
