@@ -1,9 +1,11 @@
 #include "workflow-editor-window.h"
 
 #include "workflow-editor-view.h"
+#include "workflow-manager-ui.h"
 #include "workflow-model.h"
 #include "workflow-node-dialog.h"
 #include "workflow-scene.h"
+#include "workflow-workspace.h"
 
 #include <obs-frontend-api.h>
 
@@ -51,14 +53,19 @@ public:
         toolbar->addWidget(close);
         root->addLayout(toolbar);
 
+        scene_ = new EditorScene(this);
+        view_ = new WorkflowGraphicsView(scene_, this);
+        workspace_.scene = scene_;
+        workflow_workspace_init(&workspace_, scene_);
+        root->addWidget(create_workflow_manager_ui(
+            workflow_workspace_manager(&workspace_), this,
+            [this](const char *id) { workflow_workspace_select(&workspace_, id); }));
+
         auto *hint = new QLabel(
             "Trigger nodes start workflow branches. Action nodes reference an existing Move / Swap / Value filter. "
             "Drag nodes, double-click to edit, use the mouse wheel to zoom and middle mouse to pan.", this);
         hint->setWordWrap(true);
         root->addWidget(hint);
-
-        scene_ = new EditorScene(this);
-        view_ = new WorkflowGraphicsView(scene_, this);
         root->addWidget(view_, 1);
 
         auto *status = new QHBoxLayout;
@@ -122,10 +129,7 @@ private:
         }
     }
 
-    void editSelectedNode()
-    {
-        editNode(scene_->selectedNode());
-    }
+    void editSelectedNode() { editNode(scene_->selectedNode()); }
 
     void deleteSelectedNode()
     {
@@ -150,6 +154,7 @@ private:
         deleteButton_->setEnabled(selected);
     }
 
+    workflow_workspace_t workspace_{};
     EditorScene *scene_ = nullptr;
     WorkflowGraphicsView *view_ = nullptr;
     QLabel *zoomLabel_ = nullptr;
