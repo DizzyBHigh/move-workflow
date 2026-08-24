@@ -10,6 +10,10 @@ typedef struct workflow_manager {
     char selected_workflow_id[WORKFLOW_MAX_NAME];
 } workflow_manager_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void workflow_manager_init(workflow_manager_t *manager);
 workflow_t *workflow_manager_create(workflow_manager_t *manager,
                                     const char *id, const char *name);
@@ -22,3 +26,7 @@ bool workflow_manager_set_enabled(workflow_manager_t *manager,
 bool workflow_manager_set_selected(workflow_manager_t *manager, const char *id);
 workflow_t *workflow_manager_selected(workflow_manager_t *manager);
 const workflow_t *workflow_manager_selected_const(const workflow_manager_t *manager);
+
+#ifdef __cplusplus
+}
+#endif
