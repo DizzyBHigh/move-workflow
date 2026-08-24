@@ -6,14 +6,15 @@
 
 #include <QComboBox>
 
-static void add_trigger_source(void *data, obs_source_t *source)
+static bool add_trigger_source(void *data, obs_source_t *source)
 {
     auto *combo = static_cast<QComboBox *>(data);
     if (!combo || !source)
-        return;
+        return true;
     const QString name = QString::fromUtf8(obs_source_get_name(source));
     if (combo->findData(name) < 0)
         combo->addItem(name, name);
+    return true;
 }
 
 void NodeSettingsDialog::populateTriggerSources(const QString &wanted)
