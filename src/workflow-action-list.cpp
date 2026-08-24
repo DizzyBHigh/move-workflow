@@ -121,7 +121,10 @@ void WorkflowActionList::rebuildAttachedList()
         auto *label = new QLabel(displayName, row);
         rowLayout->addWidget(label, 1);
         auto *removeButton = new QPushButton("Remove", row);
-        removeButton->setFixedWidth(70);
+        removeButton->setStyleSheet(
+            "QPushButton { min-width: 76px; max-width: 76px; padding: 3px 8px; "
+            "text-align: center; }"
+        );
         removeButton->setToolTip("Remove this action");
         rowLayout->addWidget(removeButton);
         attachedLayout_->addWidget(row);
