@@ -8,8 +8,10 @@
 
 #include <QDialog>
 #include <QGraphicsScene>
+#include <QHBoxLayout>
 #include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QMenu>
