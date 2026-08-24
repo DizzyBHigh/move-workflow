@@ -11,6 +11,7 @@ extern "C" {
 typedef struct workflow_workspace {
     workflow_manager_t manager;
     EditorScene *scene;
+    char loaded_workflow_id[WORKFLOW_MAX_NAME];
 } workflow_workspace_t;
 
 void workflow_workspace_init(workflow_workspace_t *workspace, EditorScene *scene);
