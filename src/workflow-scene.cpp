@@ -130,11 +130,11 @@ void EditorScene::updateConnections()
         updateConnection(connection.line, connection.from, connection.to);
 
     if (draggingConnection_ && dragPreview_ && dragSource_) {
-        const QPointF start = dragSource_->sceneBoundingRect().center();
+        const QPointF start = dragPreview_->path().elementAt(0);
         const QPointF end = dragPreview_->path().currentPosition();
-        QPainterPath path(start);
         const qreal dx = end.x() - start.x();
         const qreal dy = end.y() - start.y();
+        QPainterPath path(start);
         path.cubicTo(start + QPointF(dx * 0.35, dy * 0.05),
                      end - QPointF(dx * 0.35, dy * 0.05), end);
         dragPreview_->setPath(path);
@@ -194,11 +194,11 @@ void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 void EditorScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     if (draggingConnection_ && dragPreview_) {
-        QPainterPath path(dragSource_->sceneBoundingRect().center());
+        const QPointF start = dragPreview_->path().elementAt(0);
         const QPointF end = event->scenePos();
-        const QPointF start = dragSource_->sceneBoundingRect().center();
         const qreal dx = end.x() - start.x();
         const qreal dy = end.y() - start.y();
+        QPainterPath path(start);
         path.cubicTo(start + QPointF(dx * 0.35, dy * 0.05),
                      end - QPointF(dx * 0.35, dy * 0.05), end);
         dragPreview_->setPath(path);
@@ -240,10 +240,15 @@ NodeItem *EditorScene::findNodeById(const char *id) const
 
 NodeItem *EditorScene::nodeAt(const QPointF &scenePos) const
 {
-    QGraphicsItem *item = itemAt(scenePos, QTransform());
-    while (item && !dynamic_cast<NodeItem *>(item))
-        item = item->parentItem();
-    return dynamic_cast<NodeItem *>(item);
+    const QList<QGraphicsItem *> hits = items(scenePos, Qt::IntersectsItemShape,
+                                               Qt::DescendingOrder, QTransform());
+    for (QGraphicsItem *item : hits) {
+        while (item && !dynamic_cast<NodeItem *>(item))
+            item = item->parentItem();
+        if (auto *node = dynamic_cast<NodeItem *>(item))
+            return node;
+    }
+    return nullptr;
 }
 
 bool EditorScene::hasNodeId(size_t count, const char ids[][WORKFLOW_MAX_NAME], const QString &id) const
@@ -296,8 +301,6 @@ void EditorScene::connectTriggerToAction(NodeItem *trigger, NodeItem *action)
     if (!trigger || !action)
         return;
 
-    // A trigger may start multiple actions in parallel, so trigger -> action
-    // relationships are represented by the trigger's simultaneous list.
     addNodeId(trigger->workflowNode()->simultaneous_node_count,
               trigger->workflowNode()->simultaneous_node_ids,
               action->id());
@@ -306,11 +309,10 @@ void EditorScene::connectTriggerToAction(NodeItem *trigger, NodeItem *action)
 void EditorScene::connectActionToAction(NodeItem *source, NodeItem *target, const QString &type)
 {
     workflow_node_t *wf = source->workflowNode();
-    if (type == "Simultaneous") {
+    if (type == "Simultaneous")
         addNodeId(wf->simultaneous_node_count, wf->simultaneous_node_ids, target->id());
-    } else {
+    else
         addNodeId(wf->next_node_count, wf->next_node_ids, target->id());
-    }
 }
 
 void EditorScene::finishConnectionDrag(const QPointF &scenePos)
