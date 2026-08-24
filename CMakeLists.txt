@@ -39,10 +39,16 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-model.h
   src/workflow-manager.c
   src/workflow-manager.h
+  src/workflow-manager-copy.c
+  src/workflow-manager-copy.h
   src/workflow-manager-ui.cpp
   src/workflow-manager-ui.h
   src/workflow-workspace.cpp
   src/workflow-workspace.h
+  src/workflow-node-copy.c
+  src/workflow-node-copy.h
+  src/workflow-node-duplicate-ui.cpp
+  src/workflow-node-duplicate-ui.h
   src/workflow-runtime.c
   src/workflow-runtime.h
   src/workflow-shortcuts.c
