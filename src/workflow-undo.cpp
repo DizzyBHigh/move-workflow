@@ -24,26 +24,33 @@ WorkflowUndo::WorkflowUndo() : stack_(new QUndoStack) {}
 WorkflowUndo::~WorkflowUndo() { delete stack_; }
 void WorkflowUndo::reset(workflow_t *workflow)
 {
-    workflow_ = workflow; stack_->clear();
-    if (workflow_) last_ = std::make_unique<workflow_t>(*workflow_);
-    else last_.reset();
+    workflow_ = workflow;
+    stack_->clear();
+    if (workflow_) last_ = *workflow_;
+    else last_ = {};
 }
 void WorkflowUndo::capture()
 {
     if (!workflow_) return;
-    if (last_ && std::memcmp(last_.get(), workflow_, sizeof(workflow_t)) == 0) return;
-    auto before = last_ ? std::make_unique<workflow_t>(*last_) : std::make_unique<workflow_t>();
+    if (std::memcmp(&last_, workflow_, sizeof(workflow_t)) == 0) return;
+    auto before = std::make_unique<workflow_t>(last_);
     auto after = std::make_unique<workflow_t>(*workflow_);
     stack_->push(new SnapshotCommand(workflow_, std::move(before), std::move(after)));
-    last_ = std::make_unique<workflow_t>(*workflow_);
+    last_ = *workflow_;
 }
 bool WorkflowUndo::undo()
 {
-    if (!stack_->canUndo()) return false; stack_->undo(); last_ = std::make_unique<workflow_t>(*workflow_); return true;
+    if (!stack_->canUndo()) return false;
+    stack_->undo();
+    last_ = *workflow_;
+    return true;
 }
 bool WorkflowUndo::redo()
 {
-    if (!stack_->canRedo()) return false; stack_->redo(); last_ = std::make_unique<workflow_t>(*workflow_); return true;
+    if (!stack_->canRedo()) return false;
+    stack_->redo();
+    last_ = *workflow_;
+    return true;
 }
 bool WorkflowUndo::canUndo() const { return stack_->canUndo(); }
 bool WorkflowUndo::canRedo() const { return stack_->canRedo(); }
