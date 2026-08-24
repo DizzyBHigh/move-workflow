@@ -13,9 +13,11 @@ typedef struct shortcut_binding {
     char target_id[WORKFLOW_MAX_NAME];
 } shortcut_binding_t;
 
+typedef void (*workflow_redo_callback_t)(void);
 static shortcut_binding_t bindings[MAX_SHORTCUT_BINDINGS];
 static size_t binding_count;
 static obs_hotkey_id redo_hotkey_id = OBS_INVALID_HOTKEY_ID;
+static workflow_redo_callback_t redo_callback;
 
 static void left_cb(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
 { UNUSED_PARAMETER(id); UNUSED_PARAMETER(hotkey); if (pressed) workflow_runtime_execute_node_by_id(data, "move-left"); }
@@ -31,7 +33,9 @@ static void shortcut_cb(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool
 static void redo_cb(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
 {
     UNUSED_PARAMETER(data); UNUSED_PARAMETER(id); UNUSED_PARAMETER(hotkey);
-    if (pressed) blog(LOG_INFO, "[Move Workflow] Ctrl+Y intercepted via OBS hotkey API.");
+    if (!pressed) return;
+    blog(LOG_INFO, "[Move Workflow] Ctrl+Y intercepted via OBS hotkey API.");
+    if (redo_callback) redo_callback();
 }
 static void register_shortcut(workflow_t *workflow, const char *source_id, const char *target_id)
 {
@@ -43,6 +47,10 @@ static void register_shortcut(workflow_t *workflow, const char *source_id, const
     snprintf(name, sizeof(name), "obs_move_workflow.shortcut.%s.%s", source_id, target_id);
     snprintf(description, sizeof(description), "Move Workflow: %s -> %s", source_id, target_id);
     binding->id = obs_hotkey_register_frontend(name, description, shortcut_cb, binding);
+}
+void workflow_hotkeys_set_redo_callback(workflow_redo_callback_t callback)
+{
+    redo_callback = callback;
 }
 void workflow_hotkeys_register(void)
 {
@@ -65,5 +73,5 @@ void workflow_hotkeys_unregister(void)
 {
     for (size_t i = 0; i < binding_count; ++i) if (bindings[i].id) obs_hotkey_unregister(bindings[i].id);
     if (redo_hotkey_id != OBS_INVALID_HOTKEY_ID) { obs_hotkey_unregister(redo_hotkey_id); redo_hotkey_id = OBS_INVALID_HOTKEY_ID; }
-    binding_count = 0; workflow_shortcuts_cancel();
+    binding_count = 0; workflow_shortcuts_cancel(); redo_callback = NULL;
 }
