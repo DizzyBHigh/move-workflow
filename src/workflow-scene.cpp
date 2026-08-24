@@ -1,6 +1,7 @@
 #include "workflow-scene.h"
 
 #include <QGraphicsSceneMouseEvent>
+#include <QInputDialog>
 #include <QPainterPath>
 #include <QPen>
 #include <QTransform>
@@ -127,6 +128,17 @@ void EditorScene::updateConnections()
 {
     for (const Connection &connection : std::as_const(connections_))
         updateConnection(connection.line, connection.from, connection.to);
+
+    if (draggingConnection_ && dragPreview_ && dragSource_) {
+        const QPointF start = dragSource_->sceneBoundingRect().center();
+        const QPointF end = dragPreview_->path().currentPosition();
+        QPainterPath path(start);
+        const qreal dx = end.x() - start.x();
+        const qreal dy = end.y() - start.y();
+        path.cubicTo(start + QPointF(dx * 0.35, dy * 0.05),
+                     end - QPointF(dx * 0.35, dy * 0.05), end);
+        dragPreview_->setPath(path);
+    }
     updateSceneBounds();
 }
 
@@ -158,6 +170,55 @@ void EditorScene::updateSceneBounds()
     setSceneRect(bounds);
 }
 
+void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        NodeItem *node = nodeAt(event->scenePos());
+        if (node && node->isOnConnectionHandle(event->scenePos())) {
+            draggingConnection_ = true;
+            dragSource_ = node;
+            dragPreview_ = new QGraphicsPathItem;
+            dragPreview_->setPen(QPen(QColor(235, 240, 245), 2, Qt::DashLine));
+            dragPreview_->setZValue(10);
+            addItem(dragPreview_);
+            QPainterPath path(event->scenePos());
+            path.lineTo(event->scenePos());
+            dragPreview_->setPath(path);
+            event->accept();
+            return;
+        }
+    }
+    QGraphicsScene::mousePressEvent(event);
+}
+
+void EditorScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
+{
+    if (draggingConnection_ && dragPreview_) {
+        QPainterPath path(dragSource_->sceneBoundingRect().center());
+        const QPointF end = event->scenePos();
+        const QPointF start = dragSource_->sceneBoundingRect().center();
+        const qreal dx = end.x() - start.x();
+        const qreal dy = end.y() - start.y();
+        path.cubicTo(start + QPointF(dx * 0.35, dy * 0.05),
+                     end - QPointF(dx * 0.35, dy * 0.05), end);
+        dragPreview_->setPath(path);
+        event->accept();
+        return;
+    }
+    QGraphicsScene::mouseMoveEvent(event);
+}
+
+void EditorScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
+{
+    if (draggingConnection_ && event->button() == Qt::LeftButton) {
+        const QPointF releasePos = event->scenePos();
+        finishConnectionDrag(releasePos);
+        event->accept();
+        return;
+    }
+    QGraphicsScene::mouseReleaseEvent(event);
+}
+
 void EditorScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
 {
     QGraphicsItem *item = itemAt(event->scenePos(), QTransform());
@@ -177,6 +238,98 @@ NodeItem *EditorScene::findNodeById(const char *id) const
     return nullptr;
 }
 
+NodeItem *EditorScene::nodeAt(const QPointF &scenePos) const
+{
+    QGraphicsItem *item = itemAt(scenePos, QTransform());
+    while (item && !dynamic_cast<NodeItem *>(item))
+        item = item->parentItem();
+    return dynamic_cast<NodeItem *>(item);
+}
+
+bool EditorScene::hasNodeId(size_t count, const char ids[][WORKFLOW_MAX_NAME], const QString &id) const
+{
+    const QByteArray wanted = id.toUtf8();
+    for (size_t i = 0; i < count; ++i) {
+        if (std::strcmp(ids[i], wanted.constData()) == 0)
+            return true;
+    }
+    return false;
+}
+
+bool EditorScene::addNodeId(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QString &id)
+{
+    if (count >= WORKFLOW_MAX_LINKS || hasNodeId(count, ids, id))
+        return false;
+    copy_text(ids[count], WORKFLOW_MAX_NAME, id);
+    ++count;
+    return true;
+}
+
+void EditorScene::connectNodes(NodeItem *source, NodeItem *target)
+{
+    if (!source || !target || source == target)
+        return;
+
+    if (source->workflowNode()->type == WORKFLOW_NODE_TRIGGER &&
+        target->workflowNode()->type == WORKFLOW_NODE_ACTION) {
+        connectTriggerToAction(source, target);
+    } else if (source->workflowNode()->type == WORKFLOW_NODE_ACTION &&
+               target->workflowNode()->type == WORKFLOW_NODE_TRIGGER) {
+        connectTriggerToAction(target, source);
+    } else if (source->workflowNode()->type == WORKFLOW_NODE_ACTION &&
+               target->workflowNode()->type == WORKFLOW_NODE_ACTION) {
+        const QStringList choices = {"Simultaneous", "Next"};
+        bool ok = false;
+        const QString type = QInputDialog::getItem(
+            nullptr, "Connect Actions", "Relationship type:", choices, 0, false, &ok);
+        if (ok)
+            connectActionToAction(source, target, type);
+    }
+
+    source->refreshDisplay();
+    target->refreshDisplay();
+    rebuildConnections();
+}
+
+void EditorScene::connectTriggerToAction(NodeItem *trigger, NodeItem *action)
+{
+    if (!trigger || !action)
+        return;
+
+    // A trigger may start multiple actions in parallel, so trigger -> action
+    // relationships are represented by the trigger's simultaneous list.
+    addNodeId(trigger->workflowNode()->simultaneous_node_count,
+              trigger->workflowNode()->simultaneous_node_ids,
+              action->id());
+}
+
+void EditorScene::connectActionToAction(NodeItem *source, NodeItem *target, const QString &type)
+{
+    workflow_node_t *wf = source->workflowNode();
+    if (type == "Simultaneous") {
+        addNodeId(wf->simultaneous_node_count, wf->simultaneous_node_ids, target->id());
+    } else {
+        addNodeId(wf->next_node_count, wf->next_node_ids, target->id());
+    }
+}
+
+void EditorScene::finishConnectionDrag(const QPointF &scenePos)
+{
+    NodeItem *source = dragSource_;
+    NodeItem *target = nodeAt(scenePos);
+
+    if (dragPreview_) {
+        removeItem(dragPreview_);
+        delete dragPreview_;
+    }
+    dragPreview_ = nullptr;
+    dragSource_ = nullptr;
+    draggingConnection_ = false;
+
+    if (source && target && source != target)
+        connectNodes(source, target);
+}
+
 void EditorScene::addRelationshipLines(NodeItem *from, size_t count,
                                        const char ids[][WORKFLOW_MAX_NAME],
                                        const QString &type)
@@ -185,8 +338,6 @@ void EditorScene::addRelationshipLines(NodeItem *from, size_t count,
         NodeItem *to = findNodeById(ids[i]);
         if (!to || to == from)
             continue;
-        // Simultaneous/end/next relationships are Action-to-Action links.
-        // Never draw a stale link from an Action node back to a Trigger node.
         if (from->workflowNode()->type == WORKFLOW_NODE_ACTION &&
             to->workflowNode()->type == WORKFLOW_NODE_TRIGGER)
             continue;
