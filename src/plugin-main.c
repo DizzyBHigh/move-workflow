@@ -3,6 +3,7 @@
 #include <plugin-support.h>
 
 #include "workflow-hotkeys.h"
+#include "workflow-persistence.h"
 #include "workflow-runtime.h"
 #include "workflow-test-menu.h"
 
@@ -11,6 +12,7 @@ OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
 bool obs_module_load(void)
 {
+    workflow_persistence_init();
     workflow_t *workflow = workflow_runtime_test_workflow();
     blog(LOG_INFO, "[Move Workflow] Loaded");
     workflow_hotkeys_register();
@@ -20,6 +22,7 @@ bool obs_module_load(void)
 
 void obs_module_unload(void)
 {
+    workflow_persistence_save();
     workflow_hotkeys_unregister();
     blog(LOG_INFO, "[Move Workflow] Unloaded");
 }
