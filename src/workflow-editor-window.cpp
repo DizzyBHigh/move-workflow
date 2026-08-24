@@ -30,7 +30,6 @@
 #include <QComboBox>
 #include <QDebug>
 #include <QAction>
-#include <QMetaObject>
 #include <cstring>
 
 namespace {
@@ -73,7 +72,7 @@ protected:
     void keyPressEvent(QKeyEvent *event) override {const bool control=event->modifiers()&Qt::ControlModifier;const bool redo=control&&(event->key()==Qt::Key_Y||(event->key()==Qt::Key_Z&&event->modifiers()&Qt::ShiftModifier));if(redo){redoWorkflow();event->accept();return;}QDialog::keyPressEvent(event);}
 private:
     void scheduleSync(){if(syncPending_||applyingUndoRedo_)return;syncPending_=true;const auto generation=syncGeneration_;QTimer::singleShot(0,this,[this,generation]{syncPending_=false;if(applyingUndoRedo_||generation!=syncGeneration_)return;workflow_workspace_sync_scene(&workspace_);undo_.capture();updateButtonState();});}
-    void resetUndo(){++syncGeneration_;undo_.reset(workflow_manager_selected(workflow_workspace_manager(&workspace_)),workflow_workspace_manager(&workspace_));}
+    void resetUndo(){++syncGeneration_;undo_.reset(workflow_manager_selected(workflow_workspace_manager(&workspace_)),workflow_manager_selected(workflow_workspace_manager(&workspace_))?workflow_workspace_manager(&workspace_):workflow_workspace_manager(&workspace_));}
     void syncLoadedSelection(){const auto *s=workflow_manager_selected_const(workflow_workspace_manager(&workspace_));if(s){std::strncpy(workspace_.loaded_workflow_id,s->id,WORKFLOW_MAX_NAME-1);workspace_.loaded_workflow_id[WORKFLOW_MAX_NAME-1]='\0';}else workspace_.loaded_workflow_id[0]='\0';}
     void refreshWorkflowManagerUi(){auto *combo=managerUi_?managerUi_->findChild<QComboBox *>():nullptr;if(!combo)return;const auto *selected=workflow_manager_selected_const(workflow_workspace_manager(&workspace_));const QString selectedId=selected?QString::fromUtf8(selected->id):QString();combo->blockSignals(true);combo->clear();auto *manager=workflow_workspace_manager(&workspace_);for(size_t i=0;i<manager->workflow_count;++i)combo->addItem(QString::fromUtf8(manager->workflows[i].name),QString::fromUtf8(manager->workflows[i].id));const int index=combo->findData(selectedId);combo->blockSignals(false);if(index>=0)combo->setCurrentIndex(index);else if(combo->count()>0)combo->setCurrentIndex(0);}
     void undoWorkflow(){++syncGeneration_;applyingUndoRedo_=true;const bool changed=undo_.undo();qDebug()<<"[Move Workflow] Ctrl+Z/Undo changed:"<<changed;if(changed){syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_workspace_manager(&workspace_));refreshWorkflowManagerUi();updateButtonState();}applyingUndoRedo_=false;}
@@ -90,5 +89,5 @@ private:
     workflow_workspace_t workspace_{};WorkflowUndo undo_;QWidget *managerUi_=nullptr;EditorScene *scene_=nullptr;WorkflowGraphicsView *view_=nullptr;QLabel *zoomLabel_=nullptr;bool syncPending_=false;bool applyingUndoRedo_=false;unsigned long long syncGeneration_=0;QPushButton *addButton_=nullptr;QPushButton *copyButton_=nullptr;QPushButton *pasteButton_=nullptr;QPushButton *duplicateButton_=nullptr;QPushButton *deleteButton_=nullptr;
 };
 }
-extern "C" void workflow_editor_redo_from_hotkey(void){QPointer<EditorWindow> editor=window;if(!editor){blog(LOG_WARNING,"[Move Workflow] Ctrl+Y bridge fired but editor is not open.");return;}blog(LOG_INFO,"[Move Workflow] Ctrl+Y bridge reached editor; queueing redo on UI thread.");QMetaObject::invokeMethod(editor,[editor](){if(editor)editor->redoFromHotkey();},Qt::QueuedConnection);}
+extern "C" void workflow_editor_redo_from_hotkey(void){QPointer<EditorWindow> editor=window;if(!editor){blog(LOG_WARNING,"[Move Workflow] Ctrl+Y bridge fired but editor is not open.");return;}blog(LOG_INFO,"[Move Workflow] Ctrl+Y bridge reached editor; queueing redo on Qt application event loop.");QTimer::singleShot(0,qApp,[editor](){if(editor){blog(LOG_INFO,"[Move Workflow] Ctrl+Y queued callback executing.");editor->redoFromHotkey();}});}
 void show_move_workflow_editor(QWidget *parent){if(!window){auto *mainWindow=parent?parent:static_cast<QWidget *>(obs_frontend_get_main_window());window=new EditorWindow(mainWindow);}window->show();window->raise();window->activateWindow();}
