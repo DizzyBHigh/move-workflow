@@ -5,11 +5,13 @@
 
 #include <obs.h>
 
+#include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLineEdit>
 #include <QScrollArea>
+#include <QSpinBox>
 #include <QVBoxLayout>
 
 NodeSettingsDialog::NodeSettingsDialog(NodeItem *node, const QList<NodeItem *> &nodes,
