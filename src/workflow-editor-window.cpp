@@ -14,6 +14,7 @@
 #include <QGraphicsScene>
 #include <QHBoxLayout>
 #include <QInputDialog>
+#include <QKeyEvent>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
@@ -39,7 +40,7 @@ public:
         duplicateButton_=new QPushButton("Duplicate Node",this); deleteButton_=new QPushButton("Delete Node",this);
         auto *zoomOut=new QPushButton("−",this); auto *zoomReset=new QPushButton("100%",this); auto *zoomIn=new QPushButton("+",this); auto *fit=new QPushButton("Fit All",this); auto *close=new QPushButton("Close",this);
         toolbar->addWidget(addButton_); toolbar->addWidget(edit); toolbar->addWidget(copyButton_); toolbar->addWidget(pasteButton_); toolbar->addWidget(duplicateButton_); toolbar->addWidget(deleteButton_); toolbar->addStretch(); toolbar->addWidget(zoomOut); toolbar->addWidget(zoomReset); toolbar->addWidget(zoomIn); toolbar->addWidget(fit); toolbar->addWidget(close); root->addLayout(toolbar);
-        scene_=new EditorScene(this); view_=new WorkflowGraphicsView(scene_,this); workspace_.scene=scene_; workflow_workspace_init(&workspace_,scene_); resetUndo();
+        scene_=new EditorScene(this); view_=new WorkflowGraphicsView(scene_,this); view_->installEventFilter(this); workspace_.scene=scene_; workflow_workspace_init(&workspace_,scene_); resetUndo();
         managerUi_=create_workflow_manager_ui(workflow_workspace_manager(&workspace_),this,
             [this](const char *id){ if(workflow_workspace_select(&workspace_,id)) resetUndo(); },
             [this](const char *name){const bool ok=workflow_workspace_create(&workspace_,name); if(ok)resetUndo(); return ok;},
@@ -57,8 +58,20 @@ public:
         new QShortcut(QKeySequence(QStringLiteral("Ctrl+Y")),this,[this]{redoWorkflow();});
         updateButtonState();
     }
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override
+    {
+        if (watched == view_ && event->type() == QEvent::KeyPress) {
+            auto *key = static_cast<QKeyEvent *>(event);
+            if (key->key() == Qt::Key_Delete && !key->isAutoRepeat()) {
+                deleteSelectedNodes();
+                return true;
+            }
+        }
+        return QDialog::eventFilter(watched, event);
+    }
 private:
-    void scheduleSync(){if(syncPending_)return;syncPending_=true;QTimer::singleShot(0,this,[this]{syncPending_=false;workflow_workspace_sync_scene(&workspace_);undo_.capture();updateButtonState();});}
+    void scheduleSync(){if(syncPending_||applyingUndoRedo_)return;syncPending_=true;QTimer::singleShot(0,this,[this]{syncPending_=false;if(applyingUndoRedo_)return;workflow_workspace_sync_scene(&workspace_);undo_.capture();updateButtonState();});}
     void resetUndo(){undo_.reset(workflow_manager_selected(workflow_workspace_manager(&workspace_)),workflow_workspace_manager(&workspace_));}
     void syncLoadedSelection(){const auto *s=workflow_manager_selected_const(workflow_workspace_manager(&workspace_));if(s){std::strncpy(workspace_.loaded_workflow_id,s->id,WORKFLOW_MAX_NAME-1);workspace_.loaded_workflow_id[WORKFLOW_MAX_NAME-1]='\0';}else workspace_.loaded_workflow_id[0]='\0';}
     void refreshWorkflowManagerUi(){
@@ -75,8 +88,8 @@ private:
         if(index>=0)combo->setCurrentIndex(index);
         else if(combo->count()>0)combo->setCurrentIndex(0);
     }
-    void undoWorkflow(){if(!undo_.undo())return;syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_workspace_manager(&workspace_));refreshWorkflowManagerUi();updateButtonState();}
-    void redoWorkflow(){if(!undo_.redo())return;syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_workspace_manager(&workspace_));refreshWorkflowManagerUi();updateButtonState();}
+    void undoWorkflow(){applyingUndoRedo_=true;const bool changed=undo_.undo();if(changed){syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_workspace_manager(&workspace_));refreshWorkflowManagerUi();updateButtonState();}applyingUndoRedo_=false;}
+    void redoWorkflow(){applyingUndoRedo_=true;const bool changed=undo_.redo();if(changed){syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_workspace_manager(&workspace_));refreshWorkflowManagerUi();updateButtonState();}applyingUndoRedo_=false;}
     bool deleteWorkflow(){workflow_workspace_sync_scene(&workspace_);auto *manager=workflow_workspace_manager(&workspace_);const auto *selected=workflow_manager_selected_const(manager);if(!selected)return false;undo_.prepareManagerCapture();const bool removed=workflow_manager_remove(manager,selected->id);if(!removed)return false;syncLoadedSelection();if(workspace_.loaded_workflow_id[0])workflow_workspace_reload(&workspace_);else{const QList<NodeItem *> nodes=scene_->nodes();for(NodeItem *node:nodes)scene_->deleteNode(node);}undo_.captureManager();workflow_persistence_sync(manager);updateButtonState();return true;}
     void showAddNodeMenu(){QMenu menu(this);QAction *trigger=menu.addAction("Add Trigger Node");QAction *action=menu.addAction("Add Action Node");QAction *chosen=menu.exec(addButton_->mapToGlobal(QPoint(0,addButton_->height())));if(!chosen)return;bool ok=false;const QString name=QInputDialog::getText(this,chosen==trigger?"Add Trigger Node":"Add Action Node","Node name:",QLineEdit::Normal,chosen==trigger?"New Trigger":"New Action",&ok);if(!ok||name.trimmed().isEmpty())return;NodeItem *node=scene_->addNode(chosen==trigger?WORKFLOW_NODE_TRIGGER:WORKFLOW_NODE_ACTION,name.trimmed());if(node){node->setSelected(true);view_->fitAll();}}
     void editNode(NodeItem *node){if(!node)return;if(edit_node_settings(node,scene_->nodes(),this)){node->refreshDisplay();scene_->refreshConnectionsFor(node);}}
@@ -86,7 +99,7 @@ private:
     void duplicateSelectedNode(){if(duplicate_selected_workflow_node(scene_))updateButtonState();}
     void deleteSelectedNodes(){const QList<QGraphicsItem *> selected=scene_->selectedItems();QList<NodeItem *> nodes;for(QGraphicsItem *item:selected)if(auto *node=dynamic_cast<NodeItem *>(item))nodes.append(node);if(nodes.isEmpty())return;for(NodeItem *node:nodes)scene_->deleteNode(node);updateButtonState();}
     void updateButtonState(){const bool selected=scene_&&!scene_->selectedItems().isEmpty();deleteButton_->setEnabled(selected&&scene_->selectedNode());duplicateButton_->setEnabled(selected&&scene_->selectedNode());copyButton_->setEnabled(selected);pasteButton_->setEnabled(workflow_clipboard_has_data());}
-    workflow_workspace_t workspace_{};WorkflowUndo undo_;QWidget *managerUi_=nullptr;EditorScene *scene_=nullptr;WorkflowGraphicsView *view_=nullptr;QLabel *zoomLabel_=nullptr;bool syncPending_=false;
+    workflow_workspace_t workspace_{};WorkflowUndo undo_;QWidget *managerUi_=nullptr;EditorScene *scene_=nullptr;WorkflowGraphicsView *view_=nullptr;QLabel *zoomLabel_=nullptr;bool syncPending_=false;bool applyingUndoRedo_=false;
     QPushButton *addButton_=nullptr;QPushButton *copyButton_=nullptr;QPushButton *pasteButton_=nullptr;QPushButton *duplicateButton_=nullptr;QPushButton *deleteButton_=nullptr;
 };
 QPointer<EditorWindow> window;
