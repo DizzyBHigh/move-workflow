@@ -24,4 +24,5 @@ private:
     workflow_t last_{};
     std::unique_ptr<workflow_manager_t> last_manager_;
     QUndoStack *stack_ = nullptr;
+    bool suppressCapture_ = false;
 };
