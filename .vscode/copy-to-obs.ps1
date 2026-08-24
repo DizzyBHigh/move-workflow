@@ -15,6 +15,16 @@ if (!(Test-Path -LiteralPath $dest)) {
     throw "OBS plugin directory was not found: $dest"
 }
 
+$legacyDll = Join-Path $dest 'plugintemplate-for-obs.dll'
+$legacyPdb = Join-Path $dest 'plugintemplate-for-obs.pdb'
+
+foreach ($legacy in @($legacyDll, $legacyPdb)) {
+    if (Test-Path -LiteralPath $legacy) {
+        Remove-Item -LiteralPath $legacy -Force
+        Write-Host "Removed legacy plugin: $legacy"
+    }
+}
+
 Copy-Item -LiteralPath $dll -Destination $dest -Force
 
 if (Test-Path -LiteralPath $pdb) {
