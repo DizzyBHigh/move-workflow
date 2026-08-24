@@ -31,12 +31,15 @@ protected:
 private:
     static constexpr qreal nodeWidth = 300.0;
     static constexpr qreal minimumHeight = 142.0;
-    static constexpr qreal handleRadius = 7.0;
+    static constexpr qreal handleRadius = 10.0;
+    static constexpr qreal handleHitRadius = 18.0;
 
     void updateGeometryForText();
     void refreshStyle();
     QPointF inputHandlePos() const;
     QPointF outputHandlePos() const;
+    QPointF topHandlePos() const;
+    QPointF bottomHandlePos() const;
 
     EditorNode node_;
     QGraphicsTextItem *title_ = nullptr;
