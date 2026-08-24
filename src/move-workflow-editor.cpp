@@ -1,13 +1,19 @@
 #include "move-workflow-editor.h"
 #include "workflow-editor-window.h"
 
+#include <obs-frontend-api.h>
+
+#include <QAction>
 #include <QTimer>
 
 namespace {
 
 void register_menu()
 {
-    QTimer::singleShot(0, [] { show_move_workflow_editor(); });
+    QAction *action = static_cast<QAction *>(obs_frontend_add_tools_menu_qaction("Move Workflow Editor"));
+    if (!action)
+        return;
+    QObject::connect(action, &QAction::triggered, [] { show_move_workflow_editor(); });
 }
 
 struct AutoRegister {
