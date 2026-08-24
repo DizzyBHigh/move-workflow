@@ -51,6 +51,12 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-node-duplicate-ui.h
   src/workflow-clipboard.cpp
   src/workflow-clipboard.h
+  src/workflow-persistence.cpp
+  src/workflow-persistence.h
+  src/workflow-persistence-json.cpp
+  src/workflow-persistence-json.h
+  src/workflow-undo.cpp
+  src/workflow-undo.h
   src/workflow-runtime.c
   src/workflow-runtime.h
   src/workflow-shortcuts.c
