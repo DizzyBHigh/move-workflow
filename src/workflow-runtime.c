@@ -107,9 +107,9 @@ static void apply_start_trigger_override(obs_source_t *filter, const workflow_no
     obs_source_set_enabled(filter, true);
 }
 
-static void execute_node(workflow_node_t *node)
+static void execute_node(workflow_t *workflow, workflow_node_t *node)
 {
-    if (!node)
+    if (!workflow || !node)
         return;
     obs_source_t *filter = find_move_filter(&node->action);
     if (!filter)
@@ -121,7 +121,7 @@ static void execute_node(workflow_node_t *node)
     }
     apply_start_trigger_override(filter, node);
     obs_source_release(filter);
-    workflow_shortcuts_begin(&workflow, node);
+    workflow_shortcuts_begin(workflow, node);
 }
 
 void workflow_runtime_execute_node_by_id(workflow_t *workflow, const char *node_id)
@@ -130,7 +130,7 @@ void workflow_runtime_execute_node_by_id(workflow_t *workflow, const char *node_
         return;
     workflow_node_t *node = find_node(workflow, node_id);
     if (node)
-        execute_node(node);
+        execute_node(workflow, node);
 }
 
 void workflow_runtime_test_duration(workflow_t *workflow)
@@ -140,6 +140,6 @@ void workflow_runtime_test_duration(workflow_t *workflow)
         return;
     node->duration.mode = WORKFLOW_OVERRIDE;
     node->duration.duration_ms = PHASE12_TEST_DURATION_MS;
-    execute_node(node);
+    execute_node(workflow, node);
     node->duration.mode = WORKFLOW_USE_EXISTING;
 }
