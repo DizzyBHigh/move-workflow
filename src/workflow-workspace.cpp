@@ -1,8 +1,10 @@
 #include "workflow-workspace.h"
 
+#include "workflow-manager-copy.h"
 #include "workflow-scene.h"
 
 #include <QList>
+#include <cstdio>
 #include <cstring>
 
 namespace {
@@ -43,6 +45,19 @@ void load_workflow(EditorScene *scene, const workflow_t *workflow)
     scene->rebuildConnections();
     scene->updateSceneBounds();
 }
+
+bool make_id(const workflow_manager_t *manager, const char *prefix,
+             char *id, size_t capacity)
+{
+    if (!manager || !prefix || !id || capacity == 0)
+        return false;
+    for (size_t n = 1; n <= WORKFLOW_MANAGER_MAX_WORKFLOWS; ++n) {
+        std::snprintf(id, capacity, "%s_%zu", prefix, n);
+        if (!workflow_manager_find_const(manager, id))
+            return true;
+    }
+    return false;
+}
 }
 
 void workflow_workspace_init(workflow_workspace_t *workspace, EditorScene *scene)
@@ -72,6 +87,40 @@ bool workflow_workspace_select(workflow_workspace_t *workspace, const char *id)
     if (!workflow_manager_set_selected(&workspace->manager, id))
         return false;
     load_workflow(workspace->scene, workflow_manager_selected_const(&workspace->manager));
+    return true;
+}
+
+bool workflow_workspace_create(workflow_workspace_t *workspace, const char *name)
+{
+    if (!workspace)
+        return false;
+    workflow_workspace_sync_scene(workspace);
+    char id[WORKFLOW_MAX_NAME] = {};
+    if (!make_id(&workspace->manager, "workflow", id, sizeof(id)))
+        return false;
+    workflow_t *workflow = workflow_manager_create(&workspace->manager, id, name);
+    if (!workflow)
+        return false;
+    workflow_manager_set_selected(&workspace->manager, workflow->id);
+    load_workflow(workspace->scene, workflow);
+    return true;
+}
+
+bool workflow_workspace_duplicate(workflow_workspace_t *workspace, const char *name)
+{
+    if (!workspace)
+        return false;
+    workflow_workspace_sync_scene(workspace);
+    const workflow_t *source = workflow_manager_selected_const(&workspace->manager);
+    if (!source)
+        return false;
+    char id[WORKFLOW_MAX_NAME] = {};
+    if (!make_id(&workspace->manager, "workflow_copy", id, sizeof(id)))
+        return false;
+    workflow_t *copy = workflow_manager_duplicate(&workspace->manager, source->id, id, name);
+    if (!copy)
+        return false;
+    load_workflow(workspace->scene, copy);
     return true;
 }
 
