@@ -52,7 +52,10 @@ public:
         connect(addButton_,&QPushButton::clicked,this,[this]{showAddNodeMenu();}); connect(edit,&QPushButton::clicked,this,[this]{editSelectedNode();}); connect(copyButton_,&QPushButton::clicked,this,[this]{copySelectedNodes();}); connect(pasteButton_,&QPushButton::clicked,this,[this]{pasteNodes();}); connect(duplicateButton_,&QPushButton::clicked,this,[this]{duplicateSelectedNode();}); connect(deleteButton_,&QPushButton::clicked,this,[this]{deleteSelectedNodes();});
         connect(zoomOut,&QPushButton::clicked,view_,&WorkflowGraphicsView::zoomOut); connect(zoomReset,&QPushButton::clicked,view_,&WorkflowGraphicsView::resetZoom); connect(zoomIn,&QPushButton::clicked,view_,&WorkflowGraphicsView::zoomIn); connect(fit,&QPushButton::clicked,view_,&WorkflowGraphicsView::fitAll); connect(close,&QPushButton::clicked,this,&QDialog::hide);
         connect(scene_,&QGraphicsScene::selectionChanged,this,[this]{updateButtonState();}); connect(scene_,&EditorScene::nodeDoubleClicked,this,[this](NodeItem *node){editNode(node);}); connect(scene_,&QGraphicsScene::changed,this,[this]{scheduleSync();});
-        new QShortcut(QKeySequence::Undo,this,[this]{undoWorkflow();}); new QShortcut(QKeySequence::Redo,this,[this]{redoWorkflow();}); updateButtonState();
+        new QShortcut(QKeySequence::Undo,this,[this]{undoWorkflow();});
+        new QShortcut(QKeySequence::Redo,this,[this]{redoWorkflow();});
+        new QShortcut(QKeySequence(QStringLiteral("Ctrl+Y")),this,[this]{redoWorkflow();});
+        updateButtonState();
     }
 private:
     void scheduleSync(){if(syncPending_)return;syncPending_=true;QTimer::singleShot(0,this,[this]{syncPending_=false;workflow_workspace_sync_scene(&workspace_);undo_.capture();updateButtonState();});}
