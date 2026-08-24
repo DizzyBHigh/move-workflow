@@ -12,8 +12,12 @@ static void handle_redo_action(void *data, obs_hotkey_id id,
     if (!pressed)
         return;
 
-    blog(LOG_INFO,
-         "[obs-move-workflow] Ctrl+Y intercepted successfully via Hotkey API.");
+    // Debugging recipe retained for future OBS hotkey diagnostics:
+    // blog(LOG_INFO,
+    //      "[obs-move-workflow] Ctrl+Y intercepted via OBS Hotkey API.");
+
+    extern void workflow_editor_redo_from_hotkey(void);
+    workflow_editor_redo_from_hotkey();
 }
 
 void RegisterWorkflowHotkeys(void *data)
