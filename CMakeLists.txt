@@ -42,6 +42,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/move-workflow-editor.h
   src/workflow-node.cpp
   src/workflow-node.h
+  src/workflow-scene.cpp
+  src/workflow-scene.h
   src/move-workflow-editor-panel.cpp
   src/move-workflow-menu-cleanup.cpp
 )
