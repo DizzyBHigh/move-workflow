@@ -1,6 +1,7 @@
 #include "workflow-node.h"
 
 #include <QGraphicsTextItem>
+#include <QPainter>
 #include <QPen>
 
 #include <QString>
@@ -107,6 +108,26 @@ void NodeItem::refreshDisplay()
     }
 
     updateGeometryForText();
+    update();
+}
+
+bool NodeItem::isOnConnectionHandle(const QPointF &scenePos) const
+{
+    const QPointF local = mapFromScene(scenePos);
+    const QPointF input = inputHandlePos();
+    const QPointF output = outputHandlePos();
+    return QLineF(local, input).length() <= handleRadius + 3.0 ||
+           QLineF(local, output).length() <= handleRadius + 3.0;
+}
+
+QPointF NodeItem::inputHandlePos() const
+{
+    return QPointF(rect().left(), rect().center().y());
+}
+
+QPointF NodeItem::outputHandlePos() const
+{
+    return QPointF(rect().right(), rect().center().y());
 }
 
 QVariant NodeItem::itemChange(GraphicsItemChange change, const QVariant &value)
@@ -114,6 +135,16 @@ QVariant NodeItem::itemChange(GraphicsItemChange change, const QVariant &value)
     if (change == ItemPositionHasChanged)
         node_.position = value.toPointF();
     return QGraphicsRectItem::itemChange(change, value);
+}
+
+void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+{
+    QGraphicsRectItem::paint(painter, option, widget);
+
+    painter->setPen(QPen(QColor(235, 240, 245), 1));
+    painter->setBrush(QColor(75, 85, 100));
+    painter->drawEllipse(inputHandlePos(), handleRadius, handleRadius);
+    painter->drawEllipse(outputHandlePos(), handleRadius, handleRadius);
 }
 
 void NodeItem::updateGeometryForText()
