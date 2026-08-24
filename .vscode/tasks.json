@@ -28,19 +28,32 @@
         },
         {
             "label": "Move Workflow: Build + Copy to OBS",
-            "type": "process",
-            "command": "powershell.exe",
+            "type": "shell",
+            "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
             "args": [
-                "-NoProfile",
-                "-ExecutionPolicy", "Bypass",
-                "-File", "${workspaceFolder}\\.vscode\\copy-to-obs.ps1"
+                "-S", ".",
+                "-B", "build_x64",
+                "-DENABLE_QT=ON",
+                "--fresh"
             ],
             "problemMatcher": [],
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
-            "dependsOn": "Move Workflow: Build",
+            "dependsOn": "Move Workflow: Build + Copy to OBS (Build)",
+            "dependsOrder": "sequence"
+        },
+        {
+            "label": "Move Workflow: Build + Copy to OBS (Build)",
+            "type": "shell",
+            "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
+            "args": [
+                "--build", "build_x64",
+                "--config", "RelWithDebInfo"
+            ],
+            "problemMatcher": [],
+            "dependsOn": "Move Workflow: Copy to OBS",
             "dependsOrder": "sequence"
         },
         {
