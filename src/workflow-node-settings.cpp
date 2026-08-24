@@ -6,6 +6,7 @@
 #include <obs-frontend-api.h>
 #include <obs.h>
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QCompleter>
 #include <QDialog>
