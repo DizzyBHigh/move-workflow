@@ -38,6 +38,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/plugin-main.c
   src/workflow-runtime.c
   src/workflow-runtime.h
+  src/workflow-shortcuts.c
+  src/workflow-shortcuts.h
   src/workflow-test-data.c
   src/workflow-test-menu.c
   src/workflow-test-menu.h
