@@ -36,6 +36,13 @@ endif()
 
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/plugin-main.c
+  src/workflow-runtime.c
+  src/workflow-runtime.h
+  src/workflow-test-data.c
+  src/workflow-test-menu.c
+  src/workflow-test-menu.h
+  src/workflow-hotkeys.c
+  src/workflow-hotkeys.h
   src/move-workflow-tests.cpp
   src/move-workflow-tests.h
   src/move-workflow-editor.cpp
