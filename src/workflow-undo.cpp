@@ -46,16 +46,28 @@ void WorkflowUndo::reset(workflow_t *workflow, workflow_manager_t *manager)
 void WorkflowUndo::capture()
 {
     if (!workflow_) return;
+    qDebug() << "[Move Workflow] CAPTURE: before count=" << stack_->count()
+             << "index=" << stack_->index();
     if (suppressCapture_) {
-        if (std::memcmp(&replayState_, workflow_, sizeof(workflow_t)) == 0)
+        if (std::memcmp(&replayState_, workflow_, sizeof(workflow_t)) == 0) {
+            qDebug() << "[Move Workflow] CAPTURE suppressed: replay state matches.";
             return;
+        }
         suppressCapture_ = false;
+        qDebug() << "[Move Workflow] CAPTURE suppression cleared: workflow changed.";
     }
-    if (std::memcmp(&last_, workflow_, sizeof(workflow_t)) == 0) return;
+    if (std::memcmp(&last_, workflow_, sizeof(workflow_t)) == 0) {
+        qDebug() << "[Move Workflow] CAPTURE skipped: snapshot unchanged.";
+        return;
+    }
     auto before = std::make_unique<workflow_t>(last_);
     auto after = std::make_unique<workflow_t>(*workflow_);
+    qDebug() << "[Move Workflow] CAPTURE pushing command: count=" << stack_->count()
+             << "index=" << stack_->index();
     stack_->push(new WorkflowSnapshotCommand(workflow_, std::move(before), std::move(after)));
     last_ = *workflow_;
+    qDebug() << "[Move Workflow] CAPTURE after push: count=" << stack_->count()
+             << "index=" << stack_->index();
 }
 void WorkflowUndo::prepareManagerCapture()
 {
