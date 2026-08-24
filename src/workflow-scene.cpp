@@ -1,7 +1,7 @@
 #include "workflow-scene.h"
 
 #include <QGraphicsSceneMouseEvent>
-#include <QInputDialog>
+#include <QMessageBox>
 #include <QPainterPath>
 #include <QPen>
 #include <QTransform>
@@ -33,6 +33,21 @@ static void remove_id(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QStrin
         }
     }
     count = write;
+}
+
+static bool add_node_id(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QString &id)
+{
+    const QByteArray bytes = id.toUtf8();
+    for (size_t i = 0; i < count; ++i) {
+        if (std::strcmp(ids[i], bytes.constData()) == 0)
+            return false;
+    }
+    if (count >= WORKFLOW_MAX_NODES)
+        return false;
+    std::strncpy(ids[count], bytes.constData(), WORKFLOW_MAX_NAME - 1);
+    ids[count][WORKFLOW_MAX_NAME - 1] = '\0';
+    ++count;
+    return true;
 }
 
 } // namespace
@@ -229,90 +244,20 @@ void EditorScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
     QGraphicsScene::mouseDoubleClickEvent(event);
 }
 
-NodeItem *EditorScene::findNodeById(const char *id) const
-{
-    for (NodeItem *node : nodes_) {
-        if (std::strcmp(node->workflowNode()->id, id) == 0)
-            return node;
-    }
-    return nullptr;
-}
-
 NodeItem *EditorScene::nodeAt(const QPointF &scenePos) const
 {
     const QList<QGraphicsItem *> hits = items(scenePos, Qt::IntersectsItemShape,
                                                Qt::DescendingOrder, QTransform());
     for (QGraphicsItem *item : hits) {
-        while (item && !dynamic_cast<NodeItem *>(item))
-            item = item->parentItem();
         if (auto *node = dynamic_cast<NodeItem *>(item))
             return node;
+        while (item) {
+            item = item->parentItem();
+            if (auto *node = dynamic_cast<NodeItem *>(item))
+                return node;
+        }
     }
     return nullptr;
-}
-
-bool EditorScene::hasNodeId(size_t count, const char ids[][WORKFLOW_MAX_NAME], const QString &id) const
-{
-    const QByteArray wanted = id.toUtf8();
-    for (size_t i = 0; i < count; ++i) {
-        if (std::strcmp(ids[i], wanted.constData()) == 0)
-            return true;
-    }
-    return false;
-}
-
-bool EditorScene::addNodeId(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QString &id)
-{
-    if (count >= WORKFLOW_MAX_LINKS || hasNodeId(count, ids, id))
-        return false;
-    copy_text(ids[count], WORKFLOW_MAX_NAME, id);
-    ++count;
-    return true;
-}
-
-void EditorScene::connectNodes(NodeItem *source, NodeItem *target)
-{
-    if (!source || !target || source == target)
-        return;
-
-    if (source->workflowNode()->type == WORKFLOW_NODE_TRIGGER &&
-        target->workflowNode()->type == WORKFLOW_NODE_ACTION) {
-        connectTriggerToAction(source, target);
-    } else if (source->workflowNode()->type == WORKFLOW_NODE_ACTION &&
-               target->workflowNode()->type == WORKFLOW_NODE_TRIGGER) {
-        connectTriggerToAction(target, source);
-    } else if (source->workflowNode()->type == WORKFLOW_NODE_ACTION &&
-               target->workflowNode()->type == WORKFLOW_NODE_ACTION) {
-        const QStringList choices = {"Simultaneous", "Next"};
-        bool ok = false;
-        const QString type = QInputDialog::getItem(
-            nullptr, "Connect Actions", "Relationship type:", choices, 0, false, &ok);
-        if (ok)
-            connectActionToAction(source, target, type);
-    }
-
-    source->refreshDisplay();
-    target->refreshDisplay();
-    rebuildConnections();
-}
-
-void EditorScene::connectTriggerToAction(NodeItem *trigger, NodeItem *action)
-{
-    if (!trigger || !action)
-        return;
-
-    addNodeId(trigger->workflowNode()->simultaneous_node_count,
-              trigger->workflowNode()->simultaneous_node_ids,
-              action->id());
-}
-
-void EditorScene::connectActionToAction(NodeItem *source, NodeItem *target, const QString &type)
-{
-    workflow_node_t *wf = source->workflowNode();
-    if (type == "Simultaneous")
-        addNodeId(wf->simultaneous_node_count, wf->simultaneous_node_ids, target->id());
-    else
-        addNodeId(wf->next_node_count, wf->next_node_ids, target->id());
 }
 
 void EditorScene::finishConnectionDrag(const QPointF &scenePos)
@@ -328,8 +273,57 @@ void EditorScene::finishConnectionDrag(const QPointF &scenePos)
     dragSource_ = nullptr;
     draggingConnection_ = false;
 
-    if (source && target && source != target)
-        connectNodes(source, target);
+    if (!source || !target || source == target)
+        return;
+
+    if (source->workflowNode()->type == WORKFLOW_NODE_ACTION &&
+        target->workflowNode()->type == WORKFLOW_NODE_ACTION) {
+        QMessageBox dialog(QMessageBox::Question, "Connect Actions",
+                           "Choose how the destination Action should start.",
+                           QMessageBox::NoButton, nullptr);
+        QPushButton *simultaneous = dialog.addButton("Simultaneous", QMessageBox::AcceptRole);
+        QPushButton *next = dialog.addButton("Next", QMessageBox::AcceptRole);
+        QPushButton *cancel = dialog.addButton("Cancel", QMessageBox::RejectRole);
+        dialog.exec();
+
+        if (dialog.clickedButton() == simultaneous)
+            connectActionToAction(source, target, "Simultaneous");
+        else if (dialog.clickedButton() == next)
+            connectActionToAction(source, target, "Next");
+        else if (dialog.clickedButton() == cancel)
+            return;
+    } else if (source->workflowNode()->type == WORKFLOW_NODE_TRIGGER &&
+               target->workflowNode()->type == WORKFLOW_NODE_ACTION) {
+        connectTriggerToAction(source, target);
+    } else if (source->workflowNode()->type == WORKFLOW_NODE_ACTION &&
+               target->workflowNode()->type == WORKFLOW_NODE_TRIGGER) {
+        connectTriggerToAction(target, source);
+    } else {
+        return;
+    }
+
+    source->refreshDisplay();
+    target->refreshDisplay();
+    rebuildConnections();
+}
+
+void EditorScene::connectTriggerToAction(NodeItem *trigger, NodeItem *action)
+{
+    if (!trigger || !action)
+        return;
+
+    add_node_id(trigger->workflowNode()->simultaneous_node_count,
+                trigger->workflowNode()->simultaneous_node_ids,
+                action->id());
+}
+
+void EditorScene::connectActionToAction(NodeItem *source, NodeItem *target, const QString &type)
+{
+    workflow_node_t *wf = source->workflowNode();
+    if (type == "Simultaneous")
+        add_node_id(wf->simultaneous_node_count, wf->simultaneous_node_ids, target->id());
+    else
+        add_node_id(wf->next_node_count, wf->next_node_ids, target->id());
 }
 
 void EditorScene::addRelationshipLines(NodeItem *from, size_t count,
