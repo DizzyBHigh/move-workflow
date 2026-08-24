@@ -9,6 +9,7 @@
 #include "workflow-scene.h"
 #include "workflow-undo.h"
 #include "workflow-workspace.h"
+#include "workflow-hotkeys.h"
 #include <obs-frontend-api.h>
 #include <QApplication>
 #include <QDialog>
@@ -66,7 +67,7 @@ public:
         auto *deleteShortcut=new QShortcut(QKeySequence::Delete,this); deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(deleteShortcut,&QShortcut::activated,this,&EditorWindow::deleteSelectedNodes); updateButtonState();
     }
     ~EditorWindow() override { if(qApp) qApp->removeEventFilter(this); }
-    void redoFromHotkey() { redoWorkflow(); }
+    void redoFromHotkey() { qDebug()<<"[Move Workflow] Ctrl+Y invoking EditorWindow::redoWorkflow."; redoWorkflow(); }
 protected:
     bool eventFilter(QObject *watched,QEvent *event) override { if(event->type()==QEvent::KeyPress&&isActiveWindow()){auto *key=static_cast<QKeyEvent *>(event);const bool control=key->modifiers()&Qt::ControlModifier;const bool redo=control&&(key->key()==Qt::Key_Y||(key->key()==Qt::Key_Z&&key->modifiers()&Qt::ShiftModifier));if(redo){redoWorkflow();return true;}}return QDialog::eventFilter(watched,event); }
     void keyPressEvent(QKeyEvent *event) override {const bool control=event->modifiers()&Qt::ControlModifier;const bool redo=control&&(event->key()==Qt::Key_Y||(event->key()==Qt::Key_Z&&event->modifiers()&Qt::ShiftModifier));if(redo){redoWorkflow();event->accept();return;}QDialog::keyPressEvent(event);}
@@ -89,5 +90,5 @@ private:
     workflow_workspace_t workspace_{};WorkflowUndo undo_;QWidget *managerUi_=nullptr;EditorScene *scene_=nullptr;WorkflowGraphicsView *view_=nullptr;QLabel *zoomLabel_=nullptr;bool syncPending_=false;bool applyingUndoRedo_=false;unsigned long long syncGeneration_=0;QPushButton *addButton_=nullptr;QPushButton *copyButton_=nullptr;QPushButton *pasteButton_=nullptr;QPushButton *duplicateButton_=nullptr;QPushButton *deleteButton_=nullptr;
 };
 }
-extern "C" void workflow_editor_redo_from_hotkey(void){QPointer<EditorWindow> editor=window;if(!editor){blog(LOG_WARNING,"[Move Workflow] Ctrl+Y bridge fired but editor is not open.");return;}blog(LOG_INFO,"[Move Workflow] Ctrl+Y bridge reached editor; queueing redo on Qt application event loop.");QTimer::singleShot(0,qApp,[editor](){if(editor){blog(LOG_INFO,"[Move Workflow] Ctrl+Y queued callback executing.");editor->redoFromHotkey();}});}
+extern "C" void workflow_editor_redo_from_hotkey(void){EditorWindow *editor=window.data();if(!editor){blog(LOG_WARNING,"[Move Workflow] Ctrl+Y bridge fired but editor is not open.");return;}blog(LOG_INFO,"[Move Workflow] Ctrl+Y bridge reached editor; queueing redo on Qt application event loop.");QTimer::singleShot(0,editor,[editor](){if(!editor){blog(LOG_WARNING,"[Move Workflow] Ctrl+Y queued callback lost editor.");return;}blog(LOG_INFO,"[Move Workflow] Ctrl+Y queued callback executing; invoking redo directly.");editor->redoFromHotkey();});}
 void show_move_workflow_editor(QWidget *parent){if(!window){auto *mainWindow=parent?parent:static_cast<QWidget *>(obs_frontend_get_main_window());window=new EditorWindow(mainWindow);}window->show();window->raise();window->activateWindow();}
