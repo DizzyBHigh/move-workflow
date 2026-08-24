@@ -4,6 +4,7 @@
 
 #include <QList>
 #include <QString>
+#include <QStringList>
 #include <QWidget>
 
 class WorkflowActionList final : public QWidget {
