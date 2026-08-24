@@ -1,9 +1,12 @@
 #pragma once
 
+#include "workflow-manager.h"
+
+#include <functional>
+
 class QWidget;
-class QComboBox;
-class QCheckBox;
 
-struct workflow_manager;
-
-QWidget *create_workflow_manager_ui(workflow_manager *manager, QWidget *parent = nullptr);
+QWidget *create_workflow_manager_ui(
+    workflow_manager_t *manager,
+    QWidget *parent = nullptr,
+    std::function<void(const char *)> selectionChanged = {});
