@@ -29,8 +29,10 @@ public:
         layout->addWidget(combo_, 1); layout->addWidget(add_); layout->addWidget(duplicate_);
         layout->addWidget(rename_); layout->addWidget(remove_); layout->addWidget(enabled_); refresh();
         connect(combo_, &QComboBox::currentIndexChanged, this, [this](int index) {
-            if (index >= 0) { const QByteArray id = combo_->itemData(index).toByteArray();
-                if (workflow_manager_set_selected(manager_, id.constData()) && selectionChanged_) selectionChanged_(id.constData()); }
+            if (index >= 0 && selectionChanged_) {
+                const QByteArray id = combo_->itemData(index).toByteArray();
+                selectionChanged_(id.constData());
+            }
             refresh();
         });
         connect(add_, &QPushButton::clicked, this, [this] { addWorkflow(); });
