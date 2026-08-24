@@ -11,6 +11,7 @@
 #include "workflow-workspace.h"
 #include <obs-frontend-api.h>
 #include <QDialog>
+#include <QEvent>
 #include <QGraphicsScene>
 #include <QHBoxLayout>
 #include <QInputDialog>
@@ -42,7 +43,7 @@ public:
         duplicateButton_=new QPushButton("Duplicate Node",this); deleteButton_=new QPushButton("Delete Node",this);
         auto *zoomOut=new QPushButton("−",this); auto *zoomReset=new QPushButton("100%",this); auto *zoomIn=new QPushButton("+",this); auto *fit=new QPushButton("Fit All",this); auto *close=new QPushButton("Close",this);
         toolbar->addWidget(addButton_); toolbar->addWidget(edit); toolbar->addWidget(copyButton_); toolbar->addWidget(pasteButton_); toolbar->addWidget(duplicateButton_); toolbar->addWidget(deleteButton_); toolbar->addStretch(); toolbar->addWidget(zoomOut); toolbar->addWidget(zoomReset); toolbar->addWidget(zoomIn); toolbar->addWidget(fit); toolbar->addWidget(close); root->addLayout(toolbar);
-        scene_=new EditorScene(this); view_=new WorkflowGraphicsView(scene_,this); workspace_.scene=scene_; workflow_workspace_init(&workspace_,scene_); resetUndo();
+        scene_=new EditorScene(this); view_=new WorkflowGraphicsView(scene_,this); view_->installEventFilter(this); workspace_.scene=scene_; workflow_workspace_init(&workspace_,scene_); resetUndo();
         managerUi_=create_workflow_manager_ui(workflow_workspace_manager(&workspace_),this,
             [this](const char *id){ if(workflow_workspace_select(&workspace_,id)) resetUndo(); },
             [this](const char *name){const bool ok=workflow_workspace_create(&workspace_,name); if(ok)resetUndo(); return ok;},
@@ -62,17 +63,29 @@ public:
         updateButtonState();
     }
 protected:
+    bool eventFilter(QObject *watched, QEvent *event) override
+    {
+        if (watched == view_ && event->type() == QEvent::KeyPress) {
+            auto *key = static_cast<QKeyEvent *>(event);
+            const bool control = key->modifiers() & Qt::ControlModifier;
+            const bool redo = control && (key->key() == Qt::Key_Y ||
+                (key->key() == Qt::Key_Z && key->modifiers() & Qt::ShiftModifier));
+            if (redo) {
+                qDebug() << "[Move Workflow] Workflow view redo key:" << key->key();
+                redoWorkflow();
+                return true;
+            }
+        }
+        return QDialog::eventFilter(watched, event);
+    }
     void keyPressEvent(QKeyEvent *event) override
     {
         const bool control = event->modifiers() & Qt::ControlModifier;
-        const bool redoKey = event->key() == Qt::Key_Y || event->key() == Qt::Key_Z;
         const bool redo = control && (event->key() == Qt::Key_Y ||
             (event->key() == Qt::Key_Z && event->modifiers() & Qt::ShiftModifier));
-        if (redo && redoKey) {
+        if (redo) {
             qDebug() << "[Move Workflow] Editor keyPressEvent redo:" << event->key();
-            redoWorkflow();
-            event->accept();
-            return;
+            redoWorkflow(); event->accept(); return;
         }
         QDialog::keyPressEvent(event);
     }
