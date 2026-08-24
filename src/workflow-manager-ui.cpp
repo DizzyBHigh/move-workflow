@@ -34,7 +34,7 @@ public:
             refresh();
         });
         connect(add_, &QPushButton::clicked, this, [this] { addWorkflow(); });
-        connect(duplicate_, &QPushButton::clicked, this, [this] { duplicateWorkflow(); });
+        connect(duplicate_, &QPushButton::clicked, this, [this] { this->duplicateWorkflow(); });
         connect(rename_, &QPushButton::clicked, this, [this] { renameWorkflow(); });
         connect(remove_, &QPushButton::clicked, this, [this] { removeWorkflow(); });
         connect(enabled_, &QCheckBox::toggled, this, [this](bool enabled) {
