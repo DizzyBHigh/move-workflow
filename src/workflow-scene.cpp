@@ -4,6 +4,7 @@
 #include <QMessageBox>
 #include <QPainterPath>
 #include <QPen>
+#include <QPushButton>
 #include <QTransform>
 
 #include <cmath>
