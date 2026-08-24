@@ -115,10 +115,18 @@ void NodeItem::refreshDisplay()
 bool NodeItem::isOnConnectionHandle(const QPointF &scenePos) const
 {
     const QPointF local = mapFromScene(scenePos);
-    const QPointF input = inputHandlePos();
-    const QPointF output = outputHandlePos();
-    return QLineF(local, input).length() <= handleRadius + 3.0 ||
-           QLineF(local, output).length() <= handleRadius + 3.0;
+    const QPointF handles[] = {
+        inputHandlePos(),
+        outputHandlePos(),
+        topHandlePos(),
+        bottomHandlePos(),
+    };
+
+    for (const QPointF &handle : handles) {
+        if (QLineF(local, handle).length() <= handleHitRadius)
+            return true;
+    }
+    return false;
 }
 
 QPointF NodeItem::inputHandlePos() const
@@ -129,6 +137,16 @@ QPointF NodeItem::inputHandlePos() const
 QPointF NodeItem::outputHandlePos() const
 {
     return QPointF(rect().right(), rect().center().y());
+}
+
+QPointF NodeItem::topHandlePos() const
+{
+    return QPointF(rect().center().x(), rect().top());
+}
+
+QPointF NodeItem::bottomHandlePos() const
+{
+    return QPointF(rect().center().x(), rect().bottom());
 }
 
 QVariant NodeItem::itemChange(GraphicsItemChange change, const QVariant &value)
@@ -146,6 +164,8 @@ void NodeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     painter->setBrush(QColor(75, 85, 100));
     painter->drawEllipse(inputHandlePos(), handleRadius, handleRadius);
     painter->drawEllipse(outputHandlePos(), handleRadius, handleRadius);
+    painter->drawEllipse(topHandlePos(), handleRadius, handleRadius);
+    painter->drawEllipse(bottomHandlePos(), handleRadius, handleRadius);
 }
 
 void NodeItem::updateGeometryForText()
