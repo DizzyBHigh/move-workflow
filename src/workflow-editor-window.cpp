@@ -30,23 +30,33 @@
 #include <QComboBox>
 #include <QDebug>
 #include <QAction>
+#include <QMetaObject>
 #include <cstring>
 
 namespace {
 class EditorWindow;
 static QPointer<EditorWindow> window;
+
 class EditorWindow final : public QDialog {
 public:
     explicit EditorWindow(QWidget *parent = nullptr) : QDialog(parent)
     {
         setWindowTitle("Move Workflow Editor"); resize(1050, 700);
         auto *root = new QVBoxLayout(this); auto *toolbar = new QHBoxLayout;
-        addButton_=new QPushButton("+ Add Node",this); auto *edit=new QPushButton("Edit Node",this); copyButton_=new QPushButton("Copy",this); pasteButton_=new QPushButton("Paste",this); duplicateButton_=new QPushButton("Duplicate Node",this); deleteButton_=new QPushButton("Delete Node",this);
+        addButton_=new QPushButton("+ Add Node",this); auto *edit=new QPushButton("Edit Node",this);
+        copyButton_=new QPushButton("Copy",this); pasteButton_=new QPushButton("Paste",this);
+        duplicateButton_=new QPushButton("Duplicate Node",this); deleteButton_=new QPushButton("Delete Node",this);
         auto *zoomOut=new QPushButton("−",this); auto *zoomReset=new QPushButton("100%",this); auto *zoomIn=new QPushButton("+",this); auto *fit=new QPushButton("Fit All",this); auto *close=new QPushButton("Close",this);
         toolbar->addWidget(addButton_); toolbar->addWidget(edit); toolbar->addWidget(copyButton_); toolbar->addWidget(pasteButton_); toolbar->addWidget(duplicateButton_); toolbar->addWidget(deleteButton_); toolbar->addStretch(); toolbar->addWidget(zoomOut); toolbar->addWidget(zoomReset); toolbar->addWidget(zoomIn); toolbar->addWidget(fit); toolbar->addWidget(close); root->addLayout(toolbar);
         scene_=new EditorScene(this); view_=new WorkflowGraphicsView(scene_,this); view_->installEventFilter(this); qApp->installEventFilter(this); workspace_.scene=scene_; workflow_workspace_init(&workspace_,scene_); resetUndo();
-        managerUi_=create_workflow_manager_ui(workflow_workspace_manager(&workspace_),this,[this](const char *id){if(workflow_workspace_select(&workspace_,id))resetUndo();},[this](const char *name){const bool ok=workflow_workspace_create(&workspace_,name);if(ok)resetUndo();return ok;},[this](const char *name){const bool ok=workflow_workspace_duplicate(&workspace_,name);if(ok)resetUndo();return ok;},[this]{return deleteWorkflow();},[this]{workflow_workspace_sync_scene(&workspace_);undo_.capture();});
-        root->addWidget(managerUi_); auto *hint=new QLabel("Trigger nodes start workflow branches. Action nodes reference an existing Move / Swap / Value filter. Drag nodes, double-click to edit, use the mouse wheel to zoom and middle mouse to pan.",this); hint->setWordWrap(true); root->addWidget(hint); root->addWidget(view_,1);
+        managerUi_=create_workflow_manager_ui(workflow_workspace_manager(&workspace_),this,
+            [this](const char *id){ if(workflow_workspace_select(&workspace_,id)) resetUndo(); },
+            [this](const char *name){const bool ok=workflow_workspace_create(&workspace_,name); if(ok)resetUndo(); return ok;},
+            [this](const char *name){const bool ok=workflow_workspace_duplicate(&workspace_,name); if(ok)resetUndo(); return ok;},
+            [this]{return deleteWorkflow();},
+            [this]{ workflow_workspace_sync_scene(&workspace_); undo_.capture(); });
+        root->addWidget(managerUi_);
+        auto *hint=new QLabel("Trigger nodes start workflow branches. Action nodes reference an existing Move / Swap / Value filter. Drag nodes, double-click to edit, use the mouse wheel to zoom and middle mouse to pan.",this); hint->setWordWrap(true); root->addWidget(hint); root->addWidget(view_,1);
         auto *status=new QHBoxLayout; status->addStretch(); status->addWidget(new QLabel("Zoom:",this)); zoomLabel_=new QLabel("100%",this); status->addWidget(zoomLabel_); root->addLayout(status); view_->setZoomLabel(zoomLabel_);
         connect(addButton_,&QPushButton::clicked,this,[this]{showAddNodeMenu();}); connect(edit,&QPushButton::clicked,this,[this]{editSelectedNode();}); connect(copyButton_,&QPushButton::clicked,this,[this]{copySelectedNodes();}); connect(pasteButton_,&QPushButton::clicked,this,[this]{pasteNodes();}); connect(duplicateButton_,&QPushButton::clicked,this,[this]{duplicateSelectedNode();}); connect(deleteButton_,&QPushButton::clicked,this,[this]{deleteSelectedNodes();});
         connect(zoomOut,&QPushButton::clicked,view_,&WorkflowGraphicsView::zoomOut); connect(zoomReset,&QPushButton::clicked,view_,&WorkflowGraphicsView::resetZoom); connect(zoomIn,&QPushButton::clicked,view_,&WorkflowGraphicsView::zoomIn); connect(fit,&QPushButton::clicked,view_,&WorkflowGraphicsView::fitAll); connect(close,&QPushButton::clicked,this,&QDialog::hide);
@@ -80,5 +90,5 @@ private:
     workflow_workspace_t workspace_{};WorkflowUndo undo_;QWidget *managerUi_=nullptr;EditorScene *scene_=nullptr;WorkflowGraphicsView *view_=nullptr;QLabel *zoomLabel_=nullptr;bool syncPending_=false;bool applyingUndoRedo_=false;unsigned long long syncGeneration_=0;QPushButton *addButton_=nullptr;QPushButton *copyButton_=nullptr;QPushButton *pasteButton_=nullptr;QPushButton *duplicateButton_=nullptr;QPushButton *deleteButton_=nullptr;
 };
 }
-extern "C" void workflow_editor_redo_from_hotkey(void){if(window){blog(LOG_INFO,"[Move Workflow] Ctrl+Y bridge reached editor.");window->redoFromHotkey();}else blog(LOG_WARNING,"[Move Workflow] Ctrl+Y bridge fired but editor is not open.");}
+extern "C" void workflow_editor_redo_from_hotkey(void){QPointer<EditorWindow> editor=window;if(!editor){blog(LOG_WARNING,"[Move Workflow] Ctrl+Y bridge fired but editor is not open.");return;}blog(LOG_INFO,"[Move Workflow] Ctrl+Y bridge reached editor; queueing redo on UI thread.");QMetaObject::invokeMethod(editor,[editor](){if(editor)editor->redoFromHotkey();},Qt::QueuedConnection);}
 void show_move_workflow_editor(QWidget *parent){if(!window){auto *mainWindow=parent?parent:static_cast<QWidget *>(obs_frontend_get_main_window());window=new EditorWindow(mainWindow);}window->show();window->raise();window->activateWindow();}
