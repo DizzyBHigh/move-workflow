@@ -261,6 +261,18 @@ NodeItem *EditorScene::nodeAt(const QPointF &scenePos) const
     return nullptr;
 }
 
+NodeItem *EditorScene::findNodeById(const char *id) const
+{
+    if (!id)
+        return nullptr;
+
+    for (NodeItem *node : nodes_) {
+        if (node && node->id() == QString::fromUtf8(id))
+            return node;
+    }
+    return nullptr;
+}
+
 void EditorScene::finishConnectionDrag(const QPointF &scenePos)
 {
     NodeItem *source = dragSource_;
