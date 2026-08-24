@@ -1,10 +1,12 @@
 #include "workflow-node-settings.h"
 
+#include "workflow-action-list.h"
 #include "workflow-node-settings-common.h"
 
 #include <obs.h>
 
 #include <QComboBox>
+#include <QSpinBox>
 
 static bool add_trigger_source(void *data, obs_source_t *source)
 {
