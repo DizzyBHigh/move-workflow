@@ -3,6 +3,7 @@
 #include "workflow-manager-ui.h"
 #include "workflow-model.h"
 #include "workflow-node-dialog.h"
+#include "workflow-node-duplicate-ui.h"
 #include "workflow-scene.h"
 #include "workflow-workspace.h"
 #include <obs-frontend-api.h>
@@ -17,7 +18,6 @@
 #include <QMenu>
 #include <QPointer>
 #include <QPushButton>
-#include <QTimer>
 #include <QVBoxLayout>
 
 namespace {
@@ -25,75 +25,48 @@ class EditorWindow final : public QDialog {
 public:
     explicit EditorWindow(QWidget *parent = nullptr) : QDialog(parent)
     {
-        setWindowTitle("Move Workflow Editor");
-        resize(1050, 700);
-        auto *root = new QVBoxLayout(this);
-        auto *toolbar = new QHBoxLayout;
-        addButton_ = new QPushButton("+ Add Node", this);
-        auto *edit = new QPushButton("Edit Node", this);
-        deleteButton_ = new QPushButton("Delete Node", this);
-        auto *zoomOut = new QPushButton("−", this);
-        auto *zoomReset = new QPushButton("100%", this);
-        auto *zoomIn = new QPushButton("+", this);
-        auto *fit = new QPushButton("Fit All", this);
-        auto *close = new QPushButton("Close", this);
-        toolbar->addWidget(addButton_); toolbar->addWidget(edit); toolbar->addWidget(deleteButton_);
-        toolbar->addStretch(); toolbar->addWidget(zoomOut); toolbar->addWidget(zoomReset);
-        toolbar->addWidget(zoomIn); toolbar->addWidget(fit); toolbar->addWidget(close);
+        setWindowTitle("Move Workflow Editor"); resize(1050, 700);
+        auto *root = new QVBoxLayout(this); auto *toolbar = new QHBoxLayout;
+        addButton_ = new QPushButton("+ Add Node", this); auto *edit = new QPushButton("Edit Node", this);
+        duplicateButton_ = new QPushButton("Duplicate Node", this); deleteButton_ = new QPushButton("Delete Node", this);
+        auto *zoomOut = new QPushButton("−", this); auto *zoomReset = new QPushButton("100%", this);
+        auto *zoomIn = new QPushButton("+", this); auto *fit = new QPushButton("Fit All", this); auto *close = new QPushButton("Close", this);
+        toolbar->addWidget(addButton_); toolbar->addWidget(edit); toolbar->addWidget(duplicateButton_); toolbar->addWidget(deleteButton_);
+        toolbar->addStretch(); toolbar->addWidget(zoomOut); toolbar->addWidget(zoomReset); toolbar->addWidget(zoomIn); toolbar->addWidget(fit); toolbar->addWidget(close);
         root->addLayout(toolbar);
-        scene_ = new EditorScene(this);
-        view_ = new WorkflowGraphicsView(scene_, this);
-        workspace_.scene = scene_;
-        workflow_workspace_init(&workspace_, scene_);
-        root->addWidget(create_workflow_manager_ui(
-            workflow_workspace_manager(&workspace_), this,
+        scene_ = new EditorScene(this); view_ = new WorkflowGraphicsView(scene_, this); workspace_.scene = scene_; workflow_workspace_init(&workspace_, scene_);
+        root->addWidget(create_workflow_manager_ui(workflow_workspace_manager(&workspace_), this,
             [this](const char *id) { workflow_workspace_select(&workspace_, id); },
             [this](const char *name) { return workflow_workspace_create(&workspace_, name); },
             [this](const char *name) { return workflow_workspace_duplicate(&workspace_, name); }));
         auto *hint = new QLabel("Trigger nodes start workflow branches. Action nodes reference an existing Move / Swap / Value filter. Drag nodes, double-click to edit, use the mouse wheel to zoom and middle mouse to pan.", this);
         hint->setWordWrap(true); root->addWidget(hint); root->addWidget(view_, 1);
-        auto *status = new QHBoxLayout; status->addStretch(); status->addWidget(new QLabel("Zoom:", this));
-        zoomLabel_ = new QLabel("100%", this); status->addWidget(zoomLabel_); root->addLayout(status);
-        view_->setZoomLabel(zoomLabel_);
-        connect(addButton_, &QPushButton::clicked, this, [this] { showAddNodeMenu(); });
-        connect(edit, &QPushButton::clicked, this, [this] { editSelectedNode(); });
-        connect(deleteButton_, &QPushButton::clicked, this, [this] { deleteSelectedNode(); });
-        connect(zoomOut, &QPushButton::clicked, view_, &WorkflowGraphicsView::zoomOut);
-        connect(zoomReset, &QPushButton::clicked, view_, &WorkflowGraphicsView::resetZoom);
-        connect(zoomIn, &QPushButton::clicked, view_, &WorkflowGraphicsView::zoomIn);
-        connect(fit, &QPushButton::clicked, view_, &WorkflowGraphicsView::fitAll);
-        connect(close, &QPushButton::clicked, this, &QDialog::hide);
-        connect(scene_, &QGraphicsScene::selectionChanged, this, [this] { updateButtonState(); });
-        connect(scene_, &EditorScene::nodeDoubleClicked, this, [this](NodeItem *node) { editNode(node); });
-        updateButtonState();
+        auto *status = new QHBoxLayout; status->addStretch(); status->addWidget(new QLabel("Zoom:", this)); zoomLabel_ = new QLabel("100%", this); status->addWidget(zoomLabel_); root->addLayout(status); view_->setZoomLabel(zoomLabel_);
+        connect(addButton_, &QPushButton::clicked, this, [this] { showAddNodeMenu(); }); connect(edit, &QPushButton::clicked, this, [this] { editSelectedNode(); });
+        connect(duplicateButton_, &QPushButton::clicked, this, [this] { duplicateSelectedNode(); }); connect(deleteButton_, &QPushButton::clicked, this, [this] { deleteSelectedNode(); });
+        connect(zoomOut, &QPushButton::clicked, view_, &WorkflowGraphicsView::zoomOut); connect(zoomReset, &QPushButton::clicked, view_, &WorkflowGraphicsView::resetZoom);
+        connect(zoomIn, &QPushButton::clicked, view_, &WorkflowGraphicsView::zoomIn); connect(fit, &QPushButton::clicked, view_, &WorkflowGraphicsView::fitAll); connect(close, &QPushButton::clicked, this, &QDialog::hide);
+        connect(scene_, &QGraphicsScene::selectionChanged, this, [this] { updateButtonState(); }); connect(scene_, &EditorScene::nodeDoubleClicked, this, [this](NodeItem *node) { editNode(node); }); updateButtonState();
     }
 private:
     void showAddNodeMenu()
     {
-        QMenu menu(this); QAction *trigger = menu.addAction("Add Trigger Node"); QAction *action = menu.addAction("Add Action Node");
-        QAction *chosen = menu.exec(addButton_->mapToGlobal(QPoint(0, addButton_->height()))); if (!chosen) return;
-        bool ok = false;
-        const QString name = QInputDialog::getText(this, chosen == trigger ? "Add Trigger Node" : "Add Action Node", "Node name:", QLineEdit::Normal, chosen == trigger ? "New Trigger" : "New Action", &ok);
-        if (!ok || name.trimmed().isEmpty()) return;
-        NodeItem *node = scene_->addNode(chosen == trigger ? WORKFLOW_NODE_TRIGGER : WORKFLOW_NODE_ACTION, name.trimmed());
-        if (node) { node->setSelected(true); view_->fitAll(); }
+        QMenu menu(this); QAction *trigger = menu.addAction("Add Trigger Node"); QAction *action = menu.addAction("Add Action Node"); QAction *chosen = menu.exec(addButton_->mapToGlobal(QPoint(0, addButton_->height()))); if (!chosen) return;
+        bool ok = false; const QString name = QInputDialog::getText(this, chosen == trigger ? "Add Trigger Node" : "Add Action Node", "Node name:", QLineEdit::Normal, chosen == trigger ? "New Trigger" : "New Action", &ok); if (!ok || name.trimmed().isEmpty()) return;
+        NodeItem *node = scene_->addNode(chosen == trigger ? WORKFLOW_NODE_TRIGGER : WORKFLOW_NODE_ACTION, name.trimmed()); if (node) { node->setSelected(true); view_->fitAll(); }
     }
-    void editNode(NodeItem *node)
-    {
-        if (!node) return;
-        if (edit_node_settings(node, scene_->nodes(), this)) { node->refreshDisplay(); scene_->refreshConnectionsFor(node); }
-    }
+    void editNode(NodeItem *node) { if (!node) return; if (edit_node_settings(node, scene_->nodes(), this)) { node->refreshDisplay(); scene_->refreshConnectionsFor(node); } }
     void editSelectedNode() { editNode(scene_->selectedNode()); }
+    void duplicateSelectedNode() { if (duplicate_selected_workflow_node(scene_)) updateButtonState(); }
     void deleteSelectedNode()
     {
-        NodeItem *node = scene_->selectedNode(); if (!node) return;
-        const QString name = node->nodeName();
+        NodeItem *node = scene_->selectedNode(); if (!node) return; const QString name = node->nodeName();
         if (QMessageBox::question(this, "Delete Node", QString("Delete '%1'?\n\nAny connections to this node will also be removed.").arg(name), QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes) return;
         scene_->deleteNode(node); updateButtonState();
     }
-    void updateButtonState() { deleteButton_->setEnabled(scene_ && scene_->selectedNode()); }
-    workflow_workspace_t workspace_{}; EditorScene *scene_ = nullptr; WorkflowGraphicsView *view_ = nullptr;
-    QLabel *zoomLabel_ = nullptr; QPushButton *addButton_ = nullptr; QPushButton *deleteButton_ = nullptr;
+    void updateButtonState() { const bool selected = scene_ && scene_->selectedNode(); deleteButton_->setEnabled(selected); duplicateButton_->setEnabled(selected); }
+    workflow_workspace_t workspace_{}; EditorScene *scene_ = nullptr; WorkflowGraphicsView *view_ = nullptr; QLabel *zoomLabel_ = nullptr;
+    QPushButton *addButton_ = nullptr; QPushButton *duplicateButton_ = nullptr; QPushButton *deleteButton_ = nullptr;
 };
 QPointer<EditorWindow> window;
 }
