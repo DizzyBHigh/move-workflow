@@ -1,6 +1,7 @@
 #include "workflow-node.h"
 
 #include <QGraphicsTextItem>
+#include <QLineF>
 #include <QPainter>
 #include <QPen>
 
