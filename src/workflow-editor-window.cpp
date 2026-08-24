@@ -36,7 +36,6 @@
 namespace {
 class EditorWindow;
 static QPointer<EditorWindow> window;
-static void redo_hotkey_callback();
 
 class EditorWindow final : public QDialog {
 public:
@@ -66,10 +65,14 @@ public:
         auto *redoAction=new QAction(tr("Redo"),this); redoAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Y"))); redoAction->setShortcutContext(Qt::WidgetWithChildrenShortcut); connect(redoAction,&QAction::triggered,this,[this]{qDebug()<<"[Move Workflow] Ctrl+Y redo action triggered";redoWorkflow();}); addAction(redoAction);
         auto *redoAltShortcut=new QShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Z")),this); redoAltShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(redoAltShortcut,&QShortcut::activated,this,&EditorWindow::redoWorkflow);
         auto *deleteShortcut=new QShortcut(QKeySequence::Delete,this); deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut); connect(deleteShortcut,&QShortcut::activated,this,&EditorWindow::deleteSelectedNodes);
-        workflow_hotkeys_set_redo_callback(redo_hotkey_callback); updateButtonState();
+        workflow_hotkeys_set_redo_callback(&EditorWindow::redoFromHotkeyStatic); updateButtonState();
     }
     ~EditorWindow() override { workflow_hotkeys_set_redo_callback(nullptr); if(qApp) qApp->removeEventFilter(this); }
-    void redoFromHotkey() { redoWorkflow(); }
+    static void redoFromHotkeyStatic(void)
+    {
+        if (window)
+            window->redoWorkflow();
+    }
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override
     {
@@ -107,10 +110,5 @@ private:
     workflow_workspace_t workspace_{};WorkflowUndo undo_;QWidget *managerUi_=nullptr;EditorScene *scene_=nullptr;WorkflowGraphicsView *view_=nullptr;QLabel *zoomLabel_=nullptr;bool syncPending_=false;bool applyingUndoRedo_=false;unsigned long long syncGeneration_=0;
     QPushButton *addButton_=nullptr;QPushButton *copyButton_=nullptr;QPushButton *pasteButton_=nullptr;QPushButton *duplicateButton_=nullptr;QPushButton *deleteButton_=nullptr;
 };
-static void redo_hotkey_callback()
-{
-    if (window)
-        window->redoFromHotkey();
-}
 }
 void show_move_workflow_editor(QWidget *parent){if(!window){auto *mainWindow=parent?parent:static_cast<QWidget *>(obs_frontend_get_main_window());window=new EditorWindow(mainWindow);}window->show();window->raise();window->activateWindow();}
