@@ -54,8 +54,8 @@ public:
         connect(zoomOut,&QPushButton::clicked,view_,&WorkflowGraphicsView::zoomOut); connect(zoomReset,&QPushButton::clicked,view_,&WorkflowGraphicsView::resetZoom); connect(zoomIn,&QPushButton::clicked,view_,&WorkflowGraphicsView::zoomIn); connect(fit,&QPushButton::clicked,view_,&WorkflowGraphicsView::fitAll); connect(close,&QPushButton::clicked,this,&QDialog::hide);
         connect(scene_,&QGraphicsScene::selectionChanged,this,[this]{updateButtonState();}); connect(scene_,&EditorScene::nodeDoubleClicked,this,[this](NodeItem *node){editNode(node);}); connect(scene_,&QGraphicsScene::changed,this,[this]{scheduleSync();});
         new QShortcut(QKeySequence::Undo,this,[this]{undoWorkflow();});
-        new QShortcut(QKeySequence::Redo,this,[this]{redoWorkflow();});
         new QShortcut(QKeySequence(QStringLiteral("Ctrl+Y")),this,[this]{redoWorkflow();});
+        new QShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Z")),this,[this]{redoWorkflow();});
         updateButtonState();
     }
 protected:
@@ -65,6 +65,10 @@ protected:
             auto *key = static_cast<QKeyEvent *>(event);
             if (key->key() == Qt::Key_Delete && !key->isAutoRepeat()) {
                 deleteSelectedNodes();
+                return true;
+            }
+            if (!key->isAutoRepeat() && (key->modifiers() & Qt::ControlModifier) && key->key() == Qt::Key_Y) {
+                redoWorkflow();
                 return true;
             }
         }
@@ -81,12 +85,10 @@ private:
         const QString selectedId=selected?QString::fromUtf8(selected->id):QString();
         combo->blockSignals(true); combo->clear();
         auto *manager=workflow_workspace_manager(&workspace_);
-        for(size_t i=0;i<manager->workflow_count;++i)
-            combo->addItem(QString::fromUtf8(manager->workflows[i].name),QString::fromUtf8(manager->workflows[i].id));
+        for(size_t i=0;i<manager->workflow_count;++i) combo->addItem(QString::fromUtf8(manager->workflows[i].name),QString::fromUtf8(manager->workflows[i].id));
         const int index=combo->findData(selectedId);
         combo->blockSignals(false);
-        if(index>=0)combo->setCurrentIndex(index);
-        else if(combo->count()>0)combo->setCurrentIndex(0);
+        if(index>=0)combo->setCurrentIndex(index); else if(combo->count()>0)combo->setCurrentIndex(0);
     }
     void undoWorkflow(){applyingUndoRedo_=true;const bool changed=undo_.undo();if(changed){syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_workspace_manager(&workspace_));refreshWorkflowManagerUi();updateButtonState();}applyingUndoRedo_=false;}
     void redoWorkflow(){applyingUndoRedo_=true;const bool changed=undo_.redo();if(changed){syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_workspace_manager(&workspace_));refreshWorkflowManagerUi();updateButtonState();}applyingUndoRedo_=false;}
