@@ -100,10 +100,9 @@ bool NodeSettingsDialog::apply()
     wf->end_delay.mode = endDelayDefault_->isChecked() ? WORKFLOW_USE_EXISTING : WORKFLOW_OVERRIDE;
     wf->end_delay.delay_ms = (uint64_t)endDelayMs_->value();
     simultaneous_->apply(wf->simultaneous_node_count, wf->simultaneous_node_ids);
-    endActions_->apply(wf->end_node_count, wf->end_node_ids);
     nextActions_->apply(wf->next_node_count, wf->next_node_ids);
+    shortcutActions_->apply(wf->shortcut_node_count, wf->shortcut_node_ids);
     wf->simultaneous_actions_mode = WORKFLOW_OVERRIDE;
-    wf->end_actions_mode = WORKFLOW_OVERRIDE;
     wf->next_actions_mode = WORKFLOW_OVERRIDE;
     return true;
 }
