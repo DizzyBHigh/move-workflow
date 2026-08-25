@@ -11,7 +11,7 @@
 #define MOVE_ACTION_FILTER_ID "move_action_filter"
 
 typedef struct move_hotkey_lookup {
-    const char *scene_name;
+    obs_source_t *filter;
     const char *filter_name;
     obs_hotkey_id id;
 } move_hotkey_lookup_t;
@@ -41,14 +41,16 @@ static bool find_move_hotkey(void *data, obs_hotkey_id id, obs_hotkey_t *key)
     obs_source_t *registerer = weak ? obs_weak_source_get_source(weak) : NULL;
     if (!registerer)
         return true;
-    const char *name = obs_source_get_name(registerer);
-    if (name && strcmp(name, lookup->scene_name) == 0) {
+
+    bool match = registerer == lookup->filter;
+    if (match) {
         lookup->id = id;
-        obs_source_release(registerer);
-        return false;
+        blog(LOG_INFO,
+             "[Move Workflow][Debug] Move hotkey match: id=%llu filter='%s' registerer='%p'",
+             (unsigned long long)id, lookup->filter_name, (void *)registerer);
     }
     obs_source_release(registerer);
-    return true;
+    return !match;
 }
 
 static obs_source_t *find_target_filter(const workflow_action_ref_t *action)
@@ -111,14 +113,14 @@ bool workflow_move_runtime_trigger(workflow_t *workflow, workflow_node_t *node)
     }
 
     move_hotkey_lookup_t lookup = {
-        .scene_name = node->action.scene_name,
+        .filter = filter,
         .filter_name = node->action.filter_name,
         .id = OBS_INVALID_HOTKEY_ID,
     };
     obs_enum_hotkeys(find_move_hotkey, &lookup);
     if (lookup.id == OBS_INVALID_HOTKEY_ID) {
         blog(LOG_WARNING,
-             "[Move Workflow] Move start hotkey not found: scene='%s' filter='%s'.",
+             "[Move Workflow] Move start hotkey not found on target filter: scene='%s' filter='%s'.",
              node->action.scene_name, node->action.filter_name);
         obs_source_release(filter);
         return false;
