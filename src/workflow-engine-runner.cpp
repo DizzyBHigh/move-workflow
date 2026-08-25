@@ -17,6 +17,7 @@ struct continuation {
 };
 
 static bool run_node_internal(workflow_engine_state_t *, const char *, size_t);
+static bool run_node_now(workflow_engine_state_t *, workflow_node_t *, size_t);
 static bool run_links(workflow_engine_state_t *, workflow_node_t *, size_t);
 
 static uint64_t delay_value(workflow_value_mode_t mode, uint64_t value)
@@ -51,7 +52,6 @@ static bool schedule_phase(workflow_engine_state_t *state, workflow_node_t *node
 static bool run_action(workflow_engine_state_t *state, workflow_node_t *node, size_t depth)
 {
     if (!workflow_engine_execute_node(state, node)) return false;
-
     workflow_action_runtime_t *runtime =
         workflow_action_runtime_create(state->workflow, node, state->generation);
     if (!runtime) return false;
@@ -59,7 +59,6 @@ static bool run_action(workflow_engine_state_t *state, workflow_node_t *node, si
     const uint64_t duration = workflow_action_runtime_duration_ms(runtime);
     const uint64_t end_delay = workflow_action_runtime_end_delay_ms(runtime);
     workflow_action_runtime_destroy(runtime);
-
     if (duration) {
         if (schedule_phase(state, node, duration, PHASE_DURATION)) return true;
         return false;
@@ -81,7 +80,8 @@ void workflow_engine_runner_continue(void *data)
         if (node) {
             if (next->phase == PHASE_START_DELAY) {
                 workflow_debug_log("Action lifecycle: start delay complete node='%s'", node->id);
-                run_node_internal(state, node->id, 0);
+                /* Execute directly; do not schedule the start delay again. */
+                run_node_now(state, node, 0);
             } else if (next->phase == PHASE_DURATION) {
                 workflow_debug_log("Action lifecycle: duration complete node='%s'", node->id);
                 const uint64_t end_delay = delay_value(node->end_delay.mode, node->end_delay.delay_ms);
@@ -90,6 +90,7 @@ void workflow_engine_runner_continue(void *data)
                     workflow_engine_state_stop(state);
             } else {
                 workflow_debug_log("Action lifecycle: end delay complete node='%s'", node->id);
+                workflow_debug_log("Action lifecycle: node='%s' complete; advancing workflow graph", node->id);
                 run_links(state, node, 0);
             }
         }
@@ -103,6 +104,8 @@ static bool run_links(workflow_engine_state_t *state, workflow_node_t *node, siz
     for (size_t i = 0; i < node->simultaneous_node_count; ++i)
         if (!run_node_internal(state, node->simultaneous_node_ids[i], depth + 1)) return false;
     if (node->next_node_count) {
+        workflow_debug_log("Workflow graph: node='%s' completed; executing %zu next node(s)",
+                           node->id, node->next_node_count);
         for (size_t i = 0; i < node->next_node_count; ++i)
             if (!run_node_internal(state, node->next_node_ids[i], depth + 1)) return false;
         return true;
