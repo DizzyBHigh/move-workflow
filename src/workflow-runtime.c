@@ -33,7 +33,6 @@ static obs_source_t *find_move_filter(const workflow_action_ref_t *action)
         workflow_debug_log("Runtime lookup FAILED: scene not found '%s'", action->scene_name);
         return NULL;
     }
-    workflow_debug_log("Runtime lookup: scene found");
     obs_source_t *filter = obs_source_get_filter_by_name(scene, action->filter_name);
     obs_source_release(scene);
     if (!filter) {
@@ -41,7 +40,6 @@ static obs_source_t *find_move_filter(const workflow_action_ref_t *action)
         return NULL;
     }
     const char *actual_id = obs_source_get_id(filter);
-    workflow_debug_log("Runtime lookup: filter found, actual id='%s'", actual_id ? actual_id : "(null)");
     if (!actual_id || strcmp(actual_id, action->filter_id) != 0) {
         workflow_debug_log("Runtime lookup FAILED: filter id mismatch");
         obs_source_release(filter);
@@ -99,7 +97,6 @@ static bool apply_overrides(obs_source_t *filter, const workflow_node_t *node)
         obs_data_set_int(settings, "duration", (long long)node->duration.duration_ms);
     }
     if (node->start_trigger_mode == WORKFLOW_OVERRIDE) {
-        workflow_debug_log("Runtime override: start_trigger='%s'", node->start_trigger_value);
         if (strcmp(node->start_trigger_value, "Enable") == 0)
             obs_data_set_int(settings, "start_trigger", MOVE_START_TRIGGER_ENABLE);
     }
@@ -114,35 +111,38 @@ static bool apply_overrides(obs_source_t *filter, const workflow_node_t *node)
     return true;
 }
 
-static void execute_node(workflow_t *workflow, workflow_node_t *node)
+static bool execute_node(workflow_t *workflow, workflow_node_t *node)
 {
-    if (!workflow || !node) return;
+    if (!workflow || !node) return false;
     workflow_debug_log("Runtime execute: node='%s' type=%d", node->id, (int)node->type);
     obs_source_t *filter = find_move_filter(&node->action);
     if (!filter) {
         workflow_debug_log("Runtime execute FAILED: target could not be resolved");
-        return;
+        return false;
     }
     if (!apply_overrides(filter, node)) {
         workflow_debug_log("Runtime execute FAILED: filter settings override");
         obs_source_release(filter);
-        return;
+        return false;
     }
     workflow_debug_log("Runtime action: toggling target filter '%s'", node->action.filter_name);
     obs_source_set_enabled(filter, false);
     obs_source_set_enabled(filter, true);
-    workflow_debug_log("Runtime action: filter toggle completed");
     obs_source_release(filter);
     workflow_shortcuts_begin(workflow, node);
     workflow_debug_log("Runtime execute SUCCESS: node='%s' dispatched", node->id);
+    return true;
 }
 
-void workflow_runtime_execute_node_by_id(workflow_t *workflow, const char *node_id)
+bool workflow_runtime_execute_node_by_id(workflow_t *workflow, const char *node_id)
 {
-    if (!workflow || !workflow->enabled) return;
+    if (!workflow || !workflow->enabled) return false;
     workflow_node_t *node = find_node(workflow, node_id);
-    if (node) execute_node(workflow, node);
-    else workflow_debug_log("Runtime execute FAILED: node not found '%s'", node_id ? node_id : "(null)");
+    if (!node) {
+        workflow_debug_log("Runtime execute FAILED: node not found '%s'", node_id ? node_id : "(null)");
+        return false;
+    }
+    return execute_node(workflow, node);
 }
 
 void workflow_runtime_test_duration(workflow_t *workflow)
