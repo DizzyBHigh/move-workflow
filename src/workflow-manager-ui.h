@@ -12,4 +12,6 @@ QWidget *create_workflow_manager_ui(
     std::function<bool(const char *)> createWorkflow = {},
     std::function<bool(const char *)> duplicateWorkflow = {},
     std::function<bool()> deleteWorkflow = {},
+    std::function<bool(const char *)> exportWorkflow = {},
+    std::function<bool(const char *)> importWorkflow = {},
     std::function<void()> stateChanged = {});
