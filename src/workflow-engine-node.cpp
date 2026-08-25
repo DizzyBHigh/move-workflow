@@ -24,8 +24,11 @@ bool workflow_engine_execute_node(workflow_engine_state_t *state,
     state->current_node_id[WORKFLOW_MAX_NAME - 1] = '\0';
     workflow_debug_log("Execute node: %s (%s)", node->id,
                        workflow_node_type_name(node->type));
-    if (node->type == WORKFLOW_NODE_TRIGGER)
+    if (node->type == WORKFLOW_NODE_TRIGGER) {
+        workflow_debug_log("Trigger node reached: %s", node->id);
         return true;
-    workflow_runtime_execute_node_by_id(state->workflow, node->id);
-    return true;
+    }
+    const bool executed = workflow_runtime_execute_node_by_id(state->workflow, node->id);
+    workflow_debug_log("Execute node result: %s result=%d", node->id, executed ? 1 : 0);
+    return executed;
 }
