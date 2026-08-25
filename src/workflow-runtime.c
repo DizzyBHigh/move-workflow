@@ -10,11 +10,13 @@
 #include <util/threading.h>
 
 #define PHASE12_TEST_DURATION_MS 1000
+#define MOVE_START_TRIGGER_ENABLE 5
 
 typedef struct duration_restore_context {
     obs_source_t *filter;
     bool custom_duration;
     long long duration;
+    long long start_trigger;
 } duration_restore_context_t;
 
 static obs_source_t *find_move_filter(const workflow_action_ref_t *action)
@@ -60,7 +62,7 @@ static workflow_node_t *find_node(workflow_t *wf, const char *id)
     return NULL;
 }
 
-static void restore_duration(void *data)
+static void restore_filter_settings(void *data)
 {
     duration_restore_context_t *ctx = data;
     if (!ctx)
@@ -69,6 +71,7 @@ static void restore_duration(void *data)
     if (settings) {
         obs_data_set_bool(settings, "custom_duration", ctx->custom_duration);
         obs_data_set_int(settings, "duration", ctx->duration);
+        obs_data_set_int(settings, "start_trigger", ctx->start_trigger);
         obs_source_update(ctx->filter, settings);
         obs_data_release(settings);
     }
@@ -76,16 +79,16 @@ static void restore_duration(void *data)
     free(ctx);
 }
 
-static void *duration_restore_thread(void *data)
+static void *restore_filter_thread(void *data)
 {
     duration_restore_context_t *ctx = data;
-    os_set_thread_name("move-workflow-duration-restore");
+    os_set_thread_name("move-workflow-filter-restore");
     os_sleep_ms(PHASE12_TEST_DURATION_MS + 150);
-    obs_queue_task(OBS_TASK_UI, restore_duration, ctx, false);
+    obs_queue_task(OBS_TASK_UI, restore_filter_settings, ctx, false);
     return NULL;
 }
 
-static bool apply_duration_override(obs_source_t *filter, uint64_t duration_ms)
+static bool apply_overrides(obs_source_t *filter, const workflow_node_t *node)
 {
     obs_data_t *settings = obs_source_get_settings(filter);
     if (!settings)
@@ -98,25 +101,25 @@ static bool apply_duration_override(obs_source_t *filter, uint64_t duration_ms)
     ctx->filter = obs_source_get_ref(filter);
     ctx->custom_duration = obs_data_get_bool(settings, "custom_duration");
     ctx->duration = obs_data_get_int(settings, "duration");
-    obs_data_set_bool(settings, "custom_duration", true);
-    obs_data_set_int(settings, "duration", (long long)duration_ms);
+    ctx->start_trigger = obs_data_get_int(settings, "start_trigger");
+    if (node->duration.mode == WORKFLOW_OVERRIDE) {
+        obs_data_set_bool(settings, "custom_duration", true);
+        obs_data_set_int(settings, "duration", (long long)node->duration.duration_ms);
+    }
+    if (node->action.start_trigger_mode == WORKFLOW_OVERRIDE) {
+        workflow_debug_log("Runtime override: start_trigger='%s'", node->action.start_trigger_value);
+        if (strcmp(node->action.start_trigger_value, "Enable") == 0)
+            obs_data_set_int(settings, "start_trigger", MOVE_START_TRIGGER_ENABLE);
+    }
     obs_source_update(filter, settings);
     obs_data_release(settings);
     pthread_t thread;
-    if (pthread_create(&thread, NULL, duration_restore_thread, ctx) != 0) {
-        restore_duration(ctx);
+    if (pthread_create(&thread, NULL, restore_filter_thread, ctx) != 0) {
+        restore_filter_settings(ctx);
         return false;
     }
     pthread_detach(thread);
     return true;
-}
-
-static void apply_start_trigger_override(obs_source_t *filter, const workflow_node_t *node)
-{
-    workflow_debug_log("Runtime action: toggling target filter '%s'", node->action.filter_name);
-    obs_source_set_enabled(filter, false);
-    obs_source_set_enabled(filter, true);
-    workflow_debug_log("Runtime action: filter toggle completed");
 }
 
 static void execute_node(workflow_t *workflow, workflow_node_t *node)
@@ -129,13 +132,15 @@ static void execute_node(workflow_t *workflow, workflow_node_t *node)
         workflow_debug_log("Runtime execute FAILED: target could not be resolved");
         return;
     }
-    if (node->duration.mode == WORKFLOW_OVERRIDE &&
-        !apply_duration_override(filter, node->duration.duration_ms)) {
-        workflow_debug_log("Runtime execute FAILED: duration override");
+    if (!apply_overrides(filter, node)) {
+        workflow_debug_log("Runtime execute FAILED: filter settings override");
         obs_source_release(filter);
         return;
     }
-    apply_start_trigger_override(filter, node);
+    workflow_debug_log("Runtime action: toggling target filter '%s'", node->action.filter_name);
+    obs_source_set_enabled(filter, false);
+    obs_source_set_enabled(filter, true);
+    workflow_debug_log("Runtime action: filter toggle completed");
     obs_source_release(filter);
     workflow_shortcuts_begin(workflow, node);
     workflow_debug_log("Runtime execute SUCCESS: node='%s' dispatched", node->id);
