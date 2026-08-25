@@ -58,5 +58,5 @@ bool workflow_engine_trigger(workflow_engine_t *engine,
 {
     if (!engine)
         return false;
-    return workflow_engine_trigger(&engine->state, type, value);
+    return workflow_engine_trigger_dispatch(&engine->state, type, value);
 }
