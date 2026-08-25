@@ -47,7 +47,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-workspace.h
   src/workflow-node-copy.c
   src/workflow-node-copy.h
-  src/workflow-node-copy.h
   src/workflow-node-duplicate-ui.cpp
   src/workflow-node-duplicate-ui.h
   src/workflow-clipboard.cpp
