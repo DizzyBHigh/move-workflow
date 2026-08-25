@@ -1,7 +1,7 @@
 #pragma once
 
 #include "workflow-engine-state.h"
-#include "workflow-trigger-types.h"
+#include "workflow-model.h"
 
 #ifdef __cplusplus
 extern "C" {
