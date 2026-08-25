@@ -72,6 +72,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-debug-ui.cpp
   src/workflow-engine.h
   src/workflow-engine.cpp
+  src/workflow-engine-service.h
+  src/workflow-engine-service.cpp
   src/workflow-engine-state.h
   src/workflow-engine-state.cpp
   src/workflow-engine-node.h
