@@ -6,6 +6,7 @@
 #include "workflow-node-settings-common.h"
 #include "workflow-persistence.h"
 
+#include <obs-module.h>
 #include <QComboBox>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -32,7 +33,7 @@ void NodeSettingsDialog::buildTriggerEditor(QVBoxLayout *layout, QVBoxLayout *co
     triggerAction_->setCurrentIndex(index >= 0 ? index : 0);
     layout->addWidget(new QLabel("Trigger", this));
     layout->addWidget(triggerAction_);
-    auto *testButton = new QPushButton("▶ Test Workflow From This Trigger", this);
+    auto *testButton = new QPushButton("Test Workflow From This Trigger", this);
     testButton->setToolTip("Execute this workflow branch without waiting for the real trigger.");
     layout->addWidget(testButton);
     connect(testButton, &QPushButton::clicked, this, [this] {
@@ -69,8 +70,7 @@ void NodeSettingsDialog::clearTriggerSettings()
 {
     while (triggerSettingsLayout_ && triggerSettingsLayout_->count()) {
         QLayoutItem *item = triggerSettingsLayout_->takeAt(0);
-        if (QWidget *widget = item->widget())
-            widget->deleteLater();
+        if (QWidget *widget = item->widget()) widget->deleteLater();
         delete item;
     }
     triggerSource_ = nullptr; triggerFilter_ = nullptr; triggerState_ = nullptr;
@@ -90,17 +90,13 @@ static QComboBox *trigger_state(QWidget *parent, workflow_trigger_state_t state)
 
 static QLineEdit *trigger_edit(QWidget *parent, const QString &value, const QString &hint)
 {
-    auto *edit = new QLineEdit(value, parent);
-    edit->setPlaceholderText(hint);
-    return edit;
+    auto *edit = new QLineEdit(value, parent); edit->setPlaceholderText(hint); return edit;
 }
 
 void NodeSettingsDialog::addTriggerRow(const QString &label, QWidget *widget)
 {
-    auto *row = new QHBoxLayout;
-    row->addWidget(new QLabel(label, triggerSettingsBox_));
-    row->addWidget(widget, 1);
-    triggerSettingsLayout_->addLayout(row);
+    auto *row = new QHBoxLayout; row->addWidget(new QLabel(label, triggerSettingsBox_));
+    row->addWidget(widget, 1); triggerSettingsLayout_->addLayout(row);
 }
 
 void NodeSettingsDialog::rebuildTriggerSettings()
@@ -110,30 +106,24 @@ void NodeSettingsDialog::rebuildTriggerSettings()
     const auto type = (workflow_trigger_type_t)triggerAction_->currentData().toInt();
     switch (type) {
     case WORKFLOW_TRIGGER_FRONTEND_ACTION:
-        triggerActionValue_ = new QComboBox(triggerSettingsBox_);
-        triggerActionValue_->setEditable(true);
+        triggerActionValue_ = new QComboBox(triggerSettingsBox_); triggerActionValue_->setEditable(true);
         triggerActionValue_->addItems({"Start Streaming", "Stop Streaming", "Start Recording", "Stop Recording", "Pause Recording", "Resume Recording", "Toggle Studio Mode", "Start Replay Buffer", "Stop Replay Buffer", "Save Replay Buffer"});
-        triggerActionValue_->setCurrentText(settings_read_text(trigger.action));
-        addTriggerRow("Action", triggerActionValue_); break;
+        triggerActionValue_->setCurrentText(settings_read_text(trigger.action)); addTriggerRow("Action", triggerActionValue_); break;
     case WORKFLOW_TRIGGER_SOURCE_VISIBILITY: buildSourceStateSettings("Visibility", trigger.state); break;
     case WORKFLOW_TRIGGER_SOURCE_MUTE: buildSourceStateSettings("Mute State", trigger.state); break;
     case WORKFLOW_TRIGGER_SOURCE_AUDIO_TRACK: buildSourceAudioTrackSettings(trigger); break;
     case WORKFLOW_TRIGGER_SOURCE_HOTKEY: buildSourceHotkeySettings(trigger); break;
     case WORKFLOW_TRIGGER_FILTER_ENABLE: buildFilterEnableSettings(trigger); break;
     case WORKFLOW_TRIGGER_FRONTEND_HOTKEY:
-        triggerHotkey_ = trigger_edit(triggerSettingsBox_, settings_read_text(trigger.hotkey), "Hotkey name");
-        addTriggerRow("Hotkey", triggerHotkey_); break;
+        triggerHotkey_ = trigger_edit(triggerSettingsBox_, settings_read_text(trigger.hotkey), "Hotkey name"); addTriggerRow("Hotkey", triggerHotkey_); break;
     case WORKFLOW_TRIGGER_SETTING: buildSettingSettings(trigger); break;
     case WORKFLOW_TRIGGER_UDP_PACKET:
         triggerUdpPort_ = new QSpinBox(triggerSettingsBox_); triggerUdpPort_->setRange(1, 65535);
-        triggerUdpPort_->setValue(trigger.udp_port ? trigger.udp_port : 9000);
-        addTriggerRow("Port", triggerUdpPort_);
-        triggerMatch_ = trigger_edit(triggerSettingsBox_, settings_read_text(trigger.match), "Packet text or pattern");
-        addTriggerRow("Match", triggerMatch_); break;
+        triggerUdpPort_->setValue(trigger.udp_port ? trigger.udp_port : 9000); addTriggerRow("Port", triggerUdpPort_);
+        triggerMatch_ = trigger_edit(triggerSettingsBox_, settings_read_text(trigger.match), "Packet text or pattern"); addTriggerRow("Match", triggerMatch_); break;
     case WORKFLOW_TRIGGER_WEBSOCKET_REQUEST:
     case WORKFLOW_TRIGGER_WEBSOCKET_EVENT:
-        triggerMatch_ = trigger_edit(triggerSettingsBox_, settings_read_text(trigger.match), "Request/event match");
-        addTriggerRow("Match", triggerMatch_); break;
+        triggerMatch_ = trigger_edit(triggerSettingsBox_, settings_read_text(trigger.match), "Request/event match"); addTriggerRow("Match", triggerMatch_); break;
     default: triggerSettingsLayout_->addWidget(new QLabel("No trigger settings are required.", triggerSettingsBox_));
     }
 }
@@ -141,26 +131,21 @@ void NodeSettingsDialog::rebuildTriggerSettings()
 void NodeSettingsDialog::buildSourceStateSettings(const QString &label, workflow_trigger_state_t state)
 {
     triggerSource_ = new QComboBox(triggerSettingsBox_); settings_searchable(triggerSource_);
-    populateTriggerSources(settings_read_text(node_->workflowNode()->trigger.scene_name));
-    addTriggerRow("Source", triggerSource_);
-    triggerState_ = trigger_state(triggerSettingsBox_, state);
-    addTriggerRow(label, triggerState_);
+    populateTriggerSources(settings_read_text(node_->workflowNode()->trigger.scene_name)); addTriggerRow("Source", triggerSource_);
+    triggerState_ = trigger_state(triggerSettingsBox_, state); addTriggerRow(label, triggerState_);
 }
 
 void NodeSettingsDialog::buildSourceAudioTrackSettings(const workflow_trigger_ref_t &trigger)
 {
-    buildSourceStateSettings("Enabled", trigger.state);
-    triggerAudioTrack_ = new QSpinBox(triggerSettingsBox_);
-    triggerAudioTrack_->setRange(1, 32); triggerAudioTrack_->setValue(trigger.audio_track ? trigger.audio_track : 1);
-    addTriggerRow("Track", triggerAudioTrack_);
+    buildSourceStateSettings("Enabled", trigger.state); triggerAudioTrack_ = new QSpinBox(triggerSettingsBox_);
+    triggerAudioTrack_->setRange(1, 32); triggerAudioTrack_->setValue(trigger.audio_track ? trigger.audio_track : 1); addTriggerRow("Track", triggerAudioTrack_);
 }
 
 void NodeSettingsDialog::buildSourceHotkeySettings(const workflow_trigger_ref_t &trigger)
 {
     triggerSource_ = new QComboBox(triggerSettingsBox_); settings_searchable(triggerSource_);
     populateTriggerSources(settings_read_text(trigger.scene_name)); addTriggerRow("Source", triggerSource_);
-    triggerHotkey_ = trigger_edit(triggerSettingsBox_, settings_read_text(trigger.hotkey), "Hotkey name");
-    addTriggerRow("Hotkey", triggerHotkey_);
+    triggerHotkey_ = trigger_edit(triggerSettingsBox_, settings_read_text(trigger.hotkey), "Hotkey name"); addTriggerRow("Hotkey", triggerHotkey_);
 }
 
 void NodeSettingsDialog::buildFilterEnableSettings(const workflow_trigger_ref_t &trigger)
