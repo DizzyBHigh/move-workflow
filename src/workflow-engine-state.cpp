@@ -38,3 +38,18 @@ bool workflow_engine_state_is_active(const workflow_engine_state_t *state)
 {
     return state && state->running && !state->stopping;
 }
+
+void workflow_engine_state_delay_begin(workflow_engine_state_t *state)
+{
+    if (state)
+        ++state->pending_branches;
+}
+
+void workflow_engine_state_delay_end(workflow_engine_state_t *state)
+{
+    if (!state || !state->pending_branches)
+        return;
+    --state->pending_branches;
+    if (!state->pending_branches)
+        workflow_engine_state_stop(state);
+}
