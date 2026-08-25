@@ -12,10 +12,14 @@ static workflow_engine_t *service_engine;
 void workflow_engine_service_set(workflow_engine_t *engine)
 {
     service_engine = engine;
+    blog(LOG_INFO, "[Move Workflow] Engine service %s.",
+         engine ? "connected" : "disconnected");
 }
 
 bool workflow_engine_service_test_node(const char *workflow_id, const char *node_id)
 {
+    blog(LOG_INFO, "[Move Workflow] Trigger test request: workflow='%s' node='%s'.",
+         workflow_id ? workflow_id : "<null>", node_id ? node_id : "<null>");
     if (!service_engine || !workflow_id || !node_id || !*node_id) {
         blog(LOG_WARNING, "[Move Workflow] Trigger test failed: invalid arguments.");
         return false;
