@@ -9,6 +9,10 @@
 #define MOVE_ACTION_FILTER_ID "move_action_filter"
 #define MOVE_START_TRIGGER "start_trigger"
 #define MOVE_START_TRIGGER_LOAD 13
+#define MOVE_SIMULTANEOUS_MOVE "simultaneous_move"
+#define MOVE_NEXT_MOVE "next_move"
+#define MOVE_NEXT_MOVE_ON "next_move_on"
+#define MOVE_NEXT_MOVE_ON_END 0
 
 static bool supported_move_filter(const char *id)
 {
@@ -47,12 +51,29 @@ static bool start_move_filter(obs_source_t *filter, const char *filter_name)
         return false;
 
     const int original_trigger = (int)obs_data_get_int(settings, MOVE_START_TRIGGER);
+    const char *original_simultaneous = obs_data_get_string(settings, MOVE_SIMULTANEOUS_MOVE);
+    const char *original_next = obs_data_get_string(settings, MOVE_NEXT_MOVE);
+    const int original_next_on = (int)obs_data_get_int(settings, MOVE_NEXT_MOVE_ON);
+    char simultaneous_copy[256];
+    char next_copy[256];
+    strncpy(simultaneous_copy, original_simultaneous ? original_simultaneous : "", sizeof(simultaneous_copy) - 1);
+    simultaneous_copy[sizeof(simultaneous_copy) - 1] = '\0';
+    strncpy(next_copy, original_next ? original_next : "", sizeof(next_copy) - 1);
+    next_copy[sizeof(next_copy) - 1] = '\0';
+
+    obs_data_set_string(settings, MOVE_SIMULTANEOUS_MOVE, "");
+    obs_data_set_string(settings, MOVE_NEXT_MOVE, "");
+    obs_data_set_int(settings, MOVE_NEXT_MOVE_ON, MOVE_NEXT_MOVE_ON_END);
     obs_data_set_int(settings, MOVE_START_TRIGGER, MOVE_START_TRIGGER_LOAD);
 
+    workflow_debug_log("Move dispatch: suppressing native chaining for filter='%s'", filter_name);
     workflow_debug_log("Move dispatch: forcing LOAD trigger for filter='%s' original=%d",
                        filter_name, original_trigger);
     obs_source_update(filter, settings);
 
+    obs_data_set_string(settings, MOVE_SIMULTANEOUS_MOVE, simultaneous_copy);
+    obs_data_set_string(settings, MOVE_NEXT_MOVE, next_copy);
+    obs_data_set_int(settings, MOVE_NEXT_MOVE_ON, original_next_on);
     obs_data_set_int(settings, MOVE_START_TRIGGER, original_trigger);
     obs_source_update(filter, settings);
     obs_data_release(settings);
