@@ -13,6 +13,7 @@
 #include "workflow-debug-ui.h"
 #include <obs-frontend-api.h>
 #include <QApplication>
+#include <QCheckBox>
 #include <QDialog>
 #include <QEvent>
 #include <QGraphicsScene>
@@ -69,36 +70,7 @@ public:
     }
     ~EditorWindow() override { if(qApp) qApp->removeEventFilter(this); }
 public slots:
-    void redoFromHotkey() { blog(LOG_INFO,"[Move Workflow] Ctrl+Y Qt slot reached."); redoWorkflow(); }
+    void redoFromHotkey() { redoWorkflow(); }
 protected:
     bool eventFilter(QObject *watched,QEvent *event) override { return QDialog::eventFilter(watched,event); }
     void keyPressEvent(QKeyEvent *event) override { QDialog::keyPressEvent(event); }
-private:
-    void scheduleSync(){if(syncPending_||applyingUndoRedo_)return;syncPending_=true;const auto generation=syncGeneration_;QTimer::singleShot(0,this,[this,generation]{syncPending_=false;if(applyingUndoRedo_||generation!=syncGeneration_)return;workflow_workspace_sync_scene(&workspace_);undo_.capture();updateButtonState();});}
-    void resetUndo(){
-        if(applyingUndoRedo_){
-            blog(LOG_INFO,"[Move Workflow] resetUndo suppressed during undo/redo replay.");
-            return;
-        }
-        ++syncGeneration_;syncPending_=false;undo_.reset(workflow_manager_selected(workflow_workspace_manager(&workspace_)),workflow_workspace_manager(&workspace_));
-    }
-    void syncLoadedSelection(){const auto *s=workflow_manager_selected_const(workflow_workspace_manager(&workspace_));if(s){std::strncpy(workspace_.loaded_workflow_id,s->id,WORKFLOW_MAX_NAME-1);workspace_.loaded_workflow_id[WORKFLOW_MAX_NAME-1]='\0';}else workspace_.loaded_workflow_id[0]='\0';}
-    void refreshWorkflowManagerUi(){auto *combo=managerUi_?managerUi_->findChild<QComboBox *>():nullptr;if(!combo)return;const auto *selected=workflow_manager_selected_const(workflow_workspace_manager(&workspace_));const QString selectedId=selected?QString::fromUtf8(selected->id):QString();combo->blockSignals(true);combo->clear();auto *manager=workflow_workspace_manager(&workspace_);for(size_t i=0;i<manager->workflow_count;++i)combo->addItem(QString::fromUtf8(manager->workflows[i].name),QString::fromUtf8(manager->workflows[i].id));const int index=combo->findData(selectedId);combo->blockSignals(false);if(index>=0)combo->setCurrentIndex(index);else if(combo->count()>0)combo->setCurrentIndex(0);}
-    void undoWorkflow(){++syncGeneration_;syncPending_=false;applyingUndoRedo_=true;const bool changed=undo_.undo();qDebug()<<"[Move Workflow] Ctrl+Z/Undo changed:"<<changed;if(changed){syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_workspace_manager(&workspace_));refreshWorkflowManagerUi();updateButtonState();}applyingUndoRedo_=false;}
-    void redoWorkflow(){++syncGeneration_;syncPending_=false;applyingUndoRedo_=true;blog(LOG_INFO,"[Move Workflow] Redo requested; canRedo: %d",undo_.canRedo());const bool changed=undo_.redo();blog(LOG_INFO,"[Move Workflow] Redo changed: %d",changed);if(changed){syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_workspace_manager(&workspace_));refreshWorkflowManagerUi();updateButtonState();}applyingUndoRedo_=false;}
-    bool deleteWorkflow(){workflow_workspace_sync_scene(&workspace_);auto *manager=workflow_workspace_manager(&workspace_);const auto *selected=workflow_manager_selected_const(manager);if(!selected)return false;undo_.prepareManagerCapture();const bool removed=workflow_manager_remove(manager,selected->id);if(!removed)return false;syncLoadedSelection();if(workspace_.loaded_workflow_id[0])workflow_workspace_reload(&workspace_);else{const QList<NodeItem *> nodes=scene_->nodes();for(NodeItem *node:nodes)scene_->deleteNode(node);}undo_.captureManager();workflow_persistence_sync(manager);updateButtonState();return true;}
-    void showAddNodeMenu(){QMenu menu(this);QAction *trigger=menu.addAction("Add Trigger Node");QAction *action=menu.addAction("Add Action Node");QAction *chosen=menu.exec(addButton_->mapToGlobal(QPoint(0,addButton_->height())));if(!chosen)return;bool ok=false;const QString name=QInputDialog::getText(this,chosen==trigger?"Add Trigger Node":"Add Action Node","Node name:",QLineEdit::Normal,chosen==trigger?"New Trigger":"New Action",&ok);if(!ok||name.trimmed().isEmpty())return;NodeItem *node=scene_->addNode(chosen==trigger?WORKFLOW_NODE_TRIGGER:WORKFLOW_NODE_ACTION,name.trimmed());if(node){node->setSelected(true);view_->fitAll();}}
-    void editNode(NodeItem *node){if(!node)return;if(edit_node_settings(node,scene_->nodes(),this)){node->refreshDisplay();scene_->refreshConnectionsFor(node);}}
-    void editSelectedNode(){editNode(scene_->selectedNode());}
-    void copySelectedNodes(){if(workflow_clipboard_copy(scene_))updateButtonState();}
-    void pasteNodes(){if(workflow_clipboard_paste(scene_))updateButtonState();}
-    void duplicateSelectedNode(){if(duplicate_selected_workflow_node(scene_))updateButtonState();}
-    void deleteSelectedNodes(){const QList<QGraphicsItem *> selected=scene_->selectedItems();QList<NodeItem *> nodes;for(QGraphicsItem *item:selected)if(auto *node=dynamic_cast<NodeItem *>(item))nodes.append(node);if(nodes.isEmpty())return;workflow_workspace_sync_scene(&workspace_);for(NodeItem *node:nodes)scene_->deleteNode(node);workflow_workspace_sync_scene(&workspace_);undo_.capture();updateButtonState();}
-    void updateButtonState(){const bool selected=scene_&&!scene_->selectedItems().isEmpty();deleteButton_->setEnabled(selected&&scene_->selectedNode());duplicateButton_->setEnabled(selected&&scene_->selectedNode());copyButton_->setEnabled(selected);pasteButton_->setEnabled(workflow_clipboard_has_data());}
-    workflow_workspace_t workspace_{};WorkflowUndo undo_;QWidget *managerUi_=nullptr;EditorScene *scene_=nullptr;WorkflowGraphicsView *view_=nullptr;QLabel *zoomLabel_=nullptr;bool syncPending_=false;bool applyingUndoRedo_=false;unsigned long long syncGeneration_=0;QPushButton *addButton_=nullptr;QPushButton *copyButton_=nullptr;QPushButton *pasteButton_=nullptr;QPushButton *duplicateButton_=nullptr;QPushButton *deleteButton_=nullptr;
-};
-}
-extern "C" void workflow_editor_redo_from_hotkey(void){EditorWindow *editor=window.data();if(!editor){blog(LOG_WARNING,"[Move Workflow] Ctrl+Y bridge fired but editor is not open.");return;}blog(LOG_INFO,"[Move Workflow] Ctrl+Y bridge reached editor; invoking Qt meta-object slot.");QMetaObject::invokeMethod(editor,"redoFromHotkey",Qt::QueuedConnection);}
-void show_move_workflow_editor(QWidget *parent){if(!window){auto *mainWindow=parent?parent:static_cast<QWidget *>(obs_frontend_get_main_window());window=new EditorWindow(mainWindow);}window->show();window->raise();window->activateWindow();}
-
-#include "workflow-editor-window.moc"
