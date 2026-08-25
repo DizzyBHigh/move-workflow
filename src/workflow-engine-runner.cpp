@@ -18,7 +18,8 @@ struct continuation {
 
 static bool run_node_internal(workflow_engine_state_t *, const char *, size_t);
 static bool run_node_now(workflow_engine_state_t *, workflow_node_t *, size_t);
-static bool run_links(workflow_engine_state_t *, workflow_node_t *, size_t);
+static bool run_simultaneous(workflow_engine_state_t *, workflow_node_t *, size_t);
+static bool run_next_links(workflow_engine_state_t *, workflow_node_t *, size_t);
 
 static uint64_t delay_value(workflow_value_mode_t mode, uint64_t value)
 {
@@ -37,7 +38,8 @@ static bool schedule_phase(workflow_engine_state_t *state, workflow_node_t *node
     strncpy(next->node_id, node->id, WORKFLOW_MAX_NAME - 1);
     workflow_engine_state_delay_begin(state);
     workflow_debug_log("Action lifecycle: node='%s' scheduling %s for %llu ms",
-                       node->id, phase == PHASE_START_DELAY ? "start delay" :
+                       node->id,
+                       phase == PHASE_START_DELAY ? "start delay" :
                        phase == PHASE_DURATION ? "duration" : "end delay",
                        (unsigned long long)delay_ms);
     extern void workflow_engine_runner_continue(void *);
@@ -67,7 +69,8 @@ static bool run_action(workflow_engine_state_t *state, workflow_node_t *node, si
         if (schedule_phase(state, node, end_delay, PHASE_END_DELAY)) return true;
         return false;
     }
-    return run_links(state, node, depth);
+    run_simultaneous(state, node, depth);
+    return run_next_links(state, node, depth);
 }
 
 void workflow_engine_runner_continue(void *data)
@@ -80,18 +83,21 @@ void workflow_engine_runner_continue(void *data)
         if (node) {
             if (next->phase == PHASE_START_DELAY) {
                 workflow_debug_log("Action lifecycle: start delay complete node='%s'", node->id);
-                /* Execute directly; do not schedule the start delay again. */
                 run_node_now(state, node, 0);
             } else if (next->phase == PHASE_DURATION) {
                 workflow_debug_log("Action lifecycle: duration complete node='%s'", node->id);
                 const uint64_t end_delay = delay_value(node->end_delay.mode, node->end_delay.delay_ms);
-                if (!end_delay) run_links(state, node, 0);
-                else if (!schedule_phase(state, node, end_delay, PHASE_END_DELAY))
+                if (!end_delay) {
+                    run_simultaneous(state, node, 0);
+                    run_next_links(state, node, 0);
+                } else if (!schedule_phase(state, node, end_delay, PHASE_END_DELAY)) {
                     workflow_engine_state_stop(state);
+                }
             } else {
                 workflow_debug_log("Action lifecycle: end delay complete node='%s'", node->id);
                 workflow_debug_log("Action lifecycle: node='%s' complete; advancing workflow graph", node->id);
-                run_links(state, node, 0);
+                run_simultaneous(state, node, 0);
+                run_next_links(state, node, 0);
             }
         }
     }
@@ -99,27 +105,40 @@ void workflow_engine_runner_continue(void *data)
     free(next);
 }
 
-static bool run_links(workflow_engine_state_t *state, workflow_node_t *node, size_t depth)
+static bool run_simultaneous(workflow_engine_state_t *state, workflow_node_t *node, size_t depth)
 {
-    for (size_t i = 0; i < node->simultaneous_node_count; ++i)
-        if (!run_node_internal(state, node->simultaneous_node_ids[i], depth + 1)) return false;
+    bool result = true;
+    for (size_t i = 0; i < node->simultaneous_node_count; ++i) {
+        const char *child_id = node->simultaneous_node_ids[i];
+        workflow_debug_log("Workflow graph: parent='%s' triggering simultaneous node='%s'",
+                           node->id, child_id);
+        if (!run_node_internal(state, child_id, depth + 1)) result = false;
+    }
+    return result;
+}
+
+static bool run_next_links(workflow_engine_state_t *state, workflow_node_t *node, size_t depth)
+{
     if (node->next_node_count) {
         workflow_debug_log("Workflow graph: node='%s' completed; executing %zu next node(s)",
                            node->id, node->next_node_count);
+        bool result = true;
         for (size_t i = 0; i < node->next_node_count; ++i)
-            if (!run_node_internal(state, node->next_node_ids[i], depth + 1)) return false;
-        return true;
+            if (!run_node_internal(state, node->next_node_ids[i], depth + 1)) result = false;
+        return result;
     }
+    bool result = true;
     for (size_t i = 0; i < node->end_node_count; ++i)
-        if (!run_node_internal(state, node->end_node_ids[i], depth + 1)) return false;
-    return true;
+        if (!run_node_internal(state, node->end_node_ids[i], depth + 1)) result = false;
+    return result;
 }
 
 static bool run_node_now(workflow_engine_state_t *state, workflow_node_t *node, size_t depth)
 {
     if (node->type == WORKFLOW_NODE_ACTION) return run_action(state, node, depth);
     if (!workflow_engine_execute_node(state, node)) return false;
-    return run_links(state, node, depth);
+    run_simultaneous(state, node, depth);
+    return run_next_links(state, node, depth);
 }
 
 static bool run_node_internal(workflow_engine_state_t *state, const char *node_id, size_t depth)
