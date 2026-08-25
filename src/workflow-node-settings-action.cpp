@@ -130,6 +130,10 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent, QVBoxLayout *layout)
     connect(endDelayMs_, &QSpinBox::valueChanged, this,
             [this](int value) { if (!endDelayDefault_->isChecked()) endDelayOverrideMs_ = (uint64_t)value; });
     connect(filter_, &QComboBox::currentIndexChanged, this, [refreshDefaults] { refreshDefaults(); });
+    connect(source_, &QComboBox::currentIndexChanged, this, [this, refreshDefaults] {
+        populateFilters();
+        refreshDefaults();
+    });
     refreshDefaults();
     startDelayMs_->setEnabled(!startDelayDefault_->isChecked());
     durationMs_->setEnabled(!durationDefault_->isChecked());
