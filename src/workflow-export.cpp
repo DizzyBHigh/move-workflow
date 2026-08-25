@@ -1,10 +1,10 @@
 #include "workflow-export.h"
 #include "workflow-persistence-json.h"
 #include <QFile>
-#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <obs-module.h>
+#include <cstdio>
 
 bool workflow_export_selected(const workflow_manager_t *manager, const char *path)
 {
