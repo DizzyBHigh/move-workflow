@@ -81,9 +81,12 @@ bool workflow_move_runtime_trigger(workflow_t *workflow, workflow_node_t *node)
     }
 
     const bool was_enabled = obs_source_enabled(filter);
-    obs_source_set_enabled(filter, true);
-    blog(LOG_INFO, "[Move Workflow][Debug] Move dispatch: scene='%s' filter='%s' enabled=%d->1",
-         node->action.scene_name, node->action.filter_name, was_enabled ? 1 : 0);
+    if (!was_enabled)
+        obs_source_set_enabled(filter, true);
+
+    blog(LOG_INFO,
+         "[Move Workflow][Debug] Move dispatch: target resolved scene='%s' filter='%s' enabled=%d",
+         node->action.scene_name, node->action.filter_name, obs_source_enabled(filter) ? 1 : 0);
     obs_source_release(filter);
 
     move_hotkey_lookup_t lookup = {
@@ -93,13 +96,24 @@ bool workflow_move_runtime_trigger(workflow_t *workflow, workflow_node_t *node)
     };
     obs_enum_hotkeys(find_move_hotkey, &lookup);
     if (lookup.id == OBS_INVALID_HOTKEY_ID) {
-        blog(LOG_WARNING, "[Move Workflow] Move hotkey not found: scene='%s' filter='%s'",
+        blog(LOG_WARNING,
+             "[Move Workflow] Move start hotkey not found: scene='%s' filter='%s'. "
+             "The Move filter must be attached to that scene and fully initialized.",
              node->action.scene_name, node->action.filter_name);
         return false;
     }
 
-    blog(LOG_INFO, "[Move Workflow][Debug] Move dispatch: triggering registered Move hotkey id=%llu",
-         (unsigned long long)lookup.id);
+    blog(LOG_INFO,
+         "[Move Workflow][Debug] Move dispatch: triggering start hotkey id=%llu scene='%s' filter='%s'",
+         (unsigned long long)lookup.id, node->action.scene_name, node->action.filter_name);
+
+    /* obs-move-transition registers its start callback as a source hotkey on
+     * the scene parent. Trigger both edges just like a real hotkey press. */
     obs_hotkey_trigger_routed_callback(lookup.id, true);
+    obs_hotkey_trigger_routed_callback(lookup.id, false);
+
+    blog(LOG_INFO,
+         "[Move Workflow][Debug] Move dispatch: start hotkey completed scene='%s' filter='%s'",
+         node->action.scene_name, node->action.filter_name);
     return true;
 }
