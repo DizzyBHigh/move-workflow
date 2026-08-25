@@ -1,5 +1,6 @@
 #include "workflow-engine-runner.h"
 
+#include "workflow-debug.h"
 #include "workflow-engine-delay.h"
 #include "workflow-engine-node.h"
 
@@ -25,6 +26,7 @@ static void continue_run(void *data)
         return;
     if (workflow_engine_state_is_active(next->state) &&
         next->state->generation == next->generation) {
+        workflow_debug_log("Resume delayed node: %s", next->node_id);
         workflow_node_t *node = workflow_engine_find_node(
             next->state->workflow, next->node_id);
         if (node) {
@@ -47,6 +49,8 @@ static bool schedule(workflow_engine_state_t *state, workflow_node_t *node,
     next->generation = state->generation;
     next->run_node = run_node;
     strncpy(next->node_id, node->id, WORKFLOW_MAX_NAME - 1);
+    workflow_debug_log("Delay node %s for %llu ms", node->id,
+                       (unsigned long long)delay_ms);
     if (!workflow_engine_delay_start(delay_ms, continue_run, next)) {
         free(next);
         return false;
@@ -77,9 +81,9 @@ static bool run_node_now(workflow_engine_state_t *state, workflow_node_t *node,
 {
     if (!workflow_engine_execute_node(state, node))
         return false;
-    if (node->end_delay.mode == WORKFLOW_OVERRIDE && node->end_delay.delay_ms)
-        return schedule(state, node, node->end_delay.delay_ms, false);
-    return run_links(state, node, depth);
+    return node->end_delay.mode == WORKFLOW_OVERRIDE && node->end_delay.delay_ms
+        ? schedule(state, node, node->end_delay.delay_ms, false)
+        : run_links(state, node, depth);
 }
 
 static bool run_node_internal(workflow_engine_state_t *state,
@@ -92,9 +96,9 @@ static bool run_node_internal(workflow_engine_state_t *state,
     workflow_node_t *node = workflow_engine_find_node(state->workflow, node_id);
     if (!node)
         return false;
-    if (node->start_delay.mode == WORKFLOW_OVERRIDE && node->start_delay.delay_ms)
-        return schedule(state, node, node->start_delay.delay_ms, true);
-    return run_node_now(state, node, depth);
+    return node->start_delay.mode == WORKFLOW_OVERRIDE && node->start_delay.delay_ms
+        ? schedule(state, node, node->start_delay.delay_ms, true)
+        : run_node_now(state, node, depth);
 }
 
 bool workflow_engine_runner_run_node(workflow_engine_state_t *state,
@@ -107,6 +111,7 @@ bool workflow_engine_runner_run_entries(workflow_engine_state_t *state)
 {
     if (!workflow_engine_state_is_active(state) || !state->workflow)
         return false;
+    workflow_debug_log("Run %zu workflow entries", state->workflow->entry_node_count);
     bool executed = false;
     for (size_t i = 0; i < state->workflow->entry_node_count; ++i)
         if (run_node_internal(state, state->workflow->entry_node_ids[i], 0))
