@@ -3,6 +3,7 @@
 #include <plugin-support.h>
 
 #include "workflow-engine.h"
+#include "workflow-engine-service.h"
 #include "workflow-hotkeys.h"
 #include "workflow-persistence.h"
 #include "workflow-runtime.h"
@@ -20,6 +21,7 @@ bool obs_module_load(void)
     engine = workflow_engine_create();
     if (!engine)
         return false;
+    workflow_engine_service_set(engine);
     blog(LOG_INFO, "[Move Workflow] Loaded");
     workflow_hotkeys_register();
     workflow_test_menu_register(workflow, engine);
@@ -30,6 +32,7 @@ void obs_module_unload(void)
 {
     workflow_persistence_save();
     workflow_hotkeys_unregister();
+    workflow_engine_service_set(NULL);
     workflow_engine_destroy(engine);
     engine = NULL;
     blog(LOG_INFO, "[Move Workflow] Unloaded");
