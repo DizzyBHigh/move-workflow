@@ -52,6 +52,13 @@ bool workflow_engine_run_entries(workflow_engine_t *engine)
     return workflow_engine_runner_run_entries(&engine->state);
 }
 
+bool workflow_engine_run_node(workflow_engine_t *engine, const char *node_id)
+{
+    if (!engine)
+        return false;
+    return workflow_engine_runner_run_node(&engine->state, node_id);
+}
+
 bool workflow_engine_trigger(workflow_engine_t *engine,
                              workflow_trigger_type_t type,
                              const char *value)
