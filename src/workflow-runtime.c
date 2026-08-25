@@ -24,8 +24,12 @@ static obs_source_t *find_move_filter(const workflow_action_ref_t *action)
     workflow_debug_log("Runtime lookup: scene='%s' filter='%s' id='%s' expected='%s'",
                        action->scene_name, action->filter_name, action->filter_id,
                        expected_id ? expected_id : "(null)");
-    if (!expected_id || !strlen(expected_id) || strcmp(action->filter_id, expected_id) != 0) {
-        workflow_debug_log("Runtime lookup FAILED: filter id validation");
+    if (!expected_id || !strlen(expected_id)) {
+        workflow_debug_log("Runtime lookup FAILED: unsupported move kind");
+        return NULL;
+    }
+    if (action->filter_id[0] && strcmp(action->filter_id, expected_id) != 0) {
+        workflow_debug_log("Runtime lookup FAILED: configured filter id mismatch");
         return NULL;
     }
     obs_source_t *scene = obs_get_source_by_name(action->scene_name);
@@ -40,8 +44,8 @@ static obs_source_t *find_move_filter(const workflow_action_ref_t *action)
         return NULL;
     }
     const char *actual_id = obs_source_get_id(filter);
-    if (!actual_id || strcmp(actual_id, action->filter_id) != 0) {
-        workflow_debug_log("Runtime lookup FAILED: filter id mismatch");
+    if (!actual_id || strcmp(actual_id, expected_id) != 0) {
+        workflow_debug_log("Runtime lookup FAILED: actual filter id mismatch");
         obs_source_release(filter);
         return NULL;
     }
@@ -96,10 +100,9 @@ static bool apply_overrides(obs_source_t *filter, const workflow_node_t *node)
         obs_data_set_bool(settings, "custom_duration", true);
         obs_data_set_int(settings, "duration", (long long)node->duration.duration_ms);
     }
-    if (node->start_trigger_mode == WORKFLOW_OVERRIDE) {
-        if (strcmp(node->start_trigger_value, "Enable") == 0)
-            obs_data_set_int(settings, "start_trigger", MOVE_START_TRIGGER_ENABLE);
-    }
+    if (node->start_trigger_mode == WORKFLOW_OVERRIDE &&
+        strcmp(node->start_trigger_value, "Enable") == 0)
+        obs_data_set_int(settings, "start_trigger", MOVE_START_TRIGGER_ENABLE);
     obs_source_update(filter, settings);
     obs_data_release(settings);
     pthread_t thread;
