@@ -17,6 +17,7 @@ typedef struct move_hotkey_lookup {
 } move_hotkey_lookup_t;
 
 typedef struct move_dispatch_task {
+    obs_source_t *filter;
     obs_hotkey_id id;
     char *scene_name;
     char *filter_name;
@@ -40,7 +41,6 @@ static bool find_move_hotkey(void *data, obs_hotkey_id id, obs_hotkey_t *key)
     obs_source_t *registerer = weak ? obs_weak_source_get_source(weak) : NULL;
     if (!registerer)
         return true;
-
     const char *name = obs_source_get_name(registerer);
     if (name && strcmp(name, lookup->scene_name) == 0) {
         lookup->id = id;
@@ -57,7 +57,6 @@ static obs_source_t *find_target_filter(const workflow_action_ref_t *action)
         return NULL;
     if (!is_supported_move_filter(action->filter_id))
         return NULL;
-
     obs_source_t *scene = obs_get_source_by_name(action->scene_name);
     if (!scene)
         return NULL;
@@ -78,9 +77,13 @@ static void run_move_dispatch(void *data)
     if (!task)
         return;
 
+    if (!obs_source_enabled(task->filter))
+        obs_source_set_enabled(task->filter, true);
+
     blog(LOG_INFO,
-         "[Move Workflow][Debug] Move dispatch: UI task triggering hotkey id=%llu scene='%s' filter='%s'",
-         (unsigned long long)task->id, task->scene_name, task->filter_name);
+         "[Move Workflow][Debug] Move dispatch: UI task triggering hotkey id=%llu scene='%s' filter='%s' enabled=%d",
+         (unsigned long long)task->id, task->scene_name, task->filter_name,
+         obs_source_enabled(task->filter) ? 1 : 0);
 
     obs_hotkey_trigger_routed_callback(task->id, true);
     obs_hotkey_trigger_routed_callback(task->id, false);
@@ -89,8 +92,9 @@ static void run_move_dispatch(void *data)
          "[Move Workflow][Debug] Move dispatch: UI task completed scene='%s' filter='%s'",
          task->scene_name, task->filter_name);
 
-    free(task->scene_name);
-    free(task->filter_name);
+    obs_source_release(task->filter);
+    bfree(task->scene_name);
+    bfree(task->filter_name);
     free(task);
 }
 
@@ -106,14 +110,6 @@ bool workflow_move_runtime_trigger(workflow_t *workflow, workflow_node_t *node)
         return false;
     }
 
-    if (!obs_source_enabled(filter))
-        obs_source_set_enabled(filter, true);
-
-    blog(LOG_INFO,
-         "[Move Workflow][Debug] Move dispatch: target resolved scene='%s' filter='%s' enabled=%d",
-         node->action.scene_name, node->action.filter_name, obs_source_enabled(filter) ? 1 : 0);
-    obs_source_release(filter);
-
     move_hotkey_lookup_t lookup = {
         .scene_name = node->action.scene_name,
         .filter_name = node->action.filter_name,
@@ -124,18 +120,26 @@ bool workflow_move_runtime_trigger(workflow_t *workflow, workflow_node_t *node)
         blog(LOG_WARNING,
              "[Move Workflow] Move start hotkey not found: scene='%s' filter='%s'.",
              node->action.scene_name, node->action.filter_name);
+        obs_source_release(filter);
         return false;
     }
 
     move_dispatch_task_t *task = calloc(1, sizeof(*task));
-    if (!task)
+    if (!task) {
+        obs_source_release(filter);
         return false;
+    }
+    task->filter = obs_source_get_ref(filter);
     task->id = lookup.id;
-    task->scene_name = strdup(node->action.scene_name);
-    task->filter_name = strdup(node->action.filter_name);
-    if (!task->scene_name || !task->filter_name) {
-        free(task->scene_name);
-        free(task->filter_name);
+    task->scene_name = bstrdup(node->action.scene_name);
+    task->filter_name = bstrdup(node->action.filter_name);
+    obs_source_release(filter);
+
+    if (!task->filter || !task->scene_name || !task->filter_name) {
+        if (task->filter)
+            obs_source_release(task->filter);
+        bfree(task->scene_name);
+        bfree(task->filter_name);
         free(task);
         return false;
     }
