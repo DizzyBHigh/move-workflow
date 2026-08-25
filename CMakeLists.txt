@@ -59,6 +59,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-undo.h
   src/workflow-runtime.c
   src/workflow-runtime.h
+  src/workflow-move-runtime.c
+  src/workflow-move-runtime.h
   src/workflow-shortcuts.c
   src/workflow-shortcuts.h
   src/workflow-test-data.c
