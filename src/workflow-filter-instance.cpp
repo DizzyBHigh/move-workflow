@@ -100,7 +100,6 @@ static void *destroy_thread(void *data)
 {
 	destroy_context *ctx = (destroy_context *)data;
 	if (!ctx) return NULL;
-	os_set_thread_name("move-workflow-filter-destroy");
 	os_sleep_ms((uint32_t)ctx->delay_ms);
 	obs_queue_task(OBS_TASK_UI, destroy_on_ui, ctx, false);
 	return NULL;
