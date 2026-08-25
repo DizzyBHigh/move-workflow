@@ -78,6 +78,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-engine-state.cpp
   src/workflow-engine-node.h
   src/workflow-engine-node.cpp
+  src/workflow-engine-runs.h
+  src/workflow-engine-runs.cpp
   src/workflow-engine-runner.h
   src/workflow-engine-runner.cpp
   src/workflow-engine-delay.h
