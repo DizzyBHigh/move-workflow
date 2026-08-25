@@ -15,6 +15,8 @@ struct continuation {
 
 static bool run_node_internal(workflow_engine_state_t *state,
                               const char *node_id, size_t depth);
+static bool run_links(workflow_engine_state_t *state, workflow_node_t *node,
+                      size_t depth);
 
 static void continue_run(void *data)
 {
@@ -23,15 +25,13 @@ static void continue_run(void *data)
         return;
     if (workflow_engine_state_is_active(next->state) &&
         next->state->generation == next->generation) {
-        if (next->run_node)
-            run_node_internal(next->state, next->node_id, 0);
-        else {
-            workflow_node_t *node = workflow_engine_find_node(
-                next->state->workflow, next->node_id);
-            if (node) {
-                for (size_t i = 0; i < node->end_node_count; ++i)
-                    run_node_internal(next->state, node->end_node_ids[i], 1);
-            }
+        workflow_node_t *node = workflow_engine_find_node(
+            next->state->workflow, next->node_id);
+        if (node) {
+            if (next->run_node)
+                run_node_internal(next->state, next->node_id, 0);
+            else
+                run_links(next->state, node, 1);
         }
     }
     free(next);
