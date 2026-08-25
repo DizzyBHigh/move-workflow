@@ -1,5 +1,6 @@
 #include "workflow-engine.h"
 
+#include "workflow-debug.h"
 #include "workflow-engine-runner.h"
 #include "workflow-engine-runs.h"
 #include "workflow-engine-trigger.h"
@@ -37,7 +38,10 @@ bool workflow_engine_start(workflow_engine_t *engine, workflow_t *workflow)
 {
     if (!engine || !workflow)
         return false;
-    return workflow_engine_runs_start(engine->runs, workflow) != nullptr;
+    workflow_engine_run_t *run = workflow_engine_runs_start(engine->runs, workflow);
+    workflow_debug_log("Workflow run start: workflow='%s' result=%d",
+                       workflow->name, run ? 1 : 0);
+    return run != nullptr;
 }
 
 void workflow_engine_stop(workflow_engine_t *engine)
@@ -75,10 +79,18 @@ bool workflow_engine_test_node(workflow_engine_t *engine,
 {
     if (!engine || !workflow || !node_id || !*node_id)
         return false;
+    workflow_debug_log("TEST engine: creating independent run for workflow='%s' node='%s'.",
+                       workflow->name, node_id);
     workflow_engine_run_t *run = workflow_engine_runs_start(engine->runs, workflow);
-    if (!run)
+    if (!run) {
+        workflow_debug_log("TEST engine FAILED: run allocation/start failed.");
         return false;
-    return workflow_engine_runner_run_node(workflow_engine_run_state(run), node_id);
+    }
+    const bool result =
+        workflow_engine_runner_run_node(workflow_engine_run_state(run), node_id);
+    workflow_debug_log("TEST engine: node='%s' execution result=%d.",
+                       node_id, result ? 1 : 0);
+    return result;
 }
 
 bool workflow_engine_trigger(workflow_engine_t *engine,
