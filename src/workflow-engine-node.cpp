@@ -2,6 +2,7 @@
 
 #include "workflow-debug.h"
 #include "workflow-runtime.h"
+#include "workflow-move-runtime.h"
 
 #include <cstring>
 
@@ -29,6 +30,8 @@ bool workflow_engine_execute_node(workflow_engine_state_t *state,
         return true;
     }
     const bool executed = workflow_runtime_execute_node_by_id(state->workflow, node->id);
+    if (executed && node->type == WORKFLOW_NODE_ACTION)
+        workflow_move_runtime_trigger(state->workflow, node);
     workflow_debug_log("Execute node result: %s result=%d", node->id, executed ? 1 : 0);
     return executed;
 }
