@@ -1,5 +1,7 @@
 #include "workflow-engine-runs.h"
 
+#include "workflow-engine-trigger.h"
+
 #include <cstdlib>
 
 struct workflow_engine_run {
@@ -72,4 +74,20 @@ bool workflow_engine_runs_any_active(const workflow_engine_runs_t *runs)
         if (workflow_engine_state_is_active(&run->state))
             return true;
     return false;
+}
+
+bool workflow_engine_runs_trigger(workflow_engine_runs_t *runs,
+                                   workflow_trigger_type_t type,
+                                   const char *value)
+{
+    if (!runs)
+        return false;
+    bool triggered = false;
+    for (workflow_engine_run_t *run = runs->head; run; run = run->next) {
+        if (!workflow_engine_state_is_active(&run->state))
+            continue;
+        if (workflow_engine_trigger_dispatch(&run->state, type, value))
+            triggered = true;
+    }
+    return triggered;
 }
