@@ -25,8 +25,14 @@ static void continue_run(void *data)
         next->state->generation == next->generation) {
         if (next->run_node)
             run_node_internal(next->state, next->node_id, 0);
-        else
-            run_node_internal(next->state, next->node_id, 1);
+        else {
+            workflow_node_t *node = workflow_engine_find_node(
+                next->state->workflow, next->node_id);
+            if (node) {
+                for (size_t i = 0; i < node->end_node_count; ++i)
+                    run_node_internal(next->state, node->end_node_ids[i], 1);
+            }
+        }
     }
     free(next);
 }
@@ -51,10 +57,9 @@ static bool schedule(workflow_engine_state_t *state, workflow_node_t *node,
 static bool run_links(workflow_engine_state_t *state, workflow_node_t *node,
                       size_t depth)
 {
-    for (size_t i = 0; i < node->simultaneous_node_count; ++i) {
+    for (size_t i = 0; i < node->simultaneous_node_count; ++i)
         if (!run_node_internal(state, node->simultaneous_node_ids[i], depth + 1))
             return false;
-    }
     if (node->next_node_count) {
         for (size_t i = 0; i < node->next_node_count; ++i)
             if (!run_node_internal(state, node->next_node_ids[i], depth + 1))
@@ -103,9 +108,8 @@ bool workflow_engine_runner_run_entries(workflow_engine_state_t *state)
     if (!workflow_engine_state_is_active(state) || !state->workflow)
         return false;
     bool executed = false;
-    for (size_t i = 0; i < state->workflow->entry_node_count; ++i) {
+    for (size_t i = 0; i < state->workflow->entry_node_count; ++i)
         if (run_node_internal(state, state->workflow->entry_node_ids[i], 0))
             executed = true;
-    }
     return executed;
 }
