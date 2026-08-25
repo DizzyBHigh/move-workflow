@@ -60,6 +60,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-node-settings-trigger-data.cpp
   src/workflow-node-settings-common.h
   src/workflow-node-dialog.h
+  src/workflow-node-timing-defaults.cpp
+  src/workflow-node-timing-defaults.h
   src/workflow-clipboard.cpp
   src/workflow-clipboard.h
   src/workflow-persistence.cpp
