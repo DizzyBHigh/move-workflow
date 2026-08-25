@@ -69,9 +69,23 @@ bool workflow_engine_run_node(workflow_engine_t *engine, const char *node_id)
     return workflow_engine_runner_run_node(current_state(engine), node_id);
 }
 
+bool workflow_engine_test_node(workflow_engine_t *engine,
+                               workflow_t *workflow,
+                               const char *node_id)
+{
+    if (!engine || !workflow || !node_id || !*node_id)
+        return false;
+    workflow_engine_run_t *run = workflow_engine_runs_start(engine->runs, workflow);
+    if (!run)
+        return false;
+    return workflow_engine_runner_run_node(workflow_engine_run_state(run), node_id);
+}
+
 bool workflow_engine_trigger(workflow_engine_t *engine,
                              workflow_trigger_type_t type,
                              const char *value)
 {
-    return workflow_engine_trigger_dispatch(current_state(engine), type, value);
+    if (!engine)
+        return false;
+    return workflow_engine_runs_trigger(engine->runs, type, value);
 }
