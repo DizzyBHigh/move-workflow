@@ -6,6 +6,8 @@
 #include "workflow-node-duplicate-ui.h"
 #include "workflow-clipboard.h"
 #include "workflow-persistence.h"
+#include "workflow-export.h"
+#include "workflow-import.h"
 #include "workflow-scene.h"
 #include "workflow-undo.h"
 #include "workflow-workspace.h"
@@ -58,6 +60,8 @@ public:
             [this](const char *name){const bool ok=workflow_workspace_create(&workspace_,name); if(ok)resetUndo(); return ok;},
             [this](const char *name){const bool ok=workflow_workspace_duplicate(&workspace_,name); if(ok)resetUndo(); return ok;},
             [this]{return deleteWorkflow();},
+            [this](const char *path){ workflow_workspace_sync_scene(&workspace_); return workflow_export_selected(workflow_workspace_manager(&workspace_),path); },
+            [this](const char *path){ workflow_workspace_sync_scene(&workspace_); auto *manager=workflow_workspace_manager(&workspace_); const bool ok=workflow_import_file(manager,path); if(ok){ syncLoadedSelection(); workflow_workspace_reload(&workspace_); workflow_persistence_sync(manager); resetUndo(); updateButtonState(); } return ok; },
             [this]{ workflow_workspace_sync_scene(&workspace_); undo_.capture(); });
         root->addWidget(managerUi_);
         auto *hint=new QLabel("Trigger nodes start workflow branches. Action nodes reference an existing Move / Swap / Value filter. Drag nodes, double-click to edit, use the mouse wheel to zoom and middle mouse to pan.",this); hint->setWordWrap(true); root->addWidget(hint); root->addWidget(view_,1);
