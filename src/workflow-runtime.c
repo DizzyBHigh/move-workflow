@@ -18,6 +18,12 @@ typedef struct duration_restore_context {
     long long start_trigger;
 } duration_restore_context_t;
 
+typedef struct enable_filter_context {
+    obs_source_t *filter;
+    workflow_t *workflow;
+    char node_id[WORKFLOW_MAX_NAME];
+} enable_filter_context_t;
+
 static obs_source_t *find_move_filter(const workflow_action_ref_t *action)
 {
     const char *expected_id = workflow_expected_filter_id(action->kind);
@@ -77,6 +83,17 @@ static void restore_filter_settings(void *data)
     free(ctx);
 }
 
+static void enable_filter_task(void *data)
+{
+    enable_filter_context_t *ctx = data;
+    if (!ctx) return;
+    obs_source_set_enabled(ctx->filter, true);
+    workflow_debug_log("Runtime action: queued enable applied for node='%s'", ctx->node_id);
+    workflow_shortcuts_begin(ctx->workflow, find_node(ctx->workflow, ctx->node_id));
+    obs_source_release(ctx->filter);
+    free(ctx);
+}
+
 static void *restore_filter_thread(void *data)
 {
     duration_restore_context_t *ctx = data;
@@ -114,6 +131,21 @@ static bool apply_overrides(obs_source_t *filter, const workflow_node_t *node)
     return true;
 }
 
+static bool queue_filter_enable(obs_source_t *filter, workflow_t *workflow,
+                                const workflow_node_t *node)
+{
+    enable_filter_context_t *ctx = calloc(1, sizeof(*ctx));
+    if (!ctx) return false;
+    ctx->filter = obs_source_get_ref(filter);
+    ctx->workflow = workflow;
+    strncpy(ctx->node_id, node->id, sizeof(ctx->node_id) - 1);
+    obs_source_set_enabled(filter, false);
+    workflow_debug_log("Runtime action: filter disabled; queueing enable for node='%s'",
+                       node->id);
+    obs_queue_task(OBS_TASK_UI, enable_filter_task, ctx, false);
+    return true;
+}
+
 static bool execute_node(workflow_t *workflow, workflow_node_t *node)
 {
     if (!workflow || !node) return false;
@@ -128,12 +160,13 @@ static bool execute_node(workflow_t *workflow, workflow_node_t *node)
         obs_source_release(filter);
         return false;
     }
-    workflow_debug_log("Runtime action: toggling target filter '%s'", node->action.filter_name);
-    obs_source_set_enabled(filter, false);
-    obs_source_set_enabled(filter, true);
+    if (!queue_filter_enable(filter, workflow, node)) {
+        workflow_debug_log("Runtime execute FAILED: could not queue filter enable");
+        obs_source_release(filter);
+        return false;
+    }
     obs_source_release(filter);
-    workflow_shortcuts_begin(workflow, node);
-    workflow_debug_log("Runtime execute SUCCESS: node='%s' dispatched", node->id);
+    workflow_debug_log("Runtime execute SUCCESS: node='%s' enable queued", node->id);
     return true;
 }
 
