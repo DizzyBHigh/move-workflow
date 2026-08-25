@@ -62,6 +62,9 @@ private:
     QCheckBox *startDelayDefault_ = nullptr;
     QCheckBox *durationDefault_ = nullptr;
     QCheckBox *endDelayDefault_ = nullptr;
+    uint64_t startDelayOverrideMs_ = 0;
+    uint64_t durationOverrideMs_ = 0;
+    uint64_t endDelayOverrideMs_ = 0;
     WorkflowActionList *simultaneous_ = nullptr;
     WorkflowActionList *nextActions_ = nullptr;
     WorkflowActionList *shortcutActions_ = nullptr;
