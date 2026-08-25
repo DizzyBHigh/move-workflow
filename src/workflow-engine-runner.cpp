@@ -36,6 +36,7 @@ static void continue_run(void *data)
                 run_links(next->state, node, 1);
         }
     }
+    workflow_engine_state_delay_end(next->state);
     free(next);
 }
 
@@ -49,9 +50,11 @@ static bool schedule(workflow_engine_state_t *state, workflow_node_t *node,
     next->generation = state->generation;
     next->run_node = run_node;
     strncpy(next->node_id, node->id, WORKFLOW_MAX_NAME - 1);
+    workflow_engine_state_delay_begin(state);
     workflow_debug_log("Delay node %s for %llu ms", node->id,
                        (unsigned long long)delay_ms);
     if (!workflow_engine_delay_start(delay_ms, continue_run, next)) {
+        workflow_engine_state_delay_end(state);
         free(next);
         return false;
     }
@@ -104,7 +107,10 @@ static bool run_node_internal(workflow_engine_state_t *state,
 bool workflow_engine_runner_run_node(workflow_engine_state_t *state,
                                      const char *node_id)
 {
-    return run_node_internal(state, node_id, 0);
+    bool result = run_node_internal(state, node_id, 0);
+    if (result && state && !state->pending_branches)
+        workflow_engine_state_stop(state);
+    return result;
 }
 
 bool workflow_engine_runner_run_entries(workflow_engine_state_t *state)
@@ -116,5 +122,7 @@ bool workflow_engine_runner_run_entries(workflow_engine_state_t *state)
     for (size_t i = 0; i < state->workflow->entry_node_count; ++i)
         if (run_node_internal(state, state->workflow->entry_node_ids[i], 0))
             executed = true;
+    if (executed && !state->pending_branches)
+        workflow_engine_state_stop(state);
     return executed;
 }
