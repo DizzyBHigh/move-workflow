@@ -1,7 +1,8 @@
 #include "workflow-engine-trigger.h"
 
-#include "workflow-engine-runner.h"
+#include "workflow-debug.h"
 #include "workflow-engine-node.h"
+#include "workflow-engine-runner.h"
 
 #include <cstring>
 
@@ -27,8 +28,13 @@ bool workflow_engine_trigger_dispatch(workflow_engine_state_t *state,
 {
     if (!workflow_engine_state_is_active(state))
         return false;
+    workflow_debug_log("Trigger event: %s value=%s",
+                       workflow_trigger_type_name(type), value ? value : "<none>");
     workflow_node_t *trigger = workflow_engine_find_trigger(state->workflow, type, value);
-    if (!trigger)
+    if (!trigger) {
+        workflow_debug_log("No matching trigger node found.");
         return false;
+    }
+    workflow_debug_log("Matched trigger node: %s", trigger->id);
     return workflow_engine_runner_run_node(state, trigger->id);
 }
