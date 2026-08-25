@@ -21,14 +21,14 @@ workflow_node_t *workflow_engine_find_trigger(workflow_t *workflow,
     return nullptr;
 }
 
-bool workflow_engine_trigger(workflow_engine_state_t *state,
-                             workflow_trigger_type_t type,
-                             const char *value)
+bool workflow_engine_trigger_dispatch(workflow_engine_state_t *state,
+                                      workflow_trigger_type_t type,
+                                      const char *value)
 {
     if (!workflow_engine_state_is_active(state))
         return false;
     workflow_node_t *trigger = workflow_engine_find_trigger(state->workflow, type, value);
     if (!trigger)
         return false;
-    return workflow_engine_run_node(state, trigger->id);
+    return workflow_engine_runner_run_node(state, trigger->id);
 }
