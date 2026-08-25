@@ -1,9 +1,10 @@
 #include "workflow-node-settings.h"
 
 #include "workflow-action-list.h"
+#include "workflow-debug.h"
 #include "workflow-engine-service.h"
 #include "workflow-node-settings-common.h"
-#include "workflow-debug.h"
+#include "workflow-persistence.h"
 
 #include <QComboBox>
 #include <QGroupBox>
@@ -35,9 +36,14 @@ void NodeSettingsDialog::buildTriggerEditor(QVBoxLayout *layout, QVBoxLayout *co
     testButton->setToolTip("Execute this workflow branch without waiting for the real trigger.");
     layout->addWidget(testButton);
     connect(testButton, &QPushButton::clicked, this, [this] {
+        const workflow_manager_t *manager = workflow_persistence_manager();
+        const workflow_t *workflow = manager ? workflow_manager_selected_const(manager) : nullptr;
+        if (!workflow) {
+            blog(LOG_WARNING, "[Move Workflow] Trigger test could not find the selected workflow.");
+            return;
+        }
         workflow_debug_log("Manual test requested from trigger node: %s", node_->id().toUtf8().constData());
-        const bool started = workflow_engine_service_test_node(node_->workflowNode()->workflow,
-                                                                node_->workflowNode()->id);
+        const bool started = workflow_engine_service_test_node(workflow->id, node_->workflowNode()->id);
         if (!started)
             blog(LOG_WARNING, "[Move Workflow] Trigger test could not start.");
     });
