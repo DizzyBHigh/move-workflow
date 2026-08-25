@@ -66,6 +66,10 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-persistence.h
   src/workflow-persistence-json.cpp
   src/workflow-persistence-json.h
+  src/workflow-export.cpp
+  src/workflow-export.h
+  src/workflow-import.cpp
+  src/workflow-import.h
   src/workflow-undo.cpp
   src/workflow-undo.h
   src/workflow-runtime.c
