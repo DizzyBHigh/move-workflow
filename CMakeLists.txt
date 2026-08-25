@@ -90,4 +90,4 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-action-list.h
 )
 
-setup_plugin_target(${CMAKE_PROJECT_NAME})
+set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
