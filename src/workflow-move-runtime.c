@@ -3,23 +3,30 @@
 #include <obs.h>
 #include <obs-module.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define MOVE_SOURCE_FILTER_ID "move_source_filter"
 #define MOVE_SOURCE_SWAP_FILTER_ID "move_source_swap_filter"
 #define MOVE_VALUE_FILTER_ID "move_value_filter"
 #define MOVE_ACTION_FILTER_ID "move_action_filter"
 
-static bool is_supported_move_filter(const char *id)
-{
-    return id && (!strcmp(id, MOVE_SOURCE_FILTER_ID) || !strcmp(id, MOVE_SOURCE_SWAP_FILTER_ID) ||
-                  !strcmp(id, MOVE_VALUE_FILTER_ID) || !strcmp(id, MOVE_ACTION_FILTER_ID));
-}
-
 typedef struct move_hotkey_lookup {
     const char *scene_name;
     const char *filter_name;
     obs_hotkey_id id;
 } move_hotkey_lookup_t;
+
+typedef struct move_dispatch_task {
+    obs_hotkey_id id;
+    char *scene_name;
+    char *filter_name;
+} move_dispatch_task_t;
+
+static bool is_supported_move_filter(const char *id)
+{
+    return id && (!strcmp(id, MOVE_SOURCE_FILTER_ID) || !strcmp(id, MOVE_SOURCE_SWAP_FILTER_ID) ||
+                  !strcmp(id, MOVE_VALUE_FILTER_ID) || !strcmp(id, MOVE_ACTION_FILTER_ID));
+}
 
 static bool find_move_hotkey(void *data, obs_hotkey_id id, obs_hotkey_t *key)
 {
@@ -40,7 +47,6 @@ static bool find_move_hotkey(void *data, obs_hotkey_id id, obs_hotkey_t *key)
         obs_source_release(registerer);
         return false;
     }
-
     obs_source_release(registerer);
     return true;
 }
@@ -55,17 +61,37 @@ static obs_source_t *find_target_filter(const workflow_action_ref_t *action)
     obs_source_t *scene = obs_get_source_by_name(action->scene_name);
     if (!scene)
         return NULL;
-
     obs_source_t *filter = obs_source_get_filter_by_name(scene, action->filter_name);
     obs_source_release(scene);
     if (!filter)
         return NULL;
-
     if (strcmp(obs_source_get_unversioned_id(filter), action->filter_id) != 0) {
         obs_source_release(filter);
         return NULL;
     }
     return filter;
+}
+
+static void run_move_dispatch(void *data)
+{
+    move_dispatch_task_t *task = data;
+    if (!task)
+        return;
+
+    blog(LOG_INFO,
+         "[Move Workflow][Debug] Move dispatch: UI task triggering hotkey id=%llu scene='%s' filter='%s'",
+         (unsigned long long)task->id, task->scene_name, task->filter_name);
+
+    obs_hotkey_trigger_routed_callback(task->id, true);
+    obs_hotkey_trigger_routed_callback(task->id, false);
+
+    blog(LOG_INFO,
+         "[Move Workflow][Debug] Move dispatch: UI task completed scene='%s' filter='%s'",
+         task->scene_name, task->filter_name);
+
+    free(task->scene_name);
+    free(task->filter_name);
+    free(task);
 }
 
 bool workflow_move_runtime_trigger(workflow_t *workflow, workflow_node_t *node)
@@ -80,8 +106,7 @@ bool workflow_move_runtime_trigger(workflow_t *workflow, workflow_node_t *node)
         return false;
     }
 
-    const bool was_enabled = obs_source_enabled(filter);
-    if (!was_enabled)
+    if (!obs_source_enabled(filter))
         obs_source_set_enabled(filter, true);
 
     blog(LOG_INFO,
@@ -97,23 +122,27 @@ bool workflow_move_runtime_trigger(workflow_t *workflow, workflow_node_t *node)
     obs_enum_hotkeys(find_move_hotkey, &lookup);
     if (lookup.id == OBS_INVALID_HOTKEY_ID) {
         blog(LOG_WARNING,
-             "[Move Workflow] Move start hotkey not found: scene='%s' filter='%s'. "
-             "The Move filter must be attached to that scene and fully initialized.",
+             "[Move Workflow] Move start hotkey not found: scene='%s' filter='%s'.",
              node->action.scene_name, node->action.filter_name);
         return false;
     }
 
+    move_dispatch_task_t *task = calloc(1, sizeof(*task));
+    if (!task)
+        return false;
+    task->id = lookup.id;
+    task->scene_name = strdup(node->action.scene_name);
+    task->filter_name = strdup(node->action.filter_name);
+    if (!task->scene_name || !task->filter_name) {
+        free(task->scene_name);
+        free(task->filter_name);
+        free(task);
+        return false;
+    }
+
     blog(LOG_INFO,
-         "[Move Workflow][Debug] Move dispatch: triggering start hotkey id=%llu scene='%s' filter='%s'",
+         "[Move Workflow][Debug] Move dispatch: queueing UI task id=%llu scene='%s' filter='%s'",
          (unsigned long long)lookup.id, node->action.scene_name, node->action.filter_name);
-
-    /* obs-move-transition registers its start callback as a source hotkey on
-     * the scene parent. Trigger both edges just like a real hotkey press. */
-    obs_hotkey_trigger_routed_callback(lookup.id, true);
-    obs_hotkey_trigger_routed_callback(lookup.id, false);
-
-    blog(LOG_INFO,
-         "[Move Workflow][Debug] Move dispatch: start hotkey completed scene='%s' filter='%s'",
-         node->action.scene_name, node->action.filter_name);
+    obs_queue_task(OBS_TASK_UI, run_move_dispatch, task, false);
     return true;
 }
