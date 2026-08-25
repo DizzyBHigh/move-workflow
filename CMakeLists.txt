@@ -47,6 +47,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-workspace.h
   src/workflow-node-copy.c
   src/workflow-node-copy.h
+  src/workflow-node-copy.h
   src/workflow-node-duplicate-ui.cpp
   src/workflow-node-duplicate-ui.h
   src/workflow-clipboard.cpp
@@ -66,6 +67,10 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-test-menu.h
   src/workflow-hotkeys.c
   src/workflow-hotkeys.h
+  src/workflow-debug.h
+  src/workflow-debug.cpp
+  src/workflow-debug-ui.h
+  src/workflow-debug-ui.cpp
   src/workflow-engine.h
   src/workflow-engine.cpp
   src/workflow-engine-state.h
