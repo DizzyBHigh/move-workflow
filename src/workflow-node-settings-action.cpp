@@ -2,6 +2,7 @@
 
 #include "workflow-action-list.h"
 #include "workflow-node-settings-common.h"
+#include "workflow-node-timing-defaults.h"
 
 #include <obs.h>
 
@@ -78,9 +79,12 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent, QVBoxLayout *layout)
     durationDefault_ = new QCheckBox("Use default", timing);
     endDelayDefault_ = new QCheckBox("Use default", timing);
     const workflow_node_t *wf = node_->workflowNode();
-    startDelayMs_->setValue((int)wf->start_delay.delay_ms);
-    durationMs_->setValue((int)wf->duration.duration_ms);
-    endDelayMs_->setValue((int)wf->end_delay.delay_ms);
+    startDelayOverrideMs_ = wf->start_delay.delay_ms;
+    durationOverrideMs_ = wf->duration.duration_ms;
+    endDelayOverrideMs_ = wf->end_delay.delay_ms;
+    startDelayMs_->setValue((int)startDelayOverrideMs_);
+    durationMs_->setValue((int)durationOverrideMs_);
+    endDelayMs_->setValue((int)endDelayOverrideMs_);
     startDelayDefault_->setChecked(wf->start_delay.mode == WORKFLOW_USE_EXISTING);
     durationDefault_->setChecked(wf->duration.mode == WORKFLOW_USE_EXISTING);
     endDelayDefault_->setChecked(wf->end_delay.mode == WORKFLOW_USE_EXISTING);
@@ -88,6 +92,48 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent, QVBoxLayout *layout)
     spin_row(timingLayout, "Duration", durationMs_, durationDefault_);
     spin_row(timingLayout, "End Delay", endDelayMs_, endDelayDefault_);
     layout->addWidget(timing);
+
+    auto refreshDefaults = [this] {
+        const auto defaults = workflow_node_read_timing_defaults(
+            source_->currentData().toString().toUtf8().constData(),
+            filter_->currentData().toString().toUtf8().constData());
+        if (!defaults.valid)
+            return;
+        if (startDelayDefault_->isChecked())
+            startDelayMs_->setValue((int)defaults.start_delay_ms);
+        if (durationDefault_->isChecked())
+            durationMs_->setValue((int)defaults.duration_ms);
+        if (endDelayDefault_->isChecked())
+            endDelayMs_->setValue((int)defaults.end_delay_ms);
+    };
+    auto toggleTiming = [this, refreshDefaults](QCheckBox *check, QSpinBox *spin,
+                                                 uint64_t &overrideValue) {
+        if (check->isChecked()) {
+            overrideValue = (uint64_t)spin->value();
+            refreshDefaults();
+            spin->setEnabled(false);
+        } else {
+            spin->setEnabled(true);
+            spin->setValue((int)overrideValue);
+        }
+    };
+    connect(startDelayDefault_, &QCheckBox::toggled, this,
+            [this, toggleTiming] { toggleTiming(startDelayDefault_, startDelayMs_, startDelayOverrideMs_); });
+    connect(durationDefault_, &QCheckBox::toggled, this,
+            [this, toggleTiming] { toggleTiming(durationDefault_, durationMs_, durationOverrideMs_); });
+    connect(endDelayDefault_, &QCheckBox::toggled, this,
+            [this, toggleTiming] { toggleTiming(endDelayDefault_, endDelayMs_, endDelayOverrideMs_); });
+    connect(startDelayMs_, &QSpinBox::valueChanged, this,
+            [this](int value) { if (!startDelayDefault_->isChecked()) startDelayOverrideMs_ = (uint64_t)value; });
+    connect(durationMs_, &QSpinBox::valueChanged, this,
+            [this](int value) { if (!durationDefault_->isChecked()) durationOverrideMs_ = (uint64_t)value; });
+    connect(endDelayMs_, &QSpinBox::valueChanged, this,
+            [this](int value) { if (!endDelayDefault_->isChecked()) endDelayOverrideMs_ = (uint64_t)value; });
+    connect(filter_, &QComboBox::currentIndexChanged, this, [refreshDefaults] { refreshDefaults(); });
+    refreshDefaults();
+    startDelayMs_->setEnabled(!startDelayDefault_->isChecked());
+    durationMs_->setEnabled(!durationDefault_->isChecked());
+    endDelayMs_->setEnabled(!endDelayDefault_->isChecked());
 
     simultaneous_ = new WorkflowActionList("Simultaneous Actions",
         "These actions start together with this Action.", node_, nodes_,
