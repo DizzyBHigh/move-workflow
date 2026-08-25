@@ -99,6 +99,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-engine-trigger.cpp
   src/workflow-engine-service.h
   src/workflow-engine-service.cpp
+  src/workflow-action-runtime.h
+  src/workflow-action-runtime.cpp
   src/move-workflow-tests.cpp
   src/move-workflow-tests.h
   src/move-workflow-editor.cpp
