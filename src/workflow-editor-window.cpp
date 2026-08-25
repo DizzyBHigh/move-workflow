@@ -74,3 +74,6 @@ public slots:
 protected:
     bool eventFilter(QObject *watched,QEvent *event) override { return QDialog::eventFilter(watched,event); }
     void keyPressEvent(QKeyEvent *event) override { QDialog::keyPressEvent(event); }
+};
+}
+#include "workflow-editor-window.moc"
