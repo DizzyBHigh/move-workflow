@@ -1,5 +1,6 @@
 #include "workflow-runtime.h"
 #include "workflow-shortcuts.h"
+#include "workflow-move-runtime.h"
 
 #include <obs.h>
 #include <obs-module.h>
@@ -95,18 +96,6 @@ static bool apply_duration_override(obs_source_t *filter, uint64_t duration_ms)
     return true;
 }
 
-static void apply_start_trigger_override(obs_source_t *filter, const workflow_node_t *node)
-{
-    if (node->start_trigger_mode == WORKFLOW_OVERRIDE &&
-        strcmp(node->start_trigger_value, "Enable") == 0) {
-        obs_source_set_enabled(filter, false);
-        obs_source_set_enabled(filter, true);
-        return;
-    }
-    obs_source_set_enabled(filter, false);
-    obs_source_set_enabled(filter, true);
-}
-
 static void execute_node(workflow_t *workflow, workflow_node_t *node)
 {
     if (!workflow || !node)
@@ -119,7 +108,10 @@ static void execute_node(workflow_t *workflow, workflow_node_t *node)
         obs_source_release(filter);
         return;
     }
-    apply_start_trigger_override(filter, node);
+    if (!workflow_move_runtime_trigger(workflow, node)) {
+        obs_source_release(filter);
+        return;
+    }
     obs_source_release(filter);
     workflow_shortcuts_begin(workflow, node);
 }
