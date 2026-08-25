@@ -66,6 +66,18 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-test-menu.h
   src/workflow-hotkeys.c
   src/workflow-hotkeys.h
+  src/workflow-engine.h
+  src/workflow-engine.cpp
+  src/workflow-engine-state.h
+  src/workflow-engine-state.cpp
+  src/workflow-engine-node.h
+  src/workflow-engine-node.cpp
+  src/workflow-engine-runner.h
+  src/workflow-engine-runner.cpp
+  src/workflow-engine-delay.h
+  src/workflow-engine-delay.cpp
+  src/workflow-engine-trigger.h
+  src/workflow-engine-trigger.cpp
   src/move-workflow-tests.cpp
   src/move-workflow-tests.h
   src/move-workflow-editor.cpp
