@@ -1,7 +1,7 @@
 #include "workflow-engine-node.h"
 
 #include "workflow-debug.h"
-#include "workflow-filter-instance.h"
+#include "workflow-action-executor.hpp"
 
 #include <cstring>
 
@@ -29,7 +29,7 @@ bool workflow_engine_execute_node(workflow_engine_state_t *state,
         return true;
     }
     const bool executed =
-        workflow_filter_instance_execute_node(state->workflow, node);
+        workflow_action_executor_execute(state->workflow, node);
     workflow_debug_log("Execute node result: %s result=%d", node->id,
                        executed ? 1 : 0);
     return executed;
