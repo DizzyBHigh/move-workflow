@@ -16,6 +16,9 @@ void workflow_engine_stop(workflow_engine_t *engine);
 bool workflow_engine_is_running(const workflow_engine_t *engine);
 bool workflow_engine_run_entries(workflow_engine_t *engine);
 bool workflow_engine_run_node(workflow_engine_t *engine, const char *node_id);
+bool workflow_engine_test_node(workflow_engine_t *engine,
+                               workflow_t *workflow,
+                               const char *node_id);
 bool workflow_engine_trigger(workflow_engine_t *engine,
                              workflow_trigger_type_t type,
                              const char *value);
