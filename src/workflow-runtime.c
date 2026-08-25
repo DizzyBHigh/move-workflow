@@ -1,5 +1,6 @@
 #include "workflow-runtime.h"
 #include "workflow-shortcuts.h"
+#include "workflow-debug.h"
 
 #include <obs.h>
 #include <obs-module.h>
@@ -19,18 +20,33 @@ typedef struct duration_restore_context {
 static obs_source_t *find_move_filter(const workflow_action_ref_t *action)
 {
     const char *expected_id = workflow_expected_filter_id(action->kind);
-    if (!expected_id || !strlen(expected_id) || strcmp(action->filter_id, expected_id) != 0)
-        return NULL;
-    obs_source_t *scene = obs_get_source_by_name(action->scene_name);
-    if (!scene)
-        return NULL;
-    obs_source_t *filter = obs_source_get_filter_by_name(scene, action->filter_name);
-    obs_source_release(scene);
-    if (!filter || strcmp(obs_source_get_id(filter), action->filter_id) != 0) {
-        if (filter)
-            obs_source_release(filter);
+    workflow_debug_log("Runtime lookup: scene='%s' filter='%s' id='%s' expected='%s'",
+                       action->scene_name, action->filter_name, action->filter_id,
+                       expected_id ? expected_id : "(null)");
+    if (!expected_id || !strlen(expected_id) || strcmp(action->filter_id, expected_id) != 0) {
+        workflow_debug_log("Runtime lookup FAILED: filter id validation");
         return NULL;
     }
+    obs_source_t *scene = obs_get_source_by_name(action->scene_name);
+    if (!scene) {
+        workflow_debug_log("Runtime lookup FAILED: scene not found '%s'", action->scene_name);
+        return NULL;
+    }
+    workflow_debug_log("Runtime lookup: scene found");
+    obs_source_t *filter = obs_source_get_filter_by_name(scene, action->filter_name);
+    obs_source_release(scene);
+    if (!filter) {
+        workflow_debug_log("Runtime lookup FAILED: filter not found '%s'", action->filter_name);
+        return NULL;
+    }
+    const char *actual_id = obs_source_get_id(filter);
+    workflow_debug_log("Runtime lookup: filter found, actual id='%s'", actual_id ? actual_id : "(null)");
+    if (!actual_id || strcmp(actual_id, action->filter_id) != 0) {
+        workflow_debug_log("Runtime lookup FAILED: filter id mismatch");
+        obs_source_release(filter);
+        return NULL;
+    }
+    workflow_debug_log("Runtime lookup SUCCESS: target filter resolved");
     return filter;
 }
 
@@ -97,31 +113,32 @@ static bool apply_duration_override(obs_source_t *filter, uint64_t duration_ms)
 
 static void apply_start_trigger_override(obs_source_t *filter, const workflow_node_t *node)
 {
-    if (node->start_trigger_mode == WORKFLOW_OVERRIDE &&
-        strcmp(node->start_trigger_value, "Enable") == 0) {
-        obs_source_set_enabled(filter, false);
-        obs_source_set_enabled(filter, true);
-        return;
-    }
+    workflow_debug_log("Runtime action: toggling target filter '%s'", node->action.filter_name);
     obs_source_set_enabled(filter, false);
     obs_source_set_enabled(filter, true);
+    workflow_debug_log("Runtime action: filter toggle completed");
 }
 
 static void execute_node(workflow_t *workflow, workflow_node_t *node)
 {
     if (!workflow || !node)
         return;
+    workflow_debug_log("Runtime execute: node='%s' type=%d", node->id, (int)node->type);
     obs_source_t *filter = find_move_filter(&node->action);
-    if (!filter)
+    if (!filter) {
+        workflow_debug_log("Runtime execute FAILED: target could not be resolved");
         return;
+    }
     if (node->duration.mode == WORKFLOW_OVERRIDE &&
         !apply_duration_override(filter, node->duration.duration_ms)) {
+        workflow_debug_log("Runtime execute FAILED: duration override");
         obs_source_release(filter);
         return;
     }
     apply_start_trigger_override(filter, node);
     obs_source_release(filter);
     workflow_shortcuts_begin(workflow, node);
+    workflow_debug_log("Runtime execute SUCCESS: node='%s' dispatched", node->id);
 }
 
 void workflow_runtime_execute_node_by_id(workflow_t *workflow, const char *node_id)
@@ -131,6 +148,8 @@ void workflow_runtime_execute_node_by_id(workflow_t *workflow, const char *node_
     workflow_node_t *node = find_node(workflow, node_id);
     if (node)
         execute_node(workflow, node);
+    else
+        workflow_debug_log("Runtime execute FAILED: node not found '%s'", node_id ? node_id : "(null)");
 }
 
 void workflow_runtime_test_duration(workflow_t *workflow)
