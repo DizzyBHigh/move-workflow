@@ -1,5 +1,7 @@
 #include "workflow-node.h"
 
+#include "workflow-node-timing-defaults.h"
+
 #include <QGraphicsTextItem>
 #include <QPainter>
 #include <QPen>
@@ -97,11 +99,25 @@ void NodeItem::refreshDisplay()
     } else {
         const QString source = read_text(node_.workflow.action.scene_name);
         const QString filter = read_text(node_.workflow.action.filter_name);
-        details_->setPlainText(QString("%1\n%2\nDelay %3 ms   Duration %4 ms\nSimultaneous %5   End %6   Next %7")
+        uint64_t startDelay = node_.workflow.start_delay.delay_ms;
+        uint64_t duration = node_.workflow.duration.duration_ms;
+        uint64_t endDelay = node_.workflow.end_delay.delay_ms;
+        const auto defaults = workflow_node_read_timing_defaults(
+            node_.workflow.action.scene_name, node_.workflow.action.filter_name);
+        if (defaults.valid) {
+            if (node_.workflow.start_delay.mode == WORKFLOW_USE_EXISTING)
+                startDelay = defaults.start_delay_ms;
+            if (node_.workflow.duration.mode == WORKFLOW_USE_EXISTING)
+                duration = defaults.duration_ms;
+            if (node_.workflow.end_delay.mode == WORKFLOW_USE_EXISTING)
+                endDelay = defaults.end_delay_ms;
+        }
+        details_->setPlainText(QString("%1\n%2\nDelay %3 ms   Duration %4 ms   End %5 ms\nSimultaneous %6   End %7   Next %8")
                                    .arg(source.isEmpty() ? "No source selected" : source,
                                         filter.isEmpty() ? "No Move filter selected" : filter)
-                                   .arg((qulonglong)node_.workflow.start_delay.delay_ms)
-                                   .arg((qulonglong)node_.workflow.duration.duration_ms)
+                                   .arg((qulonglong)startDelay)
+                                   .arg((qulonglong)duration)
+                                   .arg((qulonglong)endDelay)
                                    .arg((qulonglong)node_.workflow.simultaneous_node_count)
                                    .arg((qulonglong)node_.workflow.end_node_count)
                                    .arg((qulonglong)node_.workflow.next_node_count));
