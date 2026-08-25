@@ -2,23 +2,13 @@
 #include "workflow-debug.h"
 #include <obs.h>
 #include <string.h>
-#include <stdlib.h>
 
 #define MOVE_SOURCE_FILTER_ID "move_source_filter"
 #define MOVE_SOURCE_SWAP_FILTER_ID "move_source_swap_filter"
 #define MOVE_VALUE_FILTER_ID "move_value_filter"
 #define MOVE_ACTION_FILTER_ID "move_action_filter"
-
-typedef struct move_hotkey_lookup {
-    obs_source_t *filter;
-    const char *filter_name;
-    obs_hotkey_id id;
-} move_hotkey_lookup_t;
-
-typedef struct move_dispatch_task {
-    obs_source_t *filter;
-    obs_hotkey_id id;
-} move_dispatch_task_t;
+#define MOVE_START_TRIGGER "start_trigger"
+#define MOVE_START_TRIGGER_LOAD 13
 
 static bool supported_move_filter(const char *id)
 {
@@ -26,26 +16,6 @@ static bool supported_move_filter(const char *id)
                   !strcmp(id, MOVE_SOURCE_SWAP_FILTER_ID) ||
                   !strcmp(id, MOVE_VALUE_FILTER_ID) ||
                   !strcmp(id, MOVE_ACTION_FILTER_ID));
-}
-
-static bool find_move_hotkey(void *data, obs_hotkey_id id, obs_hotkey_t *key)
-{
-    move_hotkey_lookup_t *lookup = data;
-    if (obs_hotkey_get_registerer_type(key) != OBS_HOTKEY_REGISTERER_SOURCE)
-        return true;
-    if (strcmp(obs_hotkey_get_name(key), lookup->filter_name) != 0)
-        return true;
-
-    obs_weak_source_t *weak = obs_hotkey_get_registerer(key);
-    obs_source_t *registerer = weak ? obs_weak_source_get_source(weak) : NULL;
-    if (!registerer)
-        return true;
-
-    bool match = registerer == lookup->filter;
-    if (match)
-        lookup->id = id;
-    obs_source_release(registerer);
-    return !match;
 }
 
 static obs_source_t *find_target_filter(const workflow_action_ref_t *action)
@@ -70,20 +40,26 @@ static obs_source_t *find_target_filter(const workflow_action_ref_t *action)
     return filter;
 }
 
-static void dispatch_move_hotkey(void *data)
+static bool start_move_filter(obs_source_t *filter, const char *filter_name)
 {
-    move_dispatch_task_t *task = data;
-    if (!task)
-        return;
+    obs_data_t *settings = obs_source_get_settings(filter);
+    if (!settings)
+        return false;
 
-    obs_source_set_enabled(task->filter, true);
-    workflow_debug_log("Move dispatch: triggering hotkey id=%llu enabled=%d",
-                       (unsigned long long)task->id,
-                       obs_source_enabled(task->filter) ? 1 : 0);
-    obs_hotkey_trigger_routed_callback(task->id, true);
-    obs_hotkey_trigger_routed_callback(task->id, false);
-    obs_source_release(task->filter);
-    free(task);
+    const int original_trigger = (int)obs_data_get_int(settings, MOVE_START_TRIGGER);
+    obs_data_set_int(settings, MOVE_START_TRIGGER, MOVE_START_TRIGGER_LOAD);
+
+    workflow_debug_log("Move dispatch: forcing LOAD trigger for filter='%s' original=%d",
+                       filter_name, original_trigger);
+    obs_source_update(filter, settings);
+
+    obs_data_set_int(settings, MOVE_START_TRIGGER, original_trigger);
+    obs_source_update(filter, settings);
+    obs_data_release(settings);
+
+    workflow_debug_log("Move dispatch: native Move update completed for filter='%s'",
+                       filter_name);
+    return true;
 }
 
 bool workflow_move_runtime_trigger(workflow_t *workflow, workflow_node_t *node)
@@ -98,32 +74,7 @@ bool workflow_move_runtime_trigger(workflow_t *workflow, workflow_node_t *node)
         return false;
     }
 
-    move_hotkey_lookup_t lookup = {
-        .filter = filter,
-        .filter_name = node->action.filter_name,
-        .id = OBS_INVALID_HOTKEY_ID,
-    };
-    obs_enum_hotkeys(find_move_hotkey, &lookup);
-    if (lookup.id == OBS_INVALID_HOTKEY_ID) {
-        workflow_debug_log("Move start hotkey not found: filter='%s'",
-                           node->action.filter_name);
-        obs_source_release(filter);
-        return false;
-    }
-
-    move_dispatch_task_t *task = calloc(1, sizeof(*task));
-    if (!task) {
-        obs_source_release(filter);
-        return false;
-    }
-    task->filter = obs_source_get_ref(filter);
-    task->id = lookup.id;
+    const bool started = start_move_filter(filter, node->action.filter_name);
     obs_source_release(filter);
-    if (!task->filter)
-        return false;
-
-    workflow_debug_log("Move dispatch: queueing hotkey id=%llu filter='%s'",
-                       (unsigned long long)task->id, node->action.filter_name);
-    obs_queue_task(OBS_TASK_UI, dispatch_move_hotkey, task, false);
-    return true;
+    return started;
 }
