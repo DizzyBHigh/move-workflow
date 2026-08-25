@@ -22,6 +22,8 @@ void workflow_engine_state_reset(workflow_engine_state_t *state);
 void workflow_engine_state_begin(workflow_engine_state_t *state, workflow_t *workflow);
 void workflow_engine_state_stop(workflow_engine_state_t *state);
 bool workflow_engine_state_is_active(const workflow_engine_state_t *state);
+void workflow_engine_state_delay_begin(workflow_engine_state_t *state);
+void workflow_engine_state_delay_end(workflow_engine_state_t *state);
 
 #ifdef __cplusplus
 }
