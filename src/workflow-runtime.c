@@ -1,7 +1,6 @@
 #include "workflow-runtime.h"
 #include "workflow-shortcuts.h"
 #include "workflow-debug.h"
-
 #include <obs.h>
 #include <obs-module.h>
 #include <stdlib.h>
@@ -54,19 +53,16 @@ static obs_source_t *find_move_filter(const workflow_action_ref_t *action)
 
 static workflow_node_t *find_node(workflow_t *wf, const char *id)
 {
-    if (!wf || !id)
-        return NULL;
+    if (!wf || !id) return NULL;
     for (size_t i = 0; i < wf->node_count; ++i)
-        if (strcmp(wf->nodes[i].id, id) == 0)
-            return &wf->nodes[i];
+        if (strcmp(wf->nodes[i].id, id) == 0) return &wf->nodes[i];
     return NULL;
 }
 
 static void restore_filter_settings(void *data)
 {
     duration_restore_context_t *ctx = data;
-    if (!ctx)
-        return;
+    if (!ctx) return;
     obs_data_t *settings = obs_source_get_settings(ctx->filter);
     if (settings) {
         obs_data_set_bool(settings, "custom_duration", ctx->custom_duration);
@@ -91,13 +87,9 @@ static void *restore_filter_thread(void *data)
 static bool apply_overrides(obs_source_t *filter, const workflow_node_t *node)
 {
     obs_data_t *settings = obs_source_get_settings(filter);
-    if (!settings)
-        return false;
+    if (!settings) return false;
     duration_restore_context_t *ctx = calloc(1, sizeof(*ctx));
-    if (!ctx) {
-        obs_data_release(settings);
-        return false;
-    }
+    if (!ctx) { obs_data_release(settings); return false; }
     ctx->filter = obs_source_get_ref(filter);
     ctx->custom_duration = obs_data_get_bool(settings, "custom_duration");
     ctx->duration = obs_data_get_int(settings, "duration");
@@ -106,9 +98,9 @@ static bool apply_overrides(obs_source_t *filter, const workflow_node_t *node)
         obs_data_set_bool(settings, "custom_duration", true);
         obs_data_set_int(settings, "duration", (long long)node->duration.duration_ms);
     }
-    if (node->action.start_trigger_mode == WORKFLOW_OVERRIDE) {
-        workflow_debug_log("Runtime override: start_trigger='%s'", node->action.start_trigger_value);
-        if (strcmp(node->action.start_trigger_value, "Enable") == 0)
+    if (node->start_trigger_mode == WORKFLOW_OVERRIDE) {
+        workflow_debug_log("Runtime override: start_trigger='%s'", node->start_trigger_value);
+        if (strcmp(node->start_trigger_value, "Enable") == 0)
             obs_data_set_int(settings, "start_trigger", MOVE_START_TRIGGER_ENABLE);
     }
     obs_source_update(filter, settings);
@@ -124,8 +116,7 @@ static bool apply_overrides(obs_source_t *filter, const workflow_node_t *node)
 
 static void execute_node(workflow_t *workflow, workflow_node_t *node)
 {
-    if (!workflow || !node)
-        return;
+    if (!workflow || !node) return;
     workflow_debug_log("Runtime execute: node='%s' type=%d", node->id, (int)node->type);
     obs_source_t *filter = find_move_filter(&node->action);
     if (!filter) {
@@ -148,20 +139,16 @@ static void execute_node(workflow_t *workflow, workflow_node_t *node)
 
 void workflow_runtime_execute_node_by_id(workflow_t *workflow, const char *node_id)
 {
-    if (!workflow || !workflow->enabled)
-        return;
+    if (!workflow || !workflow->enabled) return;
     workflow_node_t *node = find_node(workflow, node_id);
-    if (node)
-        execute_node(workflow, node);
-    else
-        workflow_debug_log("Runtime execute FAILED: node not found '%s'", node_id ? node_id : "(null)");
+    if (node) execute_node(workflow, node);
+    else workflow_debug_log("Runtime execute FAILED: node not found '%s'", node_id ? node_id : "(null)");
 }
 
 void workflow_runtime_test_duration(workflow_t *workflow)
 {
     workflow_node_t *node = find_node(workflow, "move-left");
-    if (!node)
-        return;
+    if (!node) return;
     node->duration.mode = WORKFLOW_OVERRIDE;
     node->duration.duration_ms = PHASE12_TEST_DURATION_MS;
     execute_node(workflow, node);
