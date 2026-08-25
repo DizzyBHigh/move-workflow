@@ -45,10 +45,21 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-manager-ui.h
   src/workflow-workspace.cpp
   src/workflow-workspace.h
+  src/workflow-scene.cpp
+  src/workflow-scene.h
+  src/workflow-node.cpp
+  src/workflow-node.h
   src/workflow-node-copy.c
   src/workflow-node-copy.h
   src/workflow-node-duplicate-ui.cpp
   src/workflow-node-duplicate-ui.h
+  src/workflow-node-settings.cpp
+  src/workflow-node-settings.h
+  src/workflow-node-settings-action.cpp
+  src/workflow-node-settings-trigger.cpp
+  src/workflow-node-settings-trigger-data.cpp
+  src/workflow-node-settings-common.h
+  src/workflow-node-dialog.h
   src/workflow-clipboard.cpp
   src/workflow-clipboard.h
   src/workflow-persistence.cpp
@@ -74,6 +85,18 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-debug-ui.cpp
   src/workflow-engine.h
   src/workflow-engine.cpp
+  src/workflow-engine-state.h
+  src/workflow-engine-state.cpp
+  src/workflow-engine-node.h
+  src/workflow-engine-node.cpp
+  src/workflow-engine-delay.h
+  src/workflow-engine-delay.cpp
+  src/workflow-engine-runner.h
+  src/workflow-engine-runner.cpp
+  src/workflow-engine-runs.h
+  src/workflow-engine-runs.cpp
+  src/workflow-engine-trigger.h
+  src/workflow-engine-trigger.cpp
   src/workflow-engine-service.h
   src/workflow-engine-service.cpp
   src/move-workflow-tests.cpp
@@ -84,8 +107,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-editor-window.h
   src/workflow-editor-view.cpp
   src/workflow-editor-view.h
-  src/workflow-node.cpp
-  src/workflow-node.h
   src/workflow-action-list.cpp
   src/workflow-action-list.h
 )
