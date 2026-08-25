@@ -2,6 +2,7 @@
 
 #include "workflow-debug.h"
 #include "workflow-engine.h"
+#include "workflow-engine-node.h"
 #include "workflow-persistence.h"
 
 static workflow_engine_t *service_engine;
@@ -13,14 +14,33 @@ void workflow_engine_service_set(workflow_engine_t *engine)
 
 bool workflow_engine_service_test_node(const char *workflow_id, const char *node_id)
 {
-    if (!service_engine || !workflow_id || !node_id || !*node_id)
+    if (!service_engine || !workflow_id || !node_id || !*node_id) {
+        workflow_debug_log("TEST start FAILED: invalid engine/workflow/node arguments.");
         return false;
+    }
     workflow_manager_t *manager = workflow_persistence_manager();
-    if (!manager)
+    if (!manager) {
+        workflow_debug_log("TEST start FAILED: workflow manager unavailable.");
         return false;
+    }
     workflow_t *workflow = workflow_manager_find(manager, workflow_id);
-    if (!workflow || !workflow_engine_start(service_engine, workflow))
+    if (!workflow) {
+        workflow_debug_log("TEST start FAILED: workflow not found: %s", workflow_id);
         return false;
+    }
+    workflow_debug_log("TEST start: workflow='%s' enabled=%d node='%s'",
+                       workflow->name, workflow->enabled ? 1 : 0, node_id);
+    workflow_node_t *node = workflow_engine_find_node(workflow, node_id);
+    if (!node) {
+        workflow_debug_log("TEST start FAILED: node not found: %s", node_id);
+        return false;
+    }
+    if (!workflow_engine_start(service_engine, workflow)) {
+        workflow_debug_log("TEST start FAILED: workflow_engine_start rejected workflow.");
+        return false;
+    }
     workflow_debug_log("TEST trigger node: %s", node_id);
-    return workflow_engine_run_node(service_engine, node_id);
+    const bool result = workflow_engine_run_node(service_engine, node_id);
+    workflow_debug_log("TEST result: node='%s' result=%d", node_id, result ? 1 : 0);
+    return result;
 }
