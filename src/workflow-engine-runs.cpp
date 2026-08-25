@@ -1,5 +1,6 @@
 #include "workflow-engine-runs.h"
 
+#include "workflow-debug.h"
 #include "workflow-engine-trigger.h"
 
 #include <cstdlib>
@@ -45,6 +46,7 @@ workflow_engine_run_t *workflow_engine_runs_start(workflow_engine_runs_t *runs,
     run->next = runs->head;
     runs->head = run;
     runs->current = run;
+    workflow_debug_log("Run created: workflow='%s'", workflow->name);
     return run;
 }
 
