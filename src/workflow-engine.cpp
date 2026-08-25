@@ -2,6 +2,7 @@
 
 #include "workflow-engine-runner.h"
 #include "workflow-engine-state.h"
+#include "workflow-engine-trigger.h"
 
 #include <cstdlib>
 
@@ -49,4 +50,13 @@ bool workflow_engine_run_entries(workflow_engine_t *engine)
     if (!engine)
         return false;
     return workflow_engine_runner_run_entries(&engine->state);
+}
+
+bool workflow_engine_trigger(workflow_engine_t *engine,
+                             workflow_trigger_type_t type,
+                             const char *value)
+{
+    if (!engine)
+        return false;
+    return workflow_engine_trigger(&engine->state, type, value);
 }
