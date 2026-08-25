@@ -48,5 +48,5 @@ bool workflow_engine_run_entries(workflow_engine_t *engine)
 {
     if (!engine)
         return false;
-    return workflow_engine_run_entries(&engine->state);
+    return workflow_engine_runner_run_entries(&engine->state);
 }
