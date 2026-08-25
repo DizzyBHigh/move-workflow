@@ -35,7 +35,7 @@ public:
         connect(combo_,&QComboBox::currentIndexChanged,this,[this](int i){if(i>=0&&selectionChanged_){const QByteArray id=combo_->itemData(i).toByteArray();selectionChanged_(id.constData());}refresh();});
         connect(add_,&QPushButton::clicked,this,[this]{addWorkflow();}); connect(duplicate_,&QPushButton::clicked,this,[this]{this->duplicateWorkflow();});
         connect(rename_,&QPushButton::clicked,this,[this]{renameWorkflow();}); connect(remove_,&QPushButton::clicked,this,[this]{removeWorkflow();});
-        connect(export_,&QPushButton::clicked,this,[this]{exportWorkflow();}); connect(import_,&QPushButton::clicked,this,[this]{importWorkflow();});
+        connect(export_,&QPushButton::clicked,this,[this]{this->exportWorkflow();}); connect(import_,&QPushButton::clicked,this,[this]{this->importWorkflow();});
         connect(enabled_,&QCheckBox::toggled,this,[this](bool e){const auto *s=workflow_manager_selected_const(manager_);if(s)workflow_manager_set_enabled(manager_,s->id,e);if(stateChanged_)stateChanged_();});
     }
     void refresh(){const auto *s=workflow_manager_selected_const(manager_);const QString id=s?QString::fromUtf8(s->id):QString();combo_->blockSignals(true);combo_->clear();for(size_t i=0;i<manager_->workflow_count;++i)combo_->addItem(QString::fromUtf8(manager_->workflows[i].name),QString::fromUtf8(manager_->workflows[i].id));int n=combo_->findData(id);combo_->setCurrentIndex(n>=0?n:0);combo_->blockSignals(false);s=workflow_manager_selected_const(manager_);bool has=s!=nullptr;duplicate_->setEnabled(has);rename_->setEnabled(has);remove_->setEnabled(has);export_->setEnabled(has);enabled_->setEnabled(has);enabled_->blockSignals(true);enabled_->setChecked(has&&s->enabled);enabled_->blockSignals(false);}
