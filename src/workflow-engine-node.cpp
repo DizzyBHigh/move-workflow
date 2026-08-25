@@ -1,5 +1,6 @@
 #include "workflow-engine-node.h"
 
+#include "workflow-debug.h"
 #include "workflow-runtime.h"
 
 #include <cstring>
@@ -21,6 +22,8 @@ bool workflow_engine_execute_node(workflow_engine_state_t *state,
         return false;
     strncpy(state->current_node_id, node->id, WORKFLOW_MAX_NAME - 1);
     state->current_node_id[WORKFLOW_MAX_NAME - 1] = '\0';
+    workflow_debug_log("Execute node: %s (%s)", node->id,
+                       workflow_node_type_name(node->type));
     if (node->type == WORKFLOW_NODE_TRIGGER)
         return true;
     workflow_runtime_execute_node_by_id(state->workflow, node->id);
