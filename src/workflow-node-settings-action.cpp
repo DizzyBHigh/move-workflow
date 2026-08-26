@@ -3,6 +3,7 @@
 #include "workflow-action-list.h"
 #include "workflow-node-settings-common.h"
 #include "workflow-node-timing-defaults.h"
+#include "workflow-change-scene.h"
 
 #include <obs.h>
 
@@ -55,20 +56,25 @@ static void add_filter(obs_source_t *, obs_source_t *filter, void *data)
 
 void NodeSettingsDialog::buildActionEditor(QWidget *parent, QVBoxLayout *layout)
 {
-    auto *target = new QGroupBox("Existing Move / Swap / Value Action", parent);
-    auto *targetLayout = new QVBoxLayout(target);
-    source_ = new QComboBox(target);
-    filter_ = new QComboBox(target);
-    targetLayout->addWidget(new QLabel("Source", target));
-    targetLayout->addWidget(source_);
-    targetLayout->addWidget(new QLabel("Filter", target));
-    targetLayout->addWidget(filter_);
-    layout->addWidget(target);
-
-    settings_searchable(source_);
-    populateSources(settings_read_text(node_->workflowNode()->action.scene_name));
-    connect(source_, &QComboBox::currentIndexChanged, this, [this] { populateFilters(); });
-    populateFilters(settings_read_text(node_->workflowNode()->action.filter_name));
+    const workflow_node_t *wf = node_->workflowNode();
+    const bool changeScene = wf->action.kind == WORKFLOW_CHANGE_SCENE;
+    if (changeScene) {
+        buildChangeSceneEditor(parent, layout);
+    } else {
+        auto *target = new QGroupBox("Existing Move / Swap / Value Action", parent);
+        auto *targetLayout = new QVBoxLayout(target);
+        source_ = new QComboBox(target);
+        filter_ = new QComboBox(target);
+        targetLayout->addWidget(new QLabel("Source", target));
+        targetLayout->addWidget(source_);
+        targetLayout->addWidget(new QLabel("Filter", target));
+        targetLayout->addWidget(filter_);
+        layout->addWidget(target);
+        settings_searchable(source_);
+        populateSources(settings_read_text(wf->action.scene_name));
+        connect(source_, &QComboBox::currentIndexChanged, this, [this] { populateFilters(); });
+        populateFilters(settings_read_text(wf->action.filter_name));
+    }
 
     auto *timing = new QGroupBox("Timing", parent);
     auto *timingLayout = new QVBoxLayout(timing);
@@ -78,7 +84,6 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent, QVBoxLayout *layout)
     startDelayDefault_ = new QCheckBox("Use default", timing);
     durationDefault_ = new QCheckBox("Use default", timing);
     endDelayDefault_ = new QCheckBox("Use default", timing);
-    const workflow_node_t *wf = node_->workflowNode();
     startDelayOverrideMs_ = wf->start_delay.delay_ms;
     durationOverrideMs_ = wf->duration.duration_ms;
     endDelayOverrideMs_ = wf->end_delay.delay_ms;
@@ -93,18 +98,20 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent, QVBoxLayout *layout)
     spin_row(timingLayout, "End Delay", endDelayMs_, endDelayDefault_);
     layout->addWidget(timing);
 
-    auto refreshDefaults = [this] {
+    auto refreshDefaults = [this, changeScene] {
+        if (changeScene) {
+            if (startDelayDefault_->isChecked()) startDelayMs_->setValue(0);
+            if (durationDefault_->isChecked()) durationMs_->setValue((int)workflow_change_scene_transition_duration());
+            if (endDelayDefault_->isChecked()) endDelayMs_->setValue(0);
+            return;
+        }
         const auto defaults = workflow_node_read_timing_defaults(
             source_->currentData().toString().toUtf8().constData(),
             filter_->currentData().toString().toUtf8().constData());
-        if (!defaults.valid)
-            return;
-        if (startDelayDefault_->isChecked())
-            startDelayMs_->setValue((int)defaults.start_delay_ms);
-        if (durationDefault_->isChecked())
-            durationMs_->setValue((int)defaults.duration_ms);
-        if (endDelayDefault_->isChecked())
-            endDelayMs_->setValue((int)defaults.end_delay_ms);
+        if (!defaults.valid) return;
+        if (startDelayDefault_->isChecked()) startDelayMs_->setValue((int)defaults.start_delay_ms);
+        if (durationDefault_->isChecked()) durationMs_->setValue((int)defaults.duration_ms);
+        if (endDelayDefault_->isChecked()) endDelayMs_->setValue((int)defaults.end_delay_ms);
     };
     auto toggleTiming = [this, refreshDefaults](QCheckBox *check, QSpinBox *spin,
                                                  uint64_t &overrideValue) {
@@ -129,11 +136,13 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent, QVBoxLayout *layout)
             [this](int value) { if (!durationDefault_->isChecked()) durationOverrideMs_ = (uint64_t)value; });
     connect(endDelayMs_, &QSpinBox::valueChanged, this,
             [this](int value) { if (!endDelayDefault_->isChecked()) endDelayOverrideMs_ = (uint64_t)value; });
-    connect(filter_, &QComboBox::currentIndexChanged, this, [refreshDefaults] { refreshDefaults(); });
-    connect(source_, &QComboBox::currentIndexChanged, this, [this, refreshDefaults] {
-        populateFilters();
-        refreshDefaults();
-    });
+    if (!changeScene) {
+        connect(filter_, &QComboBox::currentIndexChanged, this, [refreshDefaults] { refreshDefaults(); });
+        connect(source_, &QComboBox::currentIndexChanged, this, [this, refreshDefaults] {
+            populateFilters();
+            refreshDefaults();
+        });
+    }
     refreshDefaults();
     startDelayMs_->setEnabled(!startDelayDefault_->isChecked());
     durationMs_->setEnabled(!durationDefault_->isChecked());
@@ -162,10 +171,8 @@ void NodeSettingsDialog::populateSources(const QString &wanted)
     obs_enum_sources(add_source, source_);
     source_->blockSignals(false);
     const int index = source_->findData(wanted);
-    if (index >= 0)
-        source_->setCurrentIndex(index);
-    else if (source_->count())
-        source_->setCurrentIndex(0);
+    if (index >= 0) source_->setCurrentIndex(index);
+    else if (source_->count()) source_->setCurrentIndex(0);
 }
 
 void NodeSettingsDialog::populateFilters(const QString &wanted)
@@ -184,8 +191,6 @@ void NodeSettingsDialog::populateFilters(const QString &wanted)
     }
     filter_->blockSignals(false);
     const int index = filter_->findData(wanted);
-    if (index >= 0)
-        filter_->setCurrentIndex(index);
-    else if (filter_->count())
-        filter_->setCurrentIndex(0);
+    if (index >= 0) filter_->setCurrentIndex(index);
+    else if (filter_->count()) filter_->setCurrentIndex(0);
 }
