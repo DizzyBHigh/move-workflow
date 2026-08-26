@@ -20,12 +20,6 @@ void NodeItem::updateGeometryForText(){const qreal h=qMax(minimumHeight,56.0+det
 void NodeItem::refreshStyle(){
     QColor fill(23,31,40), border(70,88,105);
     if(node_.workflow.type==WORKFLOW_NODE_TRIGGER){fill=QColor(20,63,34);border=QColor(48,174,76);}
-    else switch(node_.workflow.action.kind){
-        case WORKFLOW_MOVE_SOURCE: fill=QColor(18,58,93); border=QColor(47,122,190); break;
-        case WORKFLOW_MOVE_SWAP: fill=QColor(20,61,96); border=QColor(55,132,204); break;
-        case WORKFLOW_MOVE_VALUE: fill=QColor(12,72,78); border=QColor(35,181,185); break;
-        case WORKFLOW_CHANGE_SCENE: fill=QColor(78,24,78); border=QColor(180,64,166); break;
-        case WORKFLOW_MOVE_ACTION: default: fill=QColor(84,49,16); border=QColor(210,116,34); break;
-    }
+    else { fill=QColor(18,58,93); border=QColor(47,122,190); }
     setBrush(fill); setPen(QPen(border,2));
 }
