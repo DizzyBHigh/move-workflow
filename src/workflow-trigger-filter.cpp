@@ -38,8 +38,7 @@ static void enabled_signal(void *param, calldata_t *calldata)
     const bool valid_target = !workflow.empty() && !trigger.empty();
     obs_data_release(settings);
 
-    // Reset the adapter before firing the workflow so it is immediately ready
-    // for the next Move Filter Enable action.
+    // Reset the adapter immediately. The workflow run continues independently.
     data->enabled = false;
     obs_source_set_enabled(data->source, false);
 
@@ -51,7 +50,10 @@ static void *create(obs_data_t *, obs_source_t *source)
 {
     auto *data = new trigger_filter;
     data->source = source;
-    data->enabled = obs_source_enabled(source);
+
+    // Do not mirror the initial OBS state here. An already-enabled filter must
+    // still produce an enable transition when the user/Move enables it again.
+    data->enabled = false;
 
     if (auto *handler = obs_source_get_signal_handler(source))
         signal_handler_connect(handler, "enable", enabled_signal, data);
