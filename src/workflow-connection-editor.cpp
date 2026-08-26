@@ -20,7 +20,7 @@ bool WorkflowConnectionEditor::showMenu(QGraphicsPathItem *line, const QPointF &
     next->setEnabled(currentType != "Next Action");
     shortcut->setEnabled(currentType != "Shortcut");
 
-    QAction *selected = menu.exec(globalPos);
+    QAction *selected = menu.exec(globalPos.toPoint());
     if (selected == remove) {
         handler(context, "__delete__");
         return true;
