@@ -3,7 +3,6 @@
 #include "workflow-engine-node.h"
 #include "workflow-engine-runner.h"
 #include "workflow-engine-runs.h"
-#include "workflow-engine-trigger.h"
 #include <cstdlib>
 #include <cstring>
 
@@ -102,10 +101,4 @@ bool workflow_engine_test_node(workflow_engine_t *engine, workflow_t *workflow, 
     if (!run)
         return false;
     return workflow_engine_runner_run_node(workflow_engine_run_state(run), id);
-}
-
-bool workflow_engine_trigger(workflow_engine_t *engine, workflow_trigger_type_t type,
-                             const char *value)
-{
-    return engine && workflow_engine_runs_trigger(engine->runs, type, value);
 }
