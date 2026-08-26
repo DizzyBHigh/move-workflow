@@ -1,11 +1,10 @@
 #include "workflow-export.h"
 #include "workflow-persistence-json.h"
 #include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <obs-module.h>
-#include <cstdio>
-#include <memory>
 
 bool workflow_export_selected(const workflow_manager_t *manager, const char *path)
 {
@@ -13,16 +12,23 @@ bool workflow_export_selected(const workflow_manager_t *manager, const char *pat
     const workflow_t *selected = workflow_manager_selected_const(manager);
     if (!selected) return false;
 
-    auto temporary = std::make_unique<workflow_manager_t>();
-    workflow_manager_init(temporary.get());
-    temporary->workflows[0] = *selected;
-    temporary->workflow_count = 1;
-    snprintf(temporary->selected_workflow_id, WORKFLOW_MAX_NAME, "%s", selected->id);
+    const QJsonObject manager_json = workflow_manager_to_json(manager);
+    const QJsonArray workflows = manager_json["workflows"].toArray();
+    QJsonObject selected_json;
+    for (const auto &value : workflows) {
+        if (!value.isObject()) continue;
+        const QJsonObject workflow = value.toObject();
+        if (workflow["id"].toString() == QString::fromUtf8(selected->id)) {
+            selected_json = workflow;
+            break;
+        }
+    }
+    if (selected_json.isEmpty()) return false;
 
-    QJsonObject root = workflow_manager_to_json(temporary.get());
-    root["format"] = "obs-move-workflow";
-    root["format_version"] = 1;
-    root.remove("selected");
+    QJsonObject root{{"version", manager_json["version"]},
+                     {"format", "obs-move-workflow"},
+                     {"format_version", 1},
+                     {"workflows", QJsonArray{selected_json}}};
 
     QFile output(QString::fromUtf8(path));
     if (!output.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
