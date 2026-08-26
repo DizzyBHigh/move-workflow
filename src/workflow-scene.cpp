@@ -1,4 +1,5 @@
 #include "workflow-scene.h"
+#include "workflow-connection-editor.h"
 
 #include <QGraphicsSceneMouseEvent>
 #include <QMessageBox>
@@ -51,6 +52,18 @@ static void remove_id(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QStrin
     count = write;
 }
 
+struct ConnectionEditContext {
+    EditorScene *scene = nullptr;
+    QGraphicsPathItem *line = nullptr;
+};
+
+static void handle_connection_edit(void *context, const QString &type)
+{
+    auto *edit = static_cast<ConnectionEditContext *>(context);
+    if (edit && edit->scene)
+        edit->scene->editConnection(edit->line, type);
+}
+
 } // namespace
 
 EditorScene::EditorScene(QObject *parent) : QGraphicsScene(parent)
@@ -71,9 +84,6 @@ NodeItem *EditorScene::addNode(workflow_node_type_t type, const QString &name)
     node.workflow.end_delay.mode = WORKFLOW_OVERRIDE;
     node.workflow.simultaneous_actions_mode = WORKFLOW_OVERRIDE;
     node.workflow.next_actions_mode = WORKFLOW_OVERRIDE;
-    node.position = QPointF(80 + ((node.numeric_id - 1) % 4) * 310,
-                            80 + ((node.numeric_id - 1) / 4) * 190);
-
     auto *item = new NodeItem(node);
     addItem(item);
     nodes_.push_back(item);
@@ -179,9 +189,77 @@ void EditorScene::updateSceneBounds()
     setSceneRect(bounds);
 }
 
+QGraphicsPathItem *EditorScene::connectionAt(const QPointF &scenePos) const
+{
+    QPainterPathStroker stroker;
+    stroker.setWidth(12.0);
+    for (auto it = connections_.crbegin(); it != connections_.crend(); ++it) {
+        if (!it->line)
+            continue;
+        const QPointF localPos = it->line->mapFromScene(scenePos);
+        if (stroker.createStroke(it->line->path()).contains(localPos))
+            return it->line;
+    }
+    return nullptr;
+}
+
+EditorScene::Connection *EditorScene::findConnection(QGraphicsPathItem *line)
+{
+    if (!line)
+        return nullptr;
+    for (Connection &connection : connections_)
+        if (connection.line == line)
+            return &connection;
+    return nullptr;
+}
+
+bool EditorScene::editConnection(QGraphicsPathItem *line, const QString &type)
+{
+    Connection *connection = findConnection(line);
+    if (!connection)
+        return false;
+
+    auto *wf = connection->from->workflowNode();
+    const QString target = connection->to->id();
+    remove_id(wf->simultaneous_node_count, wf->simultaneous_node_ids, target);
+    remove_id(wf->next_node_count, wf->next_node_ids, target);
+    remove_id(wf->shortcut_node_count, wf->shortcut_node_ids, target);
+
+    if (type == "__delete__") {
+        rebuildConnections();
+        emit workflowChanged();
+        return true;
+    }
+
+    if (type == "Simultaneous")
+        add_node_id(wf->simultaneous_node_count, wf->simultaneous_node_ids, target);
+    else if (type == "Next")
+        add_node_id(wf->next_node_count, wf->next_node_ids, target);
+    else if (type == "Shortcut")
+        add_node_id(wf->shortcut_node_count, wf->shortcut_node_ids, target);
+    else
+        return false;
+
+    connection->type = type == "Next" ? "Next Action" : type;
+    connection->from->refreshDisplay();
+    connection->to->refreshDisplay();
+    rebuildConnections();
+    emit workflowChanged();
+    return true;
+}
+
 void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
+        if (QGraphicsPathItem *line = connectionAt(event->scenePos())) {
+            if (Connection *connection = findConnection(line)) {
+                ConnectionEditContext context{this, line};
+                WorkflowConnectionEditor::showMenu(line, event->screenPos(), connection->type,
+                                                   handle_connection_edit, &context);
+                event->accept();
+                return;
+            }
+        }
         NodeItem *node = nodeAt(event->scenePos());
         if (node && node->isOnConnectionHandle(event->scenePos())) {
             draggingConnection_ = true;
@@ -307,6 +385,7 @@ void EditorScene::finishConnectionDrag(const QPointF &scenePos)
     source->refreshDisplay();
     target->refreshDisplay();
     rebuildConnections();
+    emit workflowChanged();
 }
 
 void EditorScene::connectTriggerToAction(NodeItem *trigger, NodeItem *action)
@@ -320,12 +399,16 @@ void EditorScene::connectTriggerToAction(NodeItem *trigger, NodeItem *action)
 void EditorScene::connectActionToAction(NodeItem *source, NodeItem *target, const QString &type)
 {
     auto *wf = source->workflowNode();
+    const QString targetId = target->id();
+    remove_id(wf->simultaneous_node_count, wf->simultaneous_node_ids, targetId);
+    remove_id(wf->next_node_count, wf->next_node_ids, targetId);
+    remove_id(wf->shortcut_node_count, wf->shortcut_node_ids, targetId);
     if (type == "Simultaneous")
-        add_node_id(wf->simultaneous_node_count, wf->simultaneous_node_ids, target->id());
+        add_node_id(wf->simultaneous_node_count, wf->simultaneous_node_ids, targetId);
     else if (type == "Next")
-        add_node_id(wf->next_node_count, wf->next_node_ids, target->id());
+        add_node_id(wf->next_node_count, wf->next_node_ids, targetId);
     else
-        add_node_id(wf->shortcut_node_count, wf->shortcut_node_ids, target->id());
+        add_node_id(wf->shortcut_node_count, wf->shortcut_node_ids, targetId);
 }
 
 void EditorScene::addRelationshipLines(NodeItem *from, size_t count,
