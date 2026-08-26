@@ -15,9 +15,7 @@
 #include "workflow-debug-ui.h"
 #include <obs-frontend-api.h>
 #include <QApplication>
-#include <QCheckBox>
 #include <QDialog>
-#include <QEvent>
 #include <QGraphicsScene>
 #include <QHBoxLayout>
 #include <QInputDialog>
@@ -25,7 +23,6 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMainWindow>
 #include <QMenu>
 #include <QPointer>
 #include <QPushButton>
@@ -99,5 +96,6 @@ private:
 }
 extern "C" void workflow_editor_redo_from_hotkey(void){EditorWindow *editor=window.data();if(!editor){blog(LOG_WARNING,"[Move Workflow] Ctrl+Y bridge fired but editor is not open.");return;}blog(LOG_INFO,"[Move Workflow] Ctrl+Y bridge reached editor; invoking Qt meta-object slot.");QMetaObject::invokeMethod(editor,"redoFromHotkey",Qt::QueuedConnection);}
 void show_move_workflow_editor(QWidget *parent){if(!window){auto *mainWindow=parent?parent:static_cast<QWidget *>(obs_frontend_get_main_window());window=new EditorWindow(mainWindow);}window->show();window->raise();window->activateWindow();}
+void destroy_move_workflow_editor(void){if(!window)return;window->close();delete window.data();window=nullptr;}
 
 #include "workflow-editor-window.moc"
