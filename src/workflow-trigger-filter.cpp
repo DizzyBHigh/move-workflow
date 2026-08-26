@@ -7,7 +7,6 @@
 namespace {
 struct trigger_filter {
     obs_source_t *source = nullptr;
-    bool enabled = false;
 };
 
 static const char *name(void *)
@@ -15,28 +14,20 @@ static const char *name(void *)
     return "Trigger Workflow";
 }
 
-static void disable_after_enable(void *param)
+static void disable_source(void *param)
 {
-    auto *data = static_cast<trigger_filter *>(param);
-    if (!data || !data->source)
+    auto *source = static_cast<obs_source_t *>(param);
+    if (!source)
         return;
 
-    data->enabled = false;
-    obs_source_set_enabled(data->source, false);
+    obs_source_set_enabled(source, false);
+    obs_source_release(source);
 }
 
 static void enabled_signal(void *param, calldata_t *calldata)
 {
     auto *data = static_cast<trigger_filter *>(param);
-    if (!data)
-        return;
-
-    const bool enabled = calldata_bool(calldata, "enabled");
-    if (enabled == data->enabled)
-        return;
-
-    data->enabled = enabled;
-    if (!enabled)
+    if (!data || !data->source || !calldata_bool(calldata, "enabled"))
         return;
 
     obs_data_t *settings = obs_source_get_settings(data->source);
@@ -51,16 +42,16 @@ static void enabled_signal(void *param, calldata_t *calldata)
     if (valid_target)
         workflow_engine_service_trigger(workflow.c_str(), trigger.c_str());
 
-    // Defer the disable until after OBS finishes processing the enable signal.
-    // This avoids recursively changing the source state from its own callback.
-    obs_queue_task(OBS_TASK_UI, disable_after_enable, data, false);
+    // Keep the source alive until the deferred reset has completed. OBS owns
+    // the authoritative enabled state; the filter does not mirror it locally.
+    obs_source_addref(data->source);
+    obs_queue_task(OBS_TASK_UI, disable_source, data->source, false);
 }
 
 static void *create(obs_data_t *, obs_source_t *source)
 {
     auto *data = new trigger_filter;
     data->source = source;
-    data->enabled = false;
 
     if (auto *handler = obs_source_get_signal_handler(source))
         signal_handler_connect(handler, "enable", enabled_signal, data);
