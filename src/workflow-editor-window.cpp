@@ -56,7 +56,7 @@ public:
         toolbar->addWidget(addButton_); toolbar->addWidget(edit); toolbar->addWidget(copyButton_); toolbar->addWidget(pasteButton_); toolbar->addWidget(duplicateButton_); toolbar->addWidget(deleteButton_); toolbar->addStretch(); toolbar->addWidget(workflow_debug_create_control(this)); toolbar->addWidget(zoomOut); toolbar->addWidget(zoomReset); toolbar->addWidget(zoomIn); toolbar->addWidget(fit); toolbar->addWidget(close); root->addLayout(toolbar);
         scene_=new EditorScene(this); view_=new WorkflowGraphicsView(scene_,this); view_->installEventFilter(this); qApp->installEventFilter(this); workspace_.scene=scene_; workflow_workspace_init(&workspace_,scene_); resetUndo();
         managerUi_=create_workflow_manager_ui(workflow_workspace_manager(&workspace_),this,
-            [this](const char *id){ if(workflow_workspace_select(&workspace_,id)) resetUndo(); },
+            [this](const char *id){ if(workflow_workspace_select(&workspace_,id)){ resetUndo(); QTimer::singleShot(0,this,[this]{ view_->fitAll(); }); } },
             [this](const char *name){const bool ok=workflow_workspace_create(&workspace_,name); if(ok)resetUndo(); return ok;},
             [this](const char *name){const bool ok=workflow_workspace_duplicate(&workspace_,name); if(ok)resetUndo(); return ok;},
             [this]{return deleteWorkflow();},
