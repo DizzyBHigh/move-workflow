@@ -7,22 +7,6 @@
 #include <pthread.h>
 #include <util/platform.h>
 
-static obs_source_t *duplicate_filter(obs_source_t *original)
-{
-	return original ? obs_source_duplicate(original, obs_source_get_name(original), true) : nullptr;
-}
-
-static void clear_chaining(obs_source_t *filter)
-{
-	obs_data_t *settings = filter ? obs_source_get_settings(filter) : nullptr;
-	if (!settings) return;
-	obs_data_set_string(settings, "simultaneous_move", "");
-	obs_data_set_string(settings, "next_move", "");
-	obs_data_set_string(settings, "next_move_on", "move_end");
-	obs_source_update(filter, settings);
-	obs_data_release(settings);
-}
-
 static void apply_node_settings(obs_source_t *filter, const workflow_node_t *node,
 								uint64_t *duration_ms)
 {
@@ -34,13 +18,15 @@ static void apply_node_settings(obs_source_t *filter, const workflow_node_t *nod
 		obs_data_set_bool(settings, "custom_duration", true);
 		obs_data_set_int(settings, "duration", (long long)*duration_ms);
 	}
-	/* Let the native Move filter start from its normal enable-trigger path.
-	 * The duplicated filter is initially disabled, so the subsequent enable
-	 * produces the same native start event without reimplementing Move. */
+	/* Workflow sequencing owns Move chaining. Temporarily use the native
+	 * Enable trigger so the existing Move filter starts itself. */
+	obs_data_set_string(settings, "simultaneous_move", "");
+	obs_data_set_string(settings, "next_move", "");
+	obs_data_set_string(settings, "next_move_on", "move_end");
 	obs_data_set_int(settings, "start_trigger", 5);
-	workflow_debug_log("Move dispatch: configuring native ENABLE trigger");
 	obs_source_update(filter, settings);
 	obs_data_release(settings);
+	workflow_debug_log("Move dispatch: using original filter with native ENABLE trigger");
 }
 
 workflow_filter_instance *workflow_filter_instance_create(
@@ -52,14 +38,8 @@ workflow_filter_instance *workflow_filter_instance_create(
 	if (!result) return nullptr;
 	result->original = obs_source_get_ref(original);
 	result->parent = obs_source_get_ref(parent);
-	result->instance = duplicate_filter(original);
-	if (!result->instance) {
-		workflow_filter_instance_destroy(result);
-		return nullptr;
-	}
-	clear_chaining(result->instance);
-	obs_source_filter_add(parent, result->instance);
-	workflow_debug_log("Filter instance: duplicated '%s' for node='%s'",
+	result->instance = obs_source_get_ref(original);
+	workflow_debug_log("Filter instance: using original '%s' for node='%s'",
 		obs_source_get_name(original), node->id);
 	return result;
 }
@@ -68,7 +48,7 @@ bool workflow_filter_instance_execute(workflow_filter_instance *instance)
 {
 	if (!instance || !instance->instance) return false;
 	obs_source_set_enabled(instance->instance, true);
-	workflow_debug_log("Filter instance: enabled temporary '%s'",
+	workflow_debug_log("Filter instance: enabled native Move filter '%s'",
 		obs_source_get_name(instance->instance));
 	return true;
 }
@@ -76,8 +56,6 @@ bool workflow_filter_instance_execute(workflow_filter_instance *instance)
 void workflow_filter_instance_destroy(workflow_filter_instance *instance)
 {
 	if (!instance) return;
-	if (instance->parent && instance->instance)
-		obs_source_filter_remove(instance->parent, instance->instance);
 	if (instance->instance) obs_source_release(instance->instance);
 	if (instance->parent) obs_source_release(instance->parent);
 	if (instance->original) obs_source_release(instance->original);
@@ -93,7 +71,17 @@ static void destroy_on_ui(void *data)
 {
 	destroy_context *ctx = (destroy_context *)data;
 	if (!ctx) return;
-	workflow_debug_log("Filter instance: destroying temporary filter");
+	workflow_debug_log("Filter instance: restoring native Move filter");
+	if (ctx->instance && ctx->instance->instance) {
+		obs_source_t *filter = ctx->instance->instance;
+		obs_source_set_enabled(filter, false);
+		obs_data_t *settings = obs_source_get_settings(filter);
+		if (settings) {
+			obs_data_set_int(settings, "start_trigger", 0);
+			obs_source_update(filter, settings);
+			obs_data_release(settings);
+		}
+	}
 	workflow_filter_instance_destroy(ctx->instance);
 	free(ctx);
 }
@@ -112,7 +100,7 @@ static void schedule_destroy(workflow_filter_instance *instance, uint64_t durati
 	destroy_context *ctx = (destroy_context *)calloc(1, sizeof(*ctx));
 	if (!ctx) return;
 	ctx->instance = instance;
-	ctx->delay_ms = duration_ms ? duration_ms : 1;
+	ctx->delay_ms = duration_ms ? duration_ms + 25 : 25;
 	pthread_t thread;
 	if (pthread_create(&thread, NULL, destroy_thread, ctx) != 0)
 		free(ctx);
