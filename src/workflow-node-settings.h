@@ -1,15 +1,17 @@
 #pragma once
 
 #include "workflow-node.h"
-
+#include "workflow-trigger-filter-instance.h"
 #include <QDialog>
 #include <QList>
 #include <QString>
+#include <QVector>
 
 class QCheckBox;
 class QComboBox;
 class QGroupBox;
 class QLineEdit;
+class QPushButton;
 class QSpinBox;
 class QVBoxLayout;
 class QWidget;
@@ -17,43 +19,28 @@ class WorkflowActionList;
 
 class NodeSettingsDialog final : public QDialog {
 public:
-    NodeSettingsDialog(NodeItem *node, const QList<NodeItem *> &nodes,
-                       QWidget *parent = nullptr);
-
+    NodeSettingsDialog(NodeItem *node, const QList<NodeItem *> &nodes, QWidget *parent = nullptr);
 private:
+    struct TriggerRow { QComboBox *source = nullptr; QComboBox *trigger = nullptr; QPushButton *remove = nullptr; };
+    struct TriggerSelection { QString sourceUuid; QString filterUuid; };
     bool apply();
     bool applyTrigger();
     void buildTriggerEditor(QVBoxLayout *, QVBoxLayout *);
     void buildActionEditor(QWidget *, QVBoxLayout *);
-    void rebuildTriggerSettings();
-    void clearTriggerSettings();
-    void addTriggerRow(const QString &, QWidget *);
-    void buildSourceStateSettings(const QString &, workflow_trigger_state_t);
-    void buildSourceAudioTrackSettings(const workflow_trigger_ref_t &);
-    void buildSourceHotkeySettings(const workflow_trigger_ref_t &);
-    void buildFilterEnableSettings(const workflow_trigger_ref_t &);
-    void buildSettingSettings(const workflow_trigger_ref_t &);
-    void populateTriggerSources(const QString & = QString());
-    void populateTriggerFilters(const QString & = QString());
+    void rebuildTriggerRows();
+    void addTriggerRow(const TriggerSelection &selection = {});
+    void populateTriggerSources(QComboBox *, const QString & = QString());
+    void populateTriggerFilters(QComboBox *, const QString &, const QString & = QString());
+    void buildActionSettings(const workflow_action_ref_t &);
     void populateSources(const QString &);
     void populateFilters(const QString & = QString());
 
     NodeItem *node_ = nullptr;
     QList<NodeItem *> nodes_;
     QLineEdit *name_ = nullptr;
-    QComboBox *triggerAction_ = nullptr;
-    QGroupBox *triggerSettingsBox_ = nullptr;
-    QVBoxLayout *triggerSettingsLayout_ = nullptr;
-    QComboBox *triggerSource_ = nullptr;
-    QComboBox *triggerFilter_ = nullptr;
-    QComboBox *triggerState_ = nullptr;
-    QSpinBox *triggerAudioTrack_ = nullptr;
-    QSpinBox *triggerUdpPort_ = nullptr;
-    QComboBox *triggerActionValue_ = nullptr;
-    QLineEdit *triggerHotkey_ = nullptr;
-    QLineEdit *triggerSettingName_ = nullptr;
-    QLineEdit *triggerValue_ = nullptr;
-    QLineEdit *triggerMatch_ = nullptr;
+    QGroupBox *triggerBox_ = nullptr;
+    QVBoxLayout *triggerRowsLayout_ = nullptr;
+    QVector<TriggerRow> triggerRows_;
     QComboBox *source_ = nullptr;
     QComboBox *filter_ = nullptr;
     QSpinBox *startDelayMs_ = nullptr;
@@ -71,5 +58,4 @@ private:
     WorkflowActionList *startActions_ = nullptr;
 };
 
-bool edit_node_settings(NodeItem *node, const QList<NodeItem *> &nodes,
-                        QWidget *parent = nullptr);
+bool edit_node_settings(NodeItem *node, const QList<NodeItem *> &nodes, QWidget *parent = nullptr);
