@@ -15,31 +15,6 @@ struct trigger_filter {
 
 static const char *name(void *) { return "Trigger Workflow"; }
 
-static void *create(obs_data_t *settings, obs_source_t *source)
-{
-    trigger_filter *data = new trigger_filter{};
-    data->source = source;
-    data->enabled = obs_source_enabled(source);
-    std::strncpy(data->workflow_id, obs_data_get_string(settings, "workflow"),
-                 sizeof(data->workflow_id) - 1);
-    std::strncpy(data->trigger_id, obs_data_get_string(settings, "trigger"),
-                 sizeof(data->trigger_id) - 1);
-    return data;
-}
-
-static void destroy(void *opaque) { delete static_cast<trigger_filter *>(opaque); }
-
-static void update(void *opaque, obs_data_t *settings)
-{
-    trigger_filter *data = static_cast<trigger_filter *>(opaque);
-    if (!data)
-        return;
-    std::strncpy(data->workflow_id, obs_data_get_string(settings, "workflow"),
-                 sizeof(data->workflow_id) - 1);
-    std::strncpy(data->trigger_id, obs_data_get_string(settings, "trigger"),
-                 sizeof(data->trigger_id) - 1);
-}
-
 static void enabled_signal(void *param, calldata_t *calldata)
 {
     trigger_filter *data = static_cast<trigger_filter *>(param);
@@ -57,26 +32,42 @@ static void enabled_signal(void *param, calldata_t *calldata)
     workflow_engine_service_trigger(data->workflow_id, data->trigger_id);
 }
 
-static void init_signal(void *opaque)
+static void *create(obs_data_t *settings, obs_source_t *source)
 {
-    trigger_filter *data = static_cast<trigger_filter *>(opaque);
-    if (!data)
-        return;
+    trigger_filter *data = new trigger_filter{};
+    data->source = source;
+    data->enabled = obs_source_enabled(source);
+    std::strncpy(data->workflow_id, obs_data_get_string(settings, "workflow"),
+                 sizeof(data->workflow_id) - 1);
+    std::strncpy(data->trigger_id, obs_data_get_string(settings, "trigger"),
+                 sizeof(data->trigger_id) - 1);
 
-    signal_handler_t *handler = obs_source_get_signal_handler(data->source);
+    signal_handler_t *handler = obs_source_get_signal_handler(source);
     if (handler)
         signal_handler_connect(handler, "enable", enabled_signal, data);
+    return data;
 }
 
-static void destroy_signal(void *opaque)
+static void destroy(void *opaque)
 {
     trigger_filter *data = static_cast<trigger_filter *>(opaque);
     if (!data)
         return;
-
     signal_handler_t *handler = obs_source_get_signal_handler(data->source);
     if (handler)
         signal_handler_disconnect(handler, "enable", enabled_signal, data);
+    delete data;
+}
+
+static void update(void *opaque, obs_data_t *settings)
+{
+    trigger_filter *data = static_cast<trigger_filter *>(opaque);
+    if (!data)
+        return;
+    std::strncpy(data->workflow_id, obs_data_get_string(settings, "workflow"),
+                 sizeof(data->workflow_id) - 1);
+    std::strncpy(data->trigger_id, obs_data_get_string(settings, "trigger"),
+                 sizeof(data->trigger_id) - 1);
 }
 
 static void fill_triggers(obs_property_t *property, const workflow_t *workflow)
@@ -95,7 +86,6 @@ static void fill_triggers(obs_property_t *property, const workflow_t *workflow)
         obs_property_list_add_string(property, node.name, node.id);
         found = true;
     }
-
     if (!found)
         obs_property_list_add_string(property, "No triggers in this workflow", "");
 }
