@@ -2,6 +2,7 @@
 #include "workflow-action-list.h"
 #include "workflow-node-settings-common.h"
 #include "workflow-persistence.h"
+#include "workflow-engine-service.h"
 #include <obs.h>
 #include <cstring>
 #include <QComboBox>
@@ -34,7 +35,18 @@ static QString selected(QComboBox *combo)
 void NodeSettingsDialog::buildTriggerEditor(QVBoxLayout *layout, QVBoxLayout *contentLayout)
 {
     triggerBox_ = new QGroupBox("Triggered by", this); triggerRowsLayout_ = new QVBoxLayout(triggerBox_); layout->addWidget(triggerBox_);
-    rebuildTriggerRows(); auto *add = new QPushButton("+ Add Trigger", triggerBox_); triggerRowsLayout_->addWidget(add); connect(add, &QPushButton::clicked, this, [this] { addTriggerRow(); });
+    rebuildTriggerRows();
+    auto *buttons = new QHBoxLayout;
+    auto *add = new QPushButton("+ Add Trigger", triggerBox_);
+    auto *test = new QPushButton("Test Trigger", triggerBox_);
+    buttons->addWidget(add); buttons->addWidget(test); triggerRowsLayout_->addLayout(buttons);
+    connect(add, &QPushButton::clicked, this, [this] { addTriggerRow(); });
+    connect(test, &QPushButton::clicked, this, [this] {
+        auto *manager = workflow_persistence_manager();
+        auto *workflow = manager ? workflow_manager_selected(manager) : nullptr;
+        if (workflow && node_)
+            workflow_engine_service_test_node(workflow->id, node_->workflowNode()->id);
+    });
     startActions_ = new WorkflowActionList("Start Actions", "These actions start when this Trigger fires. Multiple actions run in parallel.", node_, nodes_, node_->workflowNode()->simultaneous_node_ids, node_->workflowNode()->simultaneous_node_count, this); contentLayout->addWidget(startActions_);
     auto *hint = new QLabel("Any referenced Workflow Trigger Filter can start this Trigger Node.", this); hint->setWordWrap(true); hint->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred); contentLayout->addWidget(hint);
 }
