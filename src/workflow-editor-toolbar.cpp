@@ -5,6 +5,7 @@
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QSizePolicy>
 #include <QWidget>
@@ -24,7 +25,7 @@ public:
         zoomOut_ = button("−"); zoomReset_ = button("100%"); zoomIn_ = button("+"); fit_ = button("Fit"); close_ = button("Close");
         layout->addWidget(zoomOut_); layout->addWidget(zoomReset_); layout->addWidget(zoomIn_); layout->addWidget(fit_); layout->addWidget(close_);
         connect(workflow_, &QComboBox::currentIndexChanged, this, [this](int index) { if (index >= 0 && callbacks_.select_workflow) callbacks_.select_workflow(workflow_->itemData(index).toByteArray().constData()); });
-        connect(add_, &QPushButton::clicked, this, [this] { createWorkflow(); }); connect(copy_, &QPushButton::clicked, this, [this] { duplicateWorkflow(); }); connect(rename_, &QPushButton::clicked, this, [this] { if (callbacks_.rename_workflow) callbacks_.rename_workflow(); }); connect(remove_, &QPushButton::clicked, this, [this] { if (callbacks_.delete_workflow) callbacks_.delete_workflow(); refresh(); });
+        connect(add_, &QPushButton::clicked, this, [this] { createWorkflow(); }); connect(copy_, &QPushButton::clicked, this, [this] { duplicateWorkflow(); }); connect(rename_, &QPushButton::clicked, this, [this] { if (callbacks_.rename_workflow) callbacks_.rename_workflow(); refresh(); }); connect(remove_, &QPushButton::clicked, this, [this] { if (callbacks_.delete_workflow) callbacks_.delete_workflow(); refresh(); });
         connect(import_, &QPushButton::clicked, this, [this] { if (callbacks_.import_workflow) callbacks_.import_workflow(); refresh(); }); connect(export_, &QPushButton::clicked, this, [this] { if (callbacks_.export_workflow) callbacks_.export_workflow(); }); connect(enabled_, &QCheckBox::toggled, this, [this](bool value) { if (callbacks_.set_workflow_enabled) callbacks_.set_workflow_enabled(value); });
         connect(zoomOut_, &QPushButton::clicked, this, [this] { if (callbacks_.zoom_out) callbacks_.zoom_out(); }); connect(zoomReset_, &QPushButton::clicked, this, [this] { if (callbacks_.zoom_reset) callbacks_.zoom_reset(); }); connect(zoomIn_, &QPushButton::clicked, this, [this] { if (callbacks_.zoom_in) callbacks_.zoom_in(); }); connect(fit_, &QPushButton::clicked, this, [this] { if (callbacks_.fit) callbacks_.fit(); }); connect(close_, &QPushButton::clicked, this, [this] { if (callbacks_.close) callbacks_.close(); });
         refresh();
