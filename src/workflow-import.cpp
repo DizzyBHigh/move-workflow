@@ -6,6 +6,7 @@
 #include <obs-module.h>
 #include <cstdio>
 #include <cstring>
+#include <memory>
 
 static bool unique_id(const workflow_manager_t *m, const char *id)
 {
@@ -28,23 +29,23 @@ bool workflow_import_file(workflow_manager_t *manager, const char *path)
         root["format_version"].toInt() != 1)
         return false;
 
-    workflow_manager_t imported{};
-    if (!workflow_manager_from_json(&imported, root) || imported.workflow_count != 1)
+    const std::unique_ptr<workflow_manager_t> imported(new workflow_manager_t{});
+    if (!workflow_manager_from_json(imported.get(), root) || imported->workflow_count != 1)
         return false;
 
-    workflow_t workflow = imported.workflows[0];
-    if (!unique_id(manager, workflow.id)) {
+    workflow_t *workflow = &imported->workflows[0];
+    if (!unique_id(manager, workflow->id)) {
         char base[WORKFLOW_MAX_NAME];
-        snprintf(base, sizeof(base), "%s", workflow.id);
+        snprintf(base, sizeof(base), "%s", workflow->id);
         for (unsigned int n = 2; n < 1000; ++n) {
-            snprintf(workflow.id, WORKFLOW_MAX_NAME, "%s-import-%u", base, n);
-            if (unique_id(manager, workflow.id)) break;
+            snprintf(workflow->id, WORKFLOW_MAX_NAME, "%s-import-%u", base, n);
+            if (unique_id(manager, workflow->id)) break;
         }
-        if (!unique_id(manager, workflow.id)) return false;
+        if (!unique_id(manager, workflow->id)) return false;
     }
 
-    manager->workflows[manager->workflow_count++] = workflow;
-    workflow_manager_set_selected(manager, workflow.id);
-    blog(LOG_INFO, "[Move Workflow] Imported workflow '%s'", workflow.name);
+    manager->workflows[manager->workflow_count++] = *workflow;
+    workflow_manager_set_selected(manager, workflow->id);
+    blog(LOG_INFO, "[Move Workflow] Imported workflow '%s'", workflow->name);
     return true;
 }
