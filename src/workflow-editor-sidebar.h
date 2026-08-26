@@ -15,6 +15,8 @@ struct workflow_editor_sidebar_callbacks {
     std::function<void()> rename_workflow;
     std::function<void(bool)> set_workflow_enabled;
     std::function<void(const char *)> add_node;
+    std::function<void()> import_workflow;
+    std::function<void()> export_workflow;
 };
 
 QWidget *create_workflow_editor_sidebar(
