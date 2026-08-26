@@ -19,7 +19,6 @@ workflow_engine_run_t *workflow_engine_runs_head(workflow_engine_runs_t *runs);
 workflow_engine_run_t *workflow_engine_runs_current(workflow_engine_runs_t *runs);
 void workflow_engine_runs_stop_all(workflow_engine_runs_t *runs);
 bool workflow_engine_runs_any_active(const workflow_engine_runs_t *runs);
-bool workflow_engine_runs_trigger(workflow_engine_runs_t *runs, workflow_trigger_type_t type, const char *value);
 
 #ifdef __cplusplus
 }
