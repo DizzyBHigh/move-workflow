@@ -2,6 +2,7 @@
 #include "workflow-trigger-filter-ui.h"
 #include "workflow-engine-service.h"
 #include <obs.h>
+#include <string>
 
 namespace {
 struct trigger_filter {
@@ -32,11 +33,9 @@ static void enabled_signal(void *param, calldata_t *calldata)
     if (!settings)
         return;
 
-    const char *workflow = obs_data_get_string(settings, "workflow");
-    const char *trigger = obs_data_get_string(settings, "trigger");
-    const bool valid_target = workflow && workflow[0] && trigger && trigger[0];
-    const char *workflow_id = workflow ? bstrdup(workflow) : nullptr;
-    const char *trigger_id = trigger ? bstrdup(trigger) : nullptr;
+    const std::string workflow = obs_data_get_string(settings, "workflow");
+    const std::string trigger = obs_data_get_string(settings, "trigger");
+    const bool valid_target = !workflow.empty() && !trigger.empty();
     obs_data_release(settings);
 
     // Reset the adapter before firing the workflow so it is immediately ready
@@ -45,10 +44,7 @@ static void enabled_signal(void *param, calldata_t *calldata)
     obs_source_set_enabled(data->source, false);
 
     if (valid_target)
-        workflow_engine_service_trigger(workflow_id, trigger_id);
-
-    bfree((void *)workflow_id);
-    bfree((void *)trigger_id);
+        workflow_engine_service_trigger(workflow.c_str(), trigger.c_str());
 }
 
 static void *create(obs_data_t *, obs_source_t *source)
