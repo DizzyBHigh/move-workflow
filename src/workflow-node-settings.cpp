@@ -36,22 +36,32 @@ bool NodeSettingsDialog::apply()
     const QString name = name_->text().trimmed(); if (name.isEmpty()) return false;
     auto *wf = node_->workflowNode(); settings_copy_text(wf->name, WORKFLOW_MAX_NAME, name);
     if (wf->type == WORKFLOW_NODE_TRIGGER) return applyTrigger();
-    const QString parentName = source_->currentData().toString().isEmpty() ? source_->currentText().trimmed() : source_->currentData().toString();
-    const QString filterName = filter_->currentData().toString();
-    if (!parentName.isEmpty() && !filterName.isEmpty()) {
-        obs_source_t *parent = obs_get_source_by_name(parentName.toUtf8().constData());
-        if (parent) {
-            obs_source_t *filter = obs_source_get_filter_by_name(parent, filterName.toUtf8().constData());
-            if (filter) {
-                const char *filterId = obs_source_get_id(filter);
-                if (settings_supported_filter(filterId)) {
-                    settings_copy_text(wf->action.scene_name, WORKFLOW_MAX_NAME, parentName); wf->action.source_name[0] = '\0';
-                    settings_copy_text(wf->action.filter_name, WORKFLOW_MAX_NAME, filterName);
-                    settings_copy_text(wf->action.filter_id, WORKFLOW_MAX_NAME, QString::fromUtf8(filterId)); wf->action.kind = settings_kind(filterId);
+
+    if (wf->action.kind == WORKFLOW_CHANGE_SCENE) {
+        const QString sceneName = scene_ ? scene_->currentData().toString() : QString();
+        if (sceneName.isEmpty()) return false;
+        settings_copy_text(wf->action.scene_name, WORKFLOW_MAX_NAME, sceneName);
+        wf->action.source_name[0] = '\0';
+        wf->action.filter_name[0] = '\0';
+        wf->action.filter_id[0] = '\0';
+    } else {
+        const QString parentName = source_->currentData().toString().isEmpty() ? source_->currentText().trimmed() : source_->currentData().toString();
+        const QString filterName = filter_->currentData().toString();
+        if (!parentName.isEmpty() && !filterName.isEmpty()) {
+            obs_source_t *parent = obs_get_source_by_name(parentName.toUtf8().constData());
+            if (parent) {
+                obs_source_t *filter = obs_source_get_filter_by_name(parent, filterName.toUtf8().constData());
+                if (filter) {
+                    const char *filterId = obs_source_get_id(filter);
+                    if (settings_supported_filter(filterId)) {
+                        settings_copy_text(wf->action.scene_name, WORKFLOW_MAX_NAME, parentName); wf->action.source_name[0] = '\0';
+                        settings_copy_text(wf->action.filter_name, WORKFLOW_MAX_NAME, filterName);
+                        settings_copy_text(wf->action.filter_id, WORKFLOW_MAX_NAME, QString::fromUtf8(filterId)); wf->action.kind = settings_kind(filterId);
+                    }
+                    obs_source_release(filter);
                 }
-                obs_source_release(filter);
+                obs_source_release(parent);
             }
-            obs_source_release(parent);
         }
     }
     wf->start_delay.mode = startDelayDefault_->isChecked() ? WORKFLOW_USE_EXISTING : WORKFLOW_OVERRIDE;
