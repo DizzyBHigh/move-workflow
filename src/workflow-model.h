@@ -13,23 +13,6 @@
 typedef enum workflow_node_type { WORKFLOW_NODE_TRIGGER = 0, WORKFLOW_NODE_ACTION } workflow_node_type_t;
 typedef enum workflow_move_kind { WORKFLOW_MOVE_ACTION = 0, WORKFLOW_MOVE_SOURCE, WORKFLOW_MOVE_SWAP, WORKFLOW_MOVE_VALUE, WORKFLOW_CHANGE_SCENE } workflow_move_kind_t;
 typedef enum workflow_value_mode { WORKFLOW_USE_EXISTING = 0, WORKFLOW_OVERRIDE } workflow_value_mode_t;
-typedef enum workflow_trigger_type {
-    WORKFLOW_TRIGGER_NONE = 0,
-    WORKFLOW_TRIGGER_FRONTEND_ACTION,
-    WORKFLOW_TRIGGER_SOURCE_VISIBILITY,
-    WORKFLOW_TRIGGER_SOURCE_MUTE,
-    WORKFLOW_TRIGGER_SOURCE_AUDIO_TRACK,
-    WORKFLOW_TRIGGER_SOURCE_HOTKEY,
-    WORKFLOW_TRIGGER_FILTER_ENABLE,
-    WORKFLOW_TRIGGER_FRONTEND_HOTKEY,
-    WORKFLOW_TRIGGER_SETTING,
-    WORKFLOW_TRIGGER_UDP_PACKET,
-    WORKFLOW_TRIGGER_WEBSOCKET_REQUEST,
-    WORKFLOW_TRIGGER_WEBSOCKET_EVENT,
-    WORKFLOW_TRIGGER_WORKFLOW,
-    WORKFLOW_TRIGGER_SCENE_CHANGE
-} workflow_trigger_type_t;
-typedef enum workflow_trigger_state { WORKFLOW_TRIGGER_STATE_DISABLED = 0, WORKFLOW_TRIGGER_STATE_ENABLED = 1 } workflow_trigger_state_t;
 typedef enum workflow_scene_completion { WORKFLOW_SCENE_COMPLETE_IMMEDIATE = 0, WORKFLOW_SCENE_COMPLETE_TRANSITION = 1 } workflow_scene_completion_t;
 
 typedef struct workflow_trigger_filter_ref {
@@ -83,6 +66,5 @@ typedef struct workflow { char id[WORKFLOW_MAX_NAME]; char name[WORKFLOW_MAX_NAM
 
 static inline const char *workflow_node_type_name(workflow_node_type_t type){switch(type){case WORKFLOW_NODE_TRIGGER:return "Trigger";case WORKFLOW_NODE_ACTION:return "Action";default:return "Unknown";}}
 static inline const char *workflow_move_kind_name(workflow_move_kind_t kind){switch(kind){case WORKFLOW_MOVE_ACTION:return "Move Action";case WORKFLOW_MOVE_SOURCE:return "Move Source";case WORKFLOW_MOVE_SWAP:return "Move Source Swap";case WORKFLOW_MOVE_VALUE:return "Move Value";case WORKFLOW_CHANGE_SCENE:return "Change Scene";default:return "Unknown";}}
-static inline const char *workflow_trigger_type_name(workflow_trigger_type_t type){switch(type){case WORKFLOW_TRIGGER_FRONTEND_ACTION:return "Frontend Action";case WORKFLOW_TRIGGER_SOURCE_VISIBILITY:return "Source Visibility";case WORKFLOW_TRIGGER_SOURCE_MUTE:return "Source Mute";case WORKFLOW_TRIGGER_SOURCE_AUDIO_TRACK:return "Source Audio Track";case WORKFLOW_TRIGGER_SOURCE_HOTKEY:return "Source Hotkey";case WORKFLOW_TRIGGER_FILTER_ENABLE:return "Filter Enable";case WORKFLOW_TRIGGER_FRONTEND_HOTKEY:return "Frontend Hotkey";case WORKFLOW_TRIGGER_SETTING:return "Setting";case WORKFLOW_TRIGGER_UDP_PACKET:return "UDP Packet";case WORKFLOW_TRIGGER_WEBSOCKET_REQUEST:return "WebSocket Request";case WORKFLOW_TRIGGER_WEBSOCKET_EVENT:return "WebSocket Event";case WORKFLOW_TRIGGER_WORKFLOW:return "Workflow";case WORKFLOW_TRIGGER_SCENE_CHANGE:return "Scene Change";default:return "None";}}
 static inline const char *workflow_value_mode_name(workflow_value_mode_t mode){return mode==WORKFLOW_OVERRIDE?"Override":"Use existing";}
 static inline const char *workflow_expected_filter_id(workflow_move_kind_t kind){switch(kind){case WORKFLOW_MOVE_ACTION:return "move_action_filter";case WORKFLOW_MOVE_SOURCE:return "move_source_filter";case WORKFLOW_MOVE_SWAP:return "move_source_swap_filter";case WORKFLOW_MOVE_VALUE:return "move_value_filter";default:return "";}}
