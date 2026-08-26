@@ -34,10 +34,11 @@ static void apply_node_settings(obs_source_t *filter, const workflow_node_t *nod
 		obs_data_set_bool(settings, "custom_duration", true);
 		obs_data_set_int(settings, "duration", (long long)*duration_ms);
 	}
-	/* Workflow owns sequencing. Force the duplicated Move filter through
-	 * exeldro's native LOAD start path rather than merely enabling it. */
-	obs_data_set_int(settings, "start_trigger", 13);
-	workflow_debug_log("Move dispatch: forcing LOAD trigger on temporary filter");
+	/* Let the native Move filter start from its normal enable-trigger path.
+	 * The duplicated filter is initially disabled, so the subsequent enable
+	 * produces the same native start event without reimplementing Move. */
+	obs_data_set_int(settings, "start_trigger", 5);
+	workflow_debug_log("Move dispatch: configuring native ENABLE trigger");
 	obs_source_update(filter, settings);
 	obs_data_release(settings);
 }
@@ -67,7 +68,7 @@ bool workflow_filter_instance_execute(workflow_filter_instance *instance)
 {
 	if (!instance || !instance->instance) return false;
 	obs_source_set_enabled(instance->instance, true);
-	workflow_debug_log("Filter instance: executing temporary '%s'",
+	workflow_debug_log("Filter instance: enabled temporary '%s'",
 		obs_source_get_name(instance->instance));
 	return true;
 }
