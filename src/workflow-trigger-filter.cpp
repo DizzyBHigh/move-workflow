@@ -34,10 +34,15 @@ static void enabled_signal(void *param, calldata_t *calldata)
 
     const char *workflow = obs_data_get_string(settings, "workflow");
     const char *trigger = obs_data_get_string(settings, "trigger");
-    if (workflow && workflow[0] && trigger && trigger[0])
+    const bool valid_target = workflow && workflow[0] && trigger && trigger[0];
+    if (valid_target)
         workflow_engine_service_trigger(workflow, trigger);
 
     obs_data_release(settings);
+
+    // Workflow trigger filters are one-shot adapters. Move's Filter Enable
+    // action only enables a disabled filter, so reset after every trigger.
+    obs_source_set_enabled(data->source, false);
 }
 
 static void *create(obs_data_t *, obs_source_t *source)
