@@ -2,6 +2,7 @@
 
 #include <QHBoxLayout>
 #include <QPushButton>
+#include <QSizePolicy>
 #include <QWidget>
 
 namespace {
@@ -9,9 +10,12 @@ class EditorToolbar final : public QWidget {
 public:
     EditorToolbar(QWidget *parent, workflow_editor_toolbar_callbacks callbacks)
         : QWidget(parent), callbacks_(std::move(callbacks)) {
-        setObjectName("workflowEditorToolbar"); auto *layout = new QHBoxLayout(this); layout->setContentsMargins(8, 6, 8, 6); layout->setSpacing(4);
-        add_ = button("+ Add Node"); edit_ = button("Edit"); copy_ = button("Copy"); paste_ = button("Paste"); duplicate_ = button("Duplicate"); remove_ = button("Delete"); test_ = button("Test Workflow");
-        zoomOut_ = button("−"); zoomReset_ = button("100%"); zoomIn_ = button("+"); fit_ = button("Fit"); close_ = button("Close");
+        setObjectName("workflowEditorToolbar");
+        setStyleSheet("QWidget#workflowEditorToolbar{background:#111820;border:1px solid #27313c;} QPushButton{background:#17212b;color:#e6edf3;border:1px solid #2f3b48;border-radius:4px;padding:4px 9px;min-height:27px;} QPushButton:hover{background:#20303d;border-color:#3d5266;} QPushButton:pressed{background:#263b4c;} QPushButton:disabled{color:#687583;background:#141b22;border-color:#252e37;} QPushButton#primaryButton{background:#1d4f7a;border-color:#2f79b7;} QPushButton#closeButton{background:#182029;} ");
+        auto *layout = new QHBoxLayout(this); layout->setContentsMargins(7, 5, 7, 5); layout->setSpacing(4);
+        add_ = button("+  Add"); add_->setObjectName("primaryButton"); edit_ = button("Edit"); copy_ = button("Copy"); paste_ = button("Paste"); duplicate_ = button("Duplicate"); remove_ = button("Delete"); test_ = button("▶  Test");
+        zoomOut_ = button("−"); zoomReset_ = button("100%"); zoomIn_ = button("+"); fit_ = button("Fit"); close_ = button("Close"); close_->setObjectName("closeButton");
+        add_->setMinimumWidth(72); edit_->setMinimumWidth(52); copy_->setMinimumWidth(55); paste_->setMinimumWidth(55); duplicate_->setMinimumWidth(78); remove_->setMinimumWidth(62); test_->setMinimumWidth(70); zoomReset_->setMinimumWidth(52); fit_->setMinimumWidth(42); close_->setMinimumWidth(58);
         layout->addWidget(add_); layout->addWidget(edit_); layout->addWidget(copy_); layout->addWidget(paste_); layout->addWidget(duplicate_); layout->addWidget(remove_); layout->addWidget(test_); layout->addStretch(); layout->addWidget(zoomOut_); layout->addWidget(zoomReset_); layout->addWidget(zoomIn_); layout->addWidget(fit_); layout->addWidget(close_);
         test_->setVisible(static_cast<bool>(callbacks_.test));
         connect(add_, &QPushButton::clicked, this, [this] { if (callbacks_.add) callbacks_.add(); }); connect(edit_, &QPushButton::clicked, this, [this] { if (callbacks_.edit) callbacks_.edit(); });
@@ -23,7 +27,7 @@ public:
     }
     void setSelectionState(bool selected, bool paste) { edit_->setEnabled(selected); copy_->setEnabled(selected); duplicate_->setEnabled(selected); remove_->setEnabled(selected); paste_->setEnabled(paste); }
 private:
-    QPushButton *button(const char *text) { return new QPushButton(text, this); }
+    QPushButton *button(const char *text) { auto *b = new QPushButton(text, this); b->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed); return b; }
     workflow_editor_toolbar_callbacks callbacks_; QPushButton *add_ = nullptr; QPushButton *edit_ = nullptr; QPushButton *copy_ = nullptr; QPushButton *paste_ = nullptr; QPushButton *duplicate_ = nullptr; QPushButton *remove_ = nullptr;
     QPushButton *test_ = nullptr; QPushButton *zoomOut_ = nullptr; QPushButton *zoomReset_ = nullptr; QPushButton *zoomIn_ = nullptr; QPushButton *fit_ = nullptr; QPushButton *close_ = nullptr;
 };
