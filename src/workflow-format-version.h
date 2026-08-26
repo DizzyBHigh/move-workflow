@@ -1,0 +1,4 @@
+#pragma once
+
+#define OBS_MOVE_WORKFLOW_FORMAT_VERSION 1
+#define OBS_MOVE_WORKFLOW_PLUGIN_VERSION "1.0.0-rc1"
