@@ -15,7 +15,9 @@
 #include "workflow-workspace.h"
 #include "workflow-hotkeys.h"
 #include <obs-frontend-api.h>
+#include <QAction>
 #include <QApplication>
+#include <QCursor>
 #include <QDialog>
 #include <QFileDialog>
 #include <QGraphicsScene>
@@ -24,10 +26,10 @@
 #include <QKeyEvent>
 #include <QKeySequence>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QMetaObject>
 #include <QPointer>
-#include <QPushButton>
 #include <QShortcut>
 #include <QSplitter>
 #include <QTimer>
