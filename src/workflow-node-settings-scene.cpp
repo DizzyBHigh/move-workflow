@@ -1,5 +1,6 @@
 #include "workflow-node-settings.h"
 #include "workflow-change-scene.h"
+#include "workflow-node-settings-common.h"
 
 #include <obs.h>
 #include <obs-frontend-api.h>
@@ -27,7 +28,7 @@ void NodeSettingsDialog::buildChangeSceneEditor(QWidget *parent, QVBoxLayout *la
     auto *target = new QGroupBox("Change Scene", parent);
     auto *targetLayout = new QVBoxLayout(target);
     scene_ = new QComboBox(target);
-    scene_->setEditable(false);
+    settings_searchable(scene_);
     obs_enum_scenes(add_scene, scene_);
     const QString wanted = QString::fromUtf8(node_->workflowNode()->action.scene_name);
     const int index = scene_->findData(wanted);
