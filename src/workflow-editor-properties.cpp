@@ -14,10 +14,12 @@ class EditorProperties final : public QWidget {
 public:
     EditorProperties(QWidget *parent, std::function<void(NodeItem *)> editNode) : QWidget(parent), editNode_(std::move(editNode)) {
         setObjectName("workflowEditorProperties"); setMinimumWidth(250); setMaximumWidth(340);
-        auto *root = new QVBoxLayout(this); root->setContentsMargins(12, 12, 12, 12); root->setSpacing(10);
-        auto *heading = new QLabel("NODE PROPERTIES", this); heading->setObjectName("sidebarHeading"); root->addWidget(heading);
-        group_ = new QGroupBox("No node selected", this); auto *form = new QFormLayout(group_);
+        setStyleSheet("QWidget#workflowEditorProperties{background:#111820;border:1px solid #27313c;} QLabel#propertiesHeading{color:#aab6c3;font-size:11px;font-weight:700;letter-spacing:1px;} QGroupBox{background:#141d26;color:#e6edf3;border:1px solid #293643;border-radius:5px;margin-top:10px;padding:10px;} QGroupBox::title{color:#dce6ef;subcontrol-origin:margin;left:10px;padding:0 4px;} QFormLayout QLabel{color:#9eacb9;} QPushButton{background:#1b4f7c;color:#eef7ff;border:1px solid #2d78b4;border-radius:4px;padding:5px 10px;min-height:28px;} QPushButton:hover{background:#245f91;} QPushButton:disabled{background:#18212a;color:#65727f;border-color:#29333d;} ");
+        auto *root = new QVBoxLayout(this); root->setContentsMargins(12, 10, 12, 12); root->setSpacing(8);
+        auto *heading = new QLabel("NODE PROPERTIES", this); heading->setObjectName("propertiesHeading"); root->addWidget(heading);
+        group_ = new QGroupBox("No node selected", this); auto *form = new QFormLayout(group_); form->setContentsMargins(10, 12, 10, 10); form->setVerticalSpacing(8);
         name_ = new QLabel("—", group_); type_ = new QLabel("—", group_); target_ = new QLabel("—", group_); timing_ = new QLabel("—", group_);
+        for (auto *label : {name_, type_, target_, timing_}) { label->setWordWrap(true); label->setTextInteractionFlags(Qt::TextSelectableByMouse); }
         form->addRow("Name", name_); form->addRow("Type", type_); form->addRow("Target", target_); form->addRow("Timing", timing_); root->addWidget(group_);
         edit_ = new QPushButton("Edit Node...", this); edit_->setEnabled(false); root->addWidget(edit_); root->addStretch();
         connect(edit_, &QPushButton::clicked, this, [this] { if (node_ && editNode_) editNode_(node_); });
