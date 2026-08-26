@@ -20,19 +20,27 @@ static void add_state(obs_properties_t *props)
     obs_property_list_add_int(p, "Enable", WORKFLOW_TRIGGER_STATE_ENABLED);
     obs_property_list_add_int(p, "Disable", WORKFLOW_TRIGGER_STATE_DISABLED);
 }
+static obs_source_t *find_source(const char *value)
+{
+    if (!value || !value[0]) return nullptr;
+    obs_source_t *source = obs_get_source_by_uuid(value);
+    if (!source) source = obs_get_source_by_name(value);
+    return source;
+}
 static void fill_filters(obs_properties_t *props, obs_data_t *s)
 {
     auto *p = obs_properties_get(props, "method_filter");
     if (!p) return;
+    const char *wanted = obs_data_get_string(s, "method_filter");
     obs_property_list_clear(p);
-    obs_source_t *src = obs_get_source_by_uuid(obs_data_get_string(s, "method_source"));
-    if (src) {
-        obs_source_enum_filters(src, [](obs_source_t *, obs_source_t *f, void *d) {
-            auto *p = static_cast<obs_property_t *>(d);
-            obs_property_list_add_string(p, obs_source_get_name(f), obs_source_get_uuid(f));
-        }, p);
-        obs_source_release(src);
-    }
+    obs_source_t *src = find_source(obs_data_get_string(s, "method_source"));
+    if (!src) return;
+    obs_source_enum_filters(src, [](obs_source_t *, obs_source_t *f, void *d) {
+        auto *p = static_cast<obs_property_t *>(d);
+        obs_property_list_add_string(p, obs_source_get_name(f), obs_source_get_uuid(f));
+    }, p);
+    if (wanted && wanted[0]) obs_data_set_string(s, "method_filter", wanted);
+    obs_source_release(src);
 }
 static bool source_modified(obs_properties_t *props, obs_property_t *, obs_data_t *s)
 {
