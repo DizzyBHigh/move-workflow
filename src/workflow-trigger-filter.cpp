@@ -15,6 +15,16 @@ static const char *name(void *)
     return "Trigger Workflow";
 }
 
+static void disable_after_enable(void *param)
+{
+    auto *data = static_cast<trigger_filter *>(param);
+    if (!data || !data->source)
+        return;
+
+    data->enabled = false;
+    obs_source_set_enabled(data->source, false);
+}
+
 static void enabled_signal(void *param, calldata_t *calldata)
 {
     auto *data = static_cast<trigger_filter *>(param);
@@ -38,21 +48,18 @@ static void enabled_signal(void *param, calldata_t *calldata)
     const bool valid_target = !workflow.empty() && !trigger.empty();
     obs_data_release(settings);
 
-    // Reset the adapter immediately. The workflow run continues independently.
-    data->enabled = false;
-    obs_source_set_enabled(data->source, false);
-
     if (valid_target)
         workflow_engine_service_trigger(workflow.c_str(), trigger.c_str());
+
+    // Defer the disable until after OBS finishes processing the enable signal.
+    // This avoids recursively changing the source state from its own callback.
+    obs_queue_task(OBS_TASK_UI, disable_after_enable, data, false);
 }
 
 static void *create(obs_data_t *, obs_source_t *source)
 {
     auto *data = new trigger_filter;
     data->source = source;
-
-    // Do not mirror the initial OBS state here. An already-enabled filter must
-    // still produce an enable transition when the user/Move enables it again.
     data->enabled = false;
 
     if (auto *handler = obs_source_get_signal_handler(source))
