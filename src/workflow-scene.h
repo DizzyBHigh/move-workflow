@@ -23,6 +23,7 @@ public:
     void rebuildConnections();
     void updateConnections();
     void updateSceneBounds();
+    bool editConnection(QGraphicsPathItem *line, const QString &type);
 
 signals:
     void nodeDoubleClicked(NodeItem *node);
@@ -38,6 +39,8 @@ private:
     struct Connection { NodeItem *from = nullptr; NodeItem *to = nullptr; QGraphicsPathItem *line = nullptr; QString type; };
     NodeItem *findNodeById(const char *id) const;
     NodeItem *nodeAt(const QPointF &scenePos) const;
+    QGraphicsPathItem *connectionAt(const QPointF &scenePos) const;
+    Connection *findConnection(QGraphicsPathItem *line);
     void addRelationshipLines(NodeItem *from, size_t count, const char ids[][WORKFLOW_MAX_NAME], const QString &type);
     bool addNodeId(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QString &id);
     bool hasNodeId(size_t count, const char ids[][WORKFLOW_MAX_NAME], const QString &id) const;
