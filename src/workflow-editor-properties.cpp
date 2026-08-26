@@ -3,6 +3,7 @@
 #include "workflow-node.h"
 
 #include <QFormLayout>
+#include <QFrame>
 #include <QGroupBox>
 #include <QLabel>
 #include <QPushButton>
