@@ -6,36 +6,136 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QPushButton>
+#include <QScrollArea>
+#include <QStringList>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <utility>
 
 namespace {
+QString listValues(size_t count, const char ids[][WORKFLOW_MAX_NAME])
+{
+    QStringList values;
+    for (size_t i = 0; i < count; ++i)
+        values << QString::fromUtf8(ids[i]);
+    return values.isEmpty() ? QStringLiteral("None") : values.join(", ");
+}
+
+QString completionName(workflow_scene_completion_t completion)
+{
+    return completion == WORKFLOW_SCENE_COMPLETE_TRANSITION ? QStringLiteral("Transition") : QStringLiteral("Immediate");
+}
+
 class EditorProperties final : public QWidget {
 public:
-    EditorProperties(QWidget *parent, std::function<void(NodeItem *)> editNode) : QWidget(parent), editNode_(std::move(editNode)) {
-        setObjectName("workflowEditorProperties"); setMinimumWidth(250); setMaximumWidth(340);
-        setStyleSheet("QWidget#workflowEditorProperties{background:#111820;border:1px solid #27313c;} QLabel#propertiesHeading{color:#aab6c3;font-size:11px;font-weight:700;letter-spacing:1px;} QGroupBox{background:#141d26;color:#e6edf3;border:1px solid #293643;border-radius:5px;margin-top:10px;padding:10px;} QGroupBox::title{color:#dce6ef;subcontrol-origin:margin;left:10px;padding:0 4px;} QFormLayout QLabel{color:#9eacb9;} QPushButton{background:#1b4f7c;color:#eef7ff;border:1px solid #2d78b4;border-radius:4px;padding:5px 10px;min-height:28px;} QPushButton:hover{background:#245f91;} QPushButton:disabled{background:#18212a;color:#65727f;border-color:#29333d;} ");
-        auto *root = new QVBoxLayout(this); root->setContentsMargins(12, 10, 12, 12); root->setSpacing(8);
-        auto *heading = new QLabel("NODE PROPERTIES", this); heading->setObjectName("propertiesHeading"); root->addWidget(heading);
-        group_ = new QGroupBox("No node selected", this); auto *form = new QFormLayout(group_); form->setContentsMargins(10, 12, 10, 10); form->setVerticalSpacing(8);
-        name_ = new QLabel("—", group_); type_ = new QLabel("—", group_); target_ = new QLabel("—", group_); timing_ = new QLabel("—", group_);
-        for (auto *label : {name_, type_, target_, timing_}) { label->setWordWrap(true); label->setTextInteractionFlags(Qt::TextSelectableByMouse); }
-        form->addRow("Name", name_); form->addRow("Type", type_); form->addRow("Target", target_); form->addRow("Timing", timing_); root->addWidget(group_);
-        edit_ = new QPushButton("Edit Node...", this); edit_->setEnabled(false); root->addWidget(edit_); root->addStretch();
+    EditorProperties(QWidget *parent, std::function<void(NodeItem *)> editNode)
+        : QWidget(parent), editNode_(std::move(editNode))
+    {
+        setObjectName("workflowEditorProperties");
+        setMinimumWidth(280);
+        setMaximumWidth(380);
+        setStyleSheet("QWidget#workflowEditorProperties{background:#111820;border:1px solid #27313c;} "
+                      "QLabel#propertiesHeading{color:#aab6c3;font-size:11px;font-weight:700;letter-spacing:1px;} "
+                      "QGroupBox{background:#141d26;color:#e6edf3;border:1px solid #293643;border-radius:5px;margin-top:10px;padding:10px;} "
+                      "QGroupBox::title{color:#dce6ef;subcontrol-origin:margin;left:10px;padding:0 4px;} "
+                      "QFormLayout QLabel{color:#c5d0da;} QPushButton{background:#1b4f7c;color:#eef7ff;border:1px solid #2d78b4;border-radius:4px;padding:5px 10px;min-height:28px;} "
+                      "QPushButton:hover{background:#245f91;} QPushButton:disabled{background:#18212a;color:#65727f;border-color:#29333d;}");
+        auto *root = new QVBoxLayout(this);
+        root->setContentsMargins(12, 10, 12, 12);
+        root->setSpacing(8);
+        auto *heading = new QLabel("NODE PROPERTIES", this);
+        heading->setObjectName("propertiesHeading");
+        root->addWidget(heading);
+
+        auto *scroll = new QScrollArea(this);
+        scroll->setWidgetResizable(true);
+        scroll->setFrameShape(QFrame::NoFrame);
+        panel_ = new QWidget(scroll);
+        form_ = new QFormLayout(panel_);
+        form_->setContentsMargins(4, 4, 8, 8);
+        form_->setVerticalSpacing(7);
+        scroll->setWidget(panel_);
+        root->addWidget(scroll, 1);
+        edit_ = new QPushButton("Edit Node...", this);
+        edit_->setEnabled(false);
+        root->addWidget(edit_);
         connect(edit_, &QPushButton::clicked, this, [this] { if (node_ && editNode_) editNode_(node_); });
+        clear();
     }
-    void setNode(NodeItem *node) {
-        node_ = node; edit_->setEnabled(node != nullptr);
-        if (!node) { group_->setTitle("No node selected"); name_->setText("—"); type_->setText("—"); target_->setText("—"); timing_->setText("—"); return; }
-        const auto *data = node->workflowNode(); group_->setTitle("Selected Node"); name_->setText(QString::fromUtf8(data->name)); type_->setText(QString::fromUtf8(workflow_node_type_name(data->type)));
-        if (data->type == WORKFLOW_NODE_ACTION) target_->setText(QString::fromUtf8(data->action.filter_name)); else target_->setText(QString::number(static_cast<qulonglong>(data->trigger_count)) + " trigger filter(s)");
-        const auto duration = data->duration.mode == WORKFLOW_OVERRIDE ? QString::number(static_cast<qulonglong>(data->duration.duration_ms)) + " ms" : "Use existing"; timing_->setText(duration);
+
+    void setNode(NodeItem *node)
+    {
+        node_ = node;
+        edit_->setEnabled(node != nullptr);
+        clear();
+        if (!node)
+            return;
+        const auto *data = node->workflowNode();
+        add("Name", data->name);
+        add("ID", data->id);
+        add("Type", workflow_node_type_name(data->type));
+        add("Position", QString("%1, %2").arg(data->position_x).arg(data->position_y));
+        add("Trigger Filters", QString::number(static_cast<qulonglong>(data->trigger_count)));
+        for (size_t i = 0; i < data->trigger_count; ++i) {
+            add(QString("Trigger %1 Source UUID").arg(i + 1), data->triggers[i].source_uuid);
+            add(QString("Trigger %1 Filter UUID").arg(i + 1), data->triggers[i].filter_uuid);
+        }
+        if (data->type == WORKFLOW_NODE_ACTION) {
+            add("Move Kind", workflow_move_kind_name(data->action.kind));
+            add("Scene", data->action.scene_name);
+            add("Source", data->action.source_name);
+            add("Filter", data->action.filter_name);
+            add("Filter ID", data->action.filter_id);
+            add("Scene Completion", completionName(data->action.scene_completion));
+        }
+        add("Start Delay", overrideText(data->start_delay.mode, data->start_delay.delay_ms));
+        add("Duration", overrideText(data->duration.mode, data->duration.duration_ms));
+        add("End Delay", overrideText(data->end_delay.mode, data->end_delay.delay_ms));
+        add("Simultaneous Mode", workflow_value_mode_name(data->simultaneous_actions_mode));
+        add("End Actions Mode", workflow_value_mode_name(data->end_actions_mode));
+        add("Next Actions Mode", workflow_value_mode_name(data->next_actions_mode));
+        add("Start Trigger Mode", workflow_value_mode_name(data->start_trigger_mode));
+        add("Start Trigger Value", data->start_trigger_value);
+        add("Stop Trigger Mode", workflow_value_mode_name(data->stop_trigger_mode));
+        add("Stop Trigger Value", data->stop_trigger_value);
+        add("Next Move On Mode", workflow_value_mode_name(data->next_move_on_mode));
+        add("Next Move On Value", data->next_move_on_value);
+        add("End Nodes", listValues(data->end_node_count, data->end_node_ids));
+        add("Simultaneous Nodes", listValues(data->simultaneous_node_count, data->simultaneous_node_ids));
+        add("Next Nodes", listValues(data->next_node_count, data->next_node_ids));
+        add("Shortcut Nodes", listValues(data->shortcut_node_count, data->shortcut_node_ids));
     }
+
 private:
-    NodeItem *node_ = nullptr; std::function<void(NodeItem *)> editNode_; QGroupBox *group_ = nullptr; QLabel *name_ = nullptr; QLabel *type_ = nullptr; QLabel *target_ = nullptr; QLabel *timing_ = nullptr; QPushButton *edit_ = nullptr;
+    void add(const QString &name, const QString &value)
+    {
+        auto *label = new QLabel(value.isEmpty() ? QStringLiteral("None") : value, panel_);
+        label->setWordWrap(true);
+        label->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        form_->addRow(name, label);
+    }
+    void add(const QString &name, const char *value) { add(name, QString::fromUtf8(value ? value : "")); }
+    QString overrideText(workflow_value_mode_t mode, uint64_t value) const
+    { return QString("%1 (%2 ms)").arg(QString::fromUtf8(workflow_value_mode_name(mode))).arg(static_cast<qulonglong>(value)); }
+    void clear()
+    {
+        while (form_->rowCount() > 0)
+            form_->removeRow(0);
+        auto *label = new QLabel("No node selected", panel_);
+        label->setStyleSheet("color:#7f8c99;");
+        form_->addRow(label);
+    }
+
+    NodeItem *node_ = nullptr;
+    std::function<void(NodeItem *)> editNode_;
+    QWidget *panel_ = nullptr;
+    QFormLayout *form_ = nullptr;
+    QPushButton *edit_ = nullptr;
 };
 }
+
 QWidget *create_workflow_editor_properties(QWidget *parent, std::function<void(NodeItem *)> edit_node)
-{return new EditorProperties(parent, std::move(edit_node));}
+{ return new EditorProperties(parent, std::move(edit_node)); }
+
 void workflow_editor_properties_set_node(QWidget *properties, NodeItem *node)
-{if (auto *widget = dynamic_cast<EditorProperties *>(properties)) widget->setNode(node);}
+{ if (auto *widget = dynamic_cast<EditorProperties *>(properties)) widget->setNode(node); }
