@@ -44,7 +44,7 @@ static void enabled_signal(void *param, calldata_t *calldata)
 
     // Keep the source alive until the deferred reset has completed. OBS owns
     // the authoritative enabled state; the filter does not mirror it locally.
-    obs_source_addref(data->source);
+    obs_source_get_ref(data->source);
     obs_queue_task(OBS_TASK_UI, disable_source, data->source, false);
 }
 
