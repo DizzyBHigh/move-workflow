@@ -1,6 +1,7 @@
 #include "workflow-node-settings.h"
 #include "workflow-action-list.h"
 #include "workflow-node-settings-common.h"
+#include "workflow-persistence.h"
 #include <obs.h>
 #include <cstring>
 #include <QComboBox>
@@ -12,13 +13,58 @@
 #include <QVBoxLayout>
 
 namespace {
-static bool add_source(void*data,obs_source_t*s){auto*c=static_cast<QComboBox*>(data);if(c&&s&&c->findData(obs_source_get_uuid(s))<0)c->addItem(QString::fromUtf8(obs_source_get_name(s)),QString::fromUtf8(obs_source_get_uuid(s)));return true;}
-static void add_filter(obs_source_t*,obs_source_t*f,void*data){auto*c=static_cast<QComboBox*>(data);if(c&&workflow_trigger_filter_is_instance(f)){char w[WORKFLOW_MAX_NAME]{},t[WORKFLOW_MAX_NAME]{};workflow_trigger_filter_get_target(f,w,t);c->addItem(t[0]?QString::fromUtf8(t):QString("Unassigned"),QString::fromUtf8(obs_source_get_uuid(f)));}}
-static QString selected(QComboBox*c){return c->currentData().toString().isEmpty()?c->currentText().trimmed():c->currentData().toString();}
+static bool add_source(void *data, obs_source_t *source)
+{
+    auto *combo = static_cast<QComboBox *>(data);
+    if (combo && source && combo->findData(obs_source_get_uuid(source)) < 0)
+        combo->addItem(QString::fromUtf8(obs_source_get_name(source)), QString::fromUtf8(obs_source_get_uuid(source)));
+    return true;
 }
-void NodeSettingsDialog::buildTriggerEditor(QVBoxLayout*layout,QVBoxLayout*contentLayout){triggerBox_=new QGroupBox("Triggered by",this);triggerRowsLayout_=new QVBoxLayout(triggerBox_);layout->addWidget(triggerBox_);rebuildTriggerRows();auto*add=new QPushButton("+ Add Trigger",triggerBox_);triggerRowsLayout_->addWidget(add);connect(add,&QPushButton::clicked,this,[this]{addTriggerRow();});startActions_=new WorkflowActionList("Start Actions","These actions start when this Trigger fires. Multiple actions run in parallel.",node_,nodes_,node_->workflowNode()->simultaneous_node_ids,node_->workflowNode()->simultaneous_node_count,this);contentLayout->addWidget(startActions_);auto*hint=new QLabel("Any referenced Workflow Trigger Filter can start this Trigger Node.",this);hint->setWordWrap(true);hint->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);contentLayout->addWidget(hint);}
-void NodeSettingsDialog::rebuildTriggerRows(){while(triggerRowsLayout_&&triggerRowsLayout_->count()){auto*i=triggerRowsLayout_->takeAt(0);if(i->widget())i->widget()->deleteLater();delete i;}triggerRows_.clear();const auto&n=*node_->workflowNode();for(size_t i=0;i<n.trigger_count;++i)addTriggerRow({QString::fromUtf8(n.triggers[i].source_uuid),QString::fromUtf8(n.triggers[i].filter_uuid)});if(triggerRows_.isEmpty())addTriggerRow();}
-void NodeSettingsDialog::addTriggerRow(const TriggerSelection&selection){auto*row=new QHBoxLayout;auto*source=new QComboBox(triggerBox_);auto*trigger=new QComboBox(triggerBox_);auto*remove=new QPushButton("−",triggerBox_);remove->setFixedWidth(28);settings_searchable(source);settings_searchable(trigger);populateTriggerSources(source,selection.sourceUuid);populateTriggerFilters(trigger,selected(source),selection.filterUuid);row->addWidget(source,1);row->addWidget(trigger,1);row->addWidget(remove);triggerRowsLayout_->insertLayout(triggerRowsLayout_->count(),row);triggerRows_.push_back({source,trigger,remove});connect(source,&QComboBox::currentIndexChanged,this,[this,source,trigger]{populateTriggerFilters(trigger,selected(source));});connect(remove,&QPushButton::clicked,this,[this,remove]{for(int i=0;i<triggerRows_.size();++i)if(triggerRows_[i].remove==remove){auto*i=triggerRowsLayout_->takeAt(i);delete i;triggerRows_.removeAt(i);break;}});}
-void NodeSettingsDialog::populateTriggerSources(QComboBox*c,const QString&wanted){if(!c)return;c->blockSignals(true);c->clear();obs_enum_scenes(add_source,c);obs_enum_sources(add_source,c);const int i=c->findData(wanted);if(i>=0)c->setCurrentIndex(i);else if(c->count())c->setCurrentIndex(0);c->blockSignals(false);}
-void NodeSettingsDialog::populateTriggerFilters(QComboBox*c,const QString&sourceUuid,const QString&wanted){if(!c)return;c->blockSignals(true);c->clear();obs_source_t*s=obs_get_source_by_uuid(sourceUuid.toUtf8().constData());if(s){obs_source_enum_filters(s,add_filter,c);obs_source_release(s);}const int i=c->findData(wanted);if(i>=0)c->setCurrentIndex(i);c->blockSignals(false);}
-bool NodeSettingsDialog::applyTrigger(){auto*n=node_->workflowNode();auto*m=workflow_persistence_manager();auto*w=m?workflow_manager_selected(m):nullptr;if(!w)return false;for(size_t i=0;i<n->trigger_count;++i){auto*f=workflow_trigger_filter_find(n->triggers[i].source_uuid,n->triggers[i].filter_uuid);if(!f)continue;char oldW[WORKFLOW_MAX_NAME]{},oldT[WORKFLOW_MAX_NAME]{};workflow_trigger_filter_get_target(f,oldW,oldT);if(!std::strcmp(oldW,w->id)&&!std::strcmp(oldT,n->id))workflow_trigger_filter_set_target(f,"","");obs_source_release(f);}n->trigger_count=0;for(const auto&r:triggerRows_){const QString su=selected(r.source),fu=selected(r.trigger);if(su.isEmpty()||fu.isEmpty()||n->trigger_count>=WORKFLOW_MAX_TRIGGERS)continue;auto&ref=n->triggers[n->trigger_count++];settings_copy_text(ref.source_uuid,WORKFLOW_MAX_NAME,su);settings_copy_text(ref.filter_uuid,WORKFLOW_MAX_NAME,fu);auto*f=workflow_trigger_filter_find(ref.source_uuid,ref.filter_uuid);if(f){workflow_trigger_filter_set_target(f,w->id,n->id);obs_source_release(f);}}startActions_->apply(n->simultaneous_node_count,n->simultaneous_node_ids);n->simultaneous_actions_mode=WORKFLOW_OVERRIDE;return true;}
+static void add_filter(obs_source_t *, obs_source_t *filter, void *data)
+{
+    auto *combo = static_cast<QComboBox *>(data);
+    if (!combo || !workflow_trigger_filter_is_instance(filter)) return;
+    char workflow[WORKFLOW_MAX_NAME]{}, trigger[WORKFLOW_MAX_NAME]{};
+    workflow_trigger_filter_get_target(filter, workflow, trigger);
+    combo->addItem(trigger[0] ? QString::fromUtf8(trigger) : QString("Unassigned"), QString::fromUtf8(obs_source_get_uuid(filter)));
+}
+static QString selected(QComboBox *combo)
+{
+    return combo->currentData().toString().isEmpty() ? combo->currentText().trimmed() : combo->currentData().toString();
+}
+}
+void NodeSettingsDialog::buildTriggerEditor(QVBoxLayout *layout, QVBoxLayout *contentLayout)
+{
+    triggerBox_ = new QGroupBox("Triggered by", this); triggerRowsLayout_ = new QVBoxLayout(triggerBox_); layout->addWidget(triggerBox_);
+    rebuildTriggerRows(); auto *add = new QPushButton("+ Add Trigger", triggerBox_); triggerRowsLayout_->addWidget(add); connect(add, &QPushButton::clicked, this, [this] { addTriggerRow(); });
+    startActions_ = new WorkflowActionList("Start Actions", "These actions start when this Trigger fires. Multiple actions run in parallel.", node_, nodes_, node_->workflowNode()->simultaneous_node_ids, node_->workflowNode()->simultaneous_node_count, this); contentLayout->addWidget(startActions_);
+    auto *hint = new QLabel("Any referenced Workflow Trigger Filter can start this Trigger Node.", this); hint->setWordWrap(true); hint->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred); contentLayout->addWidget(hint);
+}
+void NodeSettingsDialog::rebuildTriggerRows()
+{
+    while (triggerRowsLayout_ && triggerRowsLayout_->count()) { auto *item = triggerRowsLayout_->takeAt(0); if (item->widget()) item->widget()->deleteLater(); delete item; }
+    triggerRows_.clear(); const auto &node = *node_->workflowNode(); for (size_t i = 0; i < node.trigger_count; ++i) addTriggerRow({QString::fromUtf8(node.triggers[i].source_uuid), QString::fromUtf8(node.triggers[i].filter_uuid)}); if (triggerRows_.isEmpty()) addTriggerRow();
+}
+void NodeSettingsDialog::addTriggerRow(const TriggerSelection &selection)
+{
+    auto *row = new QHBoxLayout; auto *source = new QComboBox(triggerBox_); auto *trigger = new QComboBox(triggerBox_); auto *remove = new QPushButton("−", triggerBox_); remove->setFixedWidth(28); settings_searchable(source); settings_searchable(trigger);
+    populateTriggerSources(source, selection.sourceUuid); populateTriggerFilters(trigger, selected(source), selection.filterUuid); row->addWidget(source, 1); row->addWidget(trigger, 1); row->addWidget(remove); triggerRowsLayout_->insertLayout(triggerRowsLayout_->count(), row); triggerRows_.push_back({source, trigger, remove});
+    connect(source, &QComboBox::currentIndexChanged, this, [this, source, trigger] { populateTriggerFilters(trigger, selected(source)); });
+    connect(remove, &QPushButton::clicked, this, [this, remove] { for (int i = 0; i < triggerRows_.size(); ++i) if (triggerRows_[i].remove == remove) { auto *item = triggerRowsLayout_->takeAt(i); delete item; triggerRows_.removeAt(i); break; } });
+}
+void NodeSettingsDialog::populateTriggerSources(QComboBox *combo, const QString &wanted)
+{
+    if (!combo) return; combo->blockSignals(true); combo->clear(); obs_enum_scenes(add_source, combo); obs_enum_sources(add_source, combo); const int index = combo->findData(wanted); if (index >= 0) combo->setCurrentIndex(index); else if (combo->count()) combo->setCurrentIndex(0); combo->blockSignals(false);
+}
+void NodeSettingsDialog::populateTriggerFilters(QComboBox *combo, const QString &sourceUuid, const QString &wanted)
+{
+    if (!combo) return; combo->blockSignals(true); combo->clear(); obs_source_t *source = obs_get_source_by_uuid(sourceUuid.toUtf8().constData()); if (source) { obs_source_enum_filters(source, add_filter, combo); obs_source_release(source); } const int index = combo->findData(wanted); if (index >= 0) combo->setCurrentIndex(index); combo->blockSignals(false);
+}
+bool NodeSettingsDialog::applyTrigger()
+{
+    auto *node = node_->workflowNode(); auto *manager = workflow_persistence_manager(); auto *workflow = manager ? workflow_manager_selected(manager) : nullptr; if (!workflow) return false;
+    for (size_t i = 0; i < node->trigger_count; ++i) { auto *filter = workflow_trigger_filter_find(node->triggers[i].source_uuid, node->triggers[i].filter_uuid); if (!filter) continue; char oldWorkflow[WORKFLOW_MAX_NAME]{}, oldTrigger[WORKFLOW_MAX_NAME]{}; workflow_trigger_filter_get_target(filter, oldWorkflow, oldTrigger); if (!std::strcmp(oldWorkflow, workflow->id) && !std::strcmp(oldTrigger, node->id)) workflow_trigger_filter_set_target(filter, "", ""); obs_source_release(filter); }
+    node->trigger_count = 0;
+    for (const auto &row : triggerRows_) { const QString sourceUuid = selected(row.source), filterUuid = selected(row.trigger); if (sourceUuid.isEmpty() || filterUuid.isEmpty() || node->trigger_count >= WORKFLOW_MAX_TRIGGERS) continue; auto &ref = node->triggers[node->trigger_count++]; settings_copy_text(ref.source_uuid, WORKFLOW_MAX_NAME, sourceUuid); settings_copy_text(ref.filter_uuid, WORKFLOW_MAX_NAME, filterUuid); auto *filter = workflow_trigger_filter_find(ref.source_uuid, ref.filter_uuid); if (filter) { workflow_trigger_filter_set_target(filter, workflow->id, node->id); obs_source_release(filter); } }
+    startActions_->apply(node->simultaneous_node_count, node->simultaneous_node_ids); node->simultaneous_actions_mode = WORKFLOW_OVERRIDE; return true;
+}
