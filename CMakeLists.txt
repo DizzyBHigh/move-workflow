@@ -40,5 +40,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-editor-view.cpp src/workflow-editor-view.h src/workflow-action-list.cpp src/workflow-action-list.h
   src/workflow-editor-toolbar.cpp src/workflow-editor-toolbar.h src/workflow-editor-sidebar.cpp src/workflow-editor-sidebar.h
   src/workflow-editor-properties.cpp src/workflow-editor-properties.h
+  src/workflow-connection-editor.cpp src/workflow-connection-editor.h
 )
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
