@@ -7,6 +7,7 @@
 namespace {
 struct trigger_filter {
     obs_source_t *source = nullptr;
+    bool enabled = false;
 };
 
 static const char *name(void *)
@@ -14,10 +15,18 @@ static const char *name(void *)
     return "Trigger Workflow";
 }
 
-static void enabled_signal(void *param, calldata_t *calldata)
+static void video_tick(void *param, float)
 {
     auto *data = static_cast<trigger_filter *>(param);
-    if (!data || !data->source || !calldata_bool(calldata, "enabled"))
+    if (!data || !data->source)
+        return;
+
+    const bool enabled = obs_source_enabled(data->source);
+    if (enabled == data->enabled)
+        return;
+
+    data->enabled = enabled;
+    if (!enabled)
         return;
 
     obs_data_t *settings = obs_source_get_settings(data->source);
@@ -32,9 +41,6 @@ static void enabled_signal(void *param, calldata_t *calldata)
     if (valid_target)
         workflow_engine_service_trigger(workflow.c_str(), trigger.c_str());
 
-    // This filter is a one-shot trigger. OBS owns the enabled state, so reset
-    // it immediately after accepting the enable event. The false signal is
-    // ignored by this callback because it only handles enabled=true.
     obs_source_set_enabled(data->source, false);
 }
 
@@ -42,23 +48,13 @@ static void *create(obs_data_t *, obs_source_t *source)
 {
     auto *data = new trigger_filter;
     data->source = source;
-
-    if (auto *handler = obs_source_get_signal_handler(source))
-        signal_handler_connect(handler, "enable", enabled_signal, data);
-
+    data->enabled = obs_source_enabled(source);
     return data;
 }
 
 static void destroy(void *opaque)
 {
-    auto *data = static_cast<trigger_filter *>(opaque);
-    if (!data)
-        return;
-
-    if (auto *handler = obs_source_get_signal_handler(data->source))
-        signal_handler_disconnect(handler, "enable", enabled_signal, data);
-
-    delete data;
+    delete static_cast<trigger_filter *>(opaque);
 }
 
 static obs_source_info info = []() {
@@ -69,6 +65,7 @@ static obs_source_info info = []() {
     value.get_name = name;
     value.create = create;
     value.destroy = destroy;
+    value.video_tick = video_tick;
     value.get_properties = workflow_trigger_filter_properties;
     return value;
 }();
