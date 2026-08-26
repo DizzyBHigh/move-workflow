@@ -1,6 +1,5 @@
 #include "workflow-engine-runs.h"
 #include "workflow-debug.h"
-#include "workflow-engine-trigger.h"
 #include <cstdlib>
 
 struct workflow_engine_run { workflow_engine_state_t state; workflow_engine_run_t *next; };
@@ -15,4 +14,3 @@ workflow_engine_run_t *workflow_engine_runs_head(workflow_engine_runs_t *runs) {
 workflow_engine_run_t *workflow_engine_runs_current(workflow_engine_runs_t *runs) { return runs ? runs->current : nullptr; }
 void workflow_engine_runs_stop_all(workflow_engine_runs_t *runs) { if(!runs) return; for(auto *run=runs->head;run;run=run->next) workflow_engine_state_stop(&run->state); }
 bool workflow_engine_runs_any_active(const workflow_engine_runs_t *runs) { if(!runs) return false; for(auto *run=runs->head;run;run=run->next) if(workflow_engine_state_is_active(&run->state)) return true; return false; }
-bool workflow_engine_runs_trigger(workflow_engine_runs_t *runs, workflow_trigger_type_t type, const char *value) { if(!runs) return false; bool triggered=false; for(auto *run=runs->head;run;run=run->next) if(workflow_engine_state_is_active(&run->state) && workflow_engine_trigger_dispatch(&run->state,type,value)) triggered=true; return triggered; }
