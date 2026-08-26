@@ -27,6 +27,7 @@ private:
     bool applyTrigger();
     void buildTriggerEditor(QVBoxLayout *, QVBoxLayout *);
     void buildActionEditor(QWidget *, QVBoxLayout *);
+    void buildChangeSceneEditor(QWidget *, QVBoxLayout *);
     void rebuildTriggerRows();
     void addTriggerRow(const TriggerSelection &selection = {});
     void populateTriggerSources(QComboBox *, const QString & = QString());
@@ -41,6 +42,7 @@ private:
     QGroupBox *triggerBox_ = nullptr;
     QVBoxLayout *triggerRowsLayout_ = nullptr;
     QVector<TriggerRow> triggerRows_;
+    QComboBox *scene_ = nullptr;
     QComboBox *source_ = nullptr;
     QComboBox *filter_ = nullptr;
     QSpinBox *startDelayMs_ = nullptr;
