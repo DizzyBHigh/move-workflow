@@ -15,6 +15,7 @@
 #include "workflow-debug-ui.h"
 #include <obs-frontend-api.h>
 #include <QApplication>
+#include <QCheckBox>
 #include <QDialog>
 #include <QGraphicsScene>
 #include <QHBoxLayout>
