@@ -76,18 +76,22 @@ static obs_property_t *add_list(obs_properties_t *p, const char *name, const cha
 {
     return obs_properties_add_list(p, name, label, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 }
+static obs_property_t *add_searchable_list(obs_properties_t *p, const char *name, const char *label)
+{
+    return obs_properties_add_list(p, name, label, OBS_COMBO_TYPE_EDITABLE, OBS_COMBO_FORMAT_STRING);
+}
 static bool method_modified(obs_properties_t *p, obs_property_t *, obs_data_t *s)
 {
     remove_method_fields(p);
     auto t = (workflow_trigger_type_t)obs_data_get_int(s, "method");
     if (t == WORKFLOW_TRIGGER_FRONTEND_ACTION) { auto *q = add_list(p, "method_frontend", "Frontend Action"); add_frontend_actions(q); }
-    if (t == WORKFLOW_TRIGGER_SOURCE_VISIBILITY) { add_list(p, "method_canvas", "Canvas"); add_list(p, "method_scene", "Scene"); auto *q = add_list(p, "method_source", "Source"); add_sources(q); add_state(p); }
-    if (t == WORKFLOW_TRIGGER_SOURCE_MUTE) { auto *q = add_list(p, "method_source", "Source"); add_sources(q); add_state(p); }
-    if (t == WORKFLOW_TRIGGER_SOURCE_AUDIO_TRACK) { auto *q = add_list(p, "method_source", "Source"); add_sources(q); q = add_list(p, "method_audio_track", "Audio Track"); const char *tracks[] = {"None", "1", "2", "3", "4", "5", "6"}; for (int i = 0; i <= 6; ++i) obs_property_list_add_int(q, tracks[i], i); add_state(p); }
-    if (t == WORKFLOW_TRIGGER_SOURCE_HOTKEY) { auto *q = add_list(p, "method_source", "Source"); add_sources(q); add_list(p, "method_hotkey", "Hotkey"); }
-    if (t == WORKFLOW_TRIGGER_FILTER_ENABLE) { auto *q = add_list(p, "method_source", "Source"); add_sources(q); add_list(p, "method_filter", "Filter"); obs_property_set_modified_callback(q, source_modified); fill_filters(p, s); add_state(p); }
+    if (t == WORKFLOW_TRIGGER_SOURCE_VISIBILITY) { add_list(p, "method_canvas", "Canvas"); add_list(p, "method_scene", "Scene"); auto *q = add_searchable_list(p, "method_source", "Source"); add_sources(q); add_state(p); }
+    if (t == WORKFLOW_TRIGGER_SOURCE_MUTE) { auto *q = add_searchable_list(p, "method_source", "Source"); add_sources(q); add_state(p); }
+    if (t == WORKFLOW_TRIGGER_SOURCE_AUDIO_TRACK) { auto *q = add_searchable_list(p, "method_source", "Source"); add_sources(q); q = add_list(p, "method_audio_track", "Audio Track"); const char *tracks[] = {"None", "1", "2", "3", "4", "5", "6"}; for (int i = 0; i <= 6; ++i) obs_property_list_add_int(q, tracks[i], i); add_state(p); }
+    if (t == WORKFLOW_TRIGGER_SOURCE_HOTKEY) { auto *q = add_searchable_list(p, "method_source", "Source"); add_sources(q); add_list(p, "method_hotkey", "Hotkey"); }
+    if (t == WORKFLOW_TRIGGER_FILTER_ENABLE) { auto *q = add_searchable_list(p, "method_source", "Source"); add_sources(q); auto *f = add_searchable_list(p, "method_filter", "Filter"); (void)f; obs_property_set_modified_callback(q, source_modified); fill_filters(p, s); add_state(p); }
     if (t == WORKFLOW_TRIGGER_FRONTEND_HOTKEY) add_list(p, "method_hotkey", "Hotkey");
-    if (t == WORKFLOW_TRIGGER_SETTING) { auto *q = add_list(p, "method_source", "Source"); add_sources(q); add_list(p, "method_filter", "Filter"); obs_property_set_modified_callback(q, source_modified); fill_filters(p, s); add_list(p, "method_setting", "Setting"); obs_properties_add_text(p, "method_value", "Expected Value", OBS_TEXT_DEFAULT); }
+    if (t == WORKFLOW_TRIGGER_SETTING) { auto *q = add_searchable_list(p, "method_source", "Source"); add_sources(q); add_searchable_list(p, "method_filter", "Filter"); obs_property_set_modified_callback(q, source_modified); fill_filters(p, s); add_list(p, "method_setting", "Setting"); obs_properties_add_text(p, "method_value", "Expected Value", OBS_TEXT_DEFAULT); }
     if (t == WORKFLOW_TRIGGER_UDP_PACKET) { obs_properties_add_text(p, "method_udp_host", "UDP host", OBS_TEXT_DEFAULT); obs_properties_add_int(p, "method_udp_port", "UDP port", 1, 65535, 1); obs_properties_add_text(p, "method_udp_packet", "UDP packet", OBS_TEXT_DEFAULT); }
     if (t == WORKFLOW_TRIGGER_WEBSOCKET_REQUEST) { obs_properties_add_text(p, "method_request", "Websocket Request", OBS_TEXT_DEFAULT); obs_properties_add_text(p, "method_data", "Data", OBS_TEXT_MULTILINE); }
     if (t == WORKFLOW_TRIGGER_WEBSOCKET_EVENT) { obs_properties_add_text(p, "method_event", "Websocket Event", OBS_TEXT_DEFAULT); obs_properties_add_text(p, "method_data", "Data", OBS_TEXT_MULTILINE); }
