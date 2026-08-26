@@ -74,6 +74,24 @@ public:
         addRow->addWidget(addAction_);
         root->addLayout(addRow);
 
+        auto *editRow1 = new QHBoxLayout;
+        editRow1->setSpacing(4);
+        edit_ = button("Edit");
+        copy_ = button("Copy");
+        paste_ = button("Paste");
+        editRow1->addWidget(edit_);
+        editRow1->addWidget(copy_);
+        editRow1->addWidget(paste_);
+        root->addLayout(editRow1);
+
+        auto *editRow2 = new QHBoxLayout;
+        editRow2->setSpacing(4);
+        duplicate_ = button("Duplicate");
+        remove_ = button("Delete");
+        editRow2->addWidget(duplicate_);
+        editRow2->addWidget(remove_);
+        root->addLayout(editRow2);
+
         auto *workflowTitle = new QLabel("WORKFLOW NODES", this);
         workflowTitle->setObjectName("heading");
         root->addWidget(workflowTitle);
@@ -83,35 +101,17 @@ public:
         workflowNodes_ = new QListWidget(this);
         root->addWidget(workflowNodes_, 1);
 
-        auto *editRow = new QHBoxLayout;
-        editRow->setSpacing(4);
-        edit_ = button("Edit");
-        copy_ = button("Copy");
-        paste_ = button("Paste");
-        duplicate_ = button("Duplicate");
-        remove_ = button("Delete");
-        editRow->addWidget(edit_);
-        editRow->addWidget(copy_);
-        editRow->addWidget(paste_);
-        editRow->addWidget(duplicate_);
-        editRow->addWidget(remove_);
-        root->addLayout(editRow);
-
-        connect(search_, &QLineEdit::textChanged, this, [this](const QString &text) {
-            filterWorkflowNodes(text);
-        });
+        connect(search_, &QLineEdit::textChanged, this, [this](const QString &text) { filterWorkflowNodes(text); });
         connect(workflowNodes_, &QListWidget::currentItemChanged, this,
                 [this](QListWidgetItem *item) {
                     if (item && callbacks_.select_node)
                         callbacks_.select_node(item->data(Qt::UserRole).toByteArray().constData());
                 });
         connect(addTrigger_, &QPushButton::clicked, this, [this] {
-            if (callbacks_.add_trigger)
-                callbacks_.add_trigger();
+            if (callbacks_.add_trigger) callbacks_.add_trigger();
         });
         connect(addAction_, &QPushButton::clicked, this, [this] {
-            if (callbacks_.add_node)
-                callbacks_.add_node("action");
+            if (callbacks_.add_node) callbacks_.add_node("action");
         });
         connect(edit_, &QPushButton::clicked, this, [this] { if (callbacks_.edit_node) callbacks_.edit_node(); });
         connect(copy_, &QPushButton::clicked, this, [this] { if (callbacks_.copy_node) callbacks_.copy_node(); });
@@ -135,11 +135,9 @@ public:
             auto *node = nodes.at(i);
             auto *item = new QListWidgetItem(nodeTypeIcon(node->workflowNode()->type), node->nodeName(), workflowNodes_);
             item->setData(Qt::UserRole, node->id());
-            if (node == selected)
-                selectedRow = i;
+            if (node == selected) selectedRow = i;
         }
-        if (selectedRow >= 0)
-            workflowNodes_->setCurrentRow(selectedRow);
+        if (selectedRow >= 0) workflowNodes_->setCurrentRow(selectedRow);
         filterWorkflowNodes(search_->text());
     }
 
@@ -167,12 +165,10 @@ QWidget *create_workflow_editor_sidebar(QWidget *parent, workflow_editor_sidebar
 
 void workflow_editor_sidebar_set_selection_state(QWidget *sidebar, bool selected, bool paste)
 {
-    if (auto *widget = dynamic_cast<EditorSidebar *>(sidebar))
-        widget->setSelectionState(selected, paste);
+    if (auto *widget = dynamic_cast<EditorSidebar *>(sidebar)) widget->setSelectionState(selected, paste);
 }
 
 void workflow_editor_sidebar_set_workflow_nodes(QWidget *sidebar, const QList<NodeItem *> &nodes, NodeItem *selected)
 {
-    if (auto *widget = dynamic_cast<EditorSidebar *>(sidebar))
-        widget->setWorkflowNodes(nodes, selected);
+    if (auto *widget = dynamic_cast<EditorSidebar *>(sidebar)) widget->setWorkflowNodes(nodes, selected);
 }
