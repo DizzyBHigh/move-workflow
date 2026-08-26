@@ -34,9 +34,10 @@ static void apply_node_settings(obs_source_t *filter, const workflow_node_t *nod
 		obs_data_set_bool(settings, "custom_duration", true);
 		obs_data_set_int(settings, "duration", (long long)*duration_ms);
 	}
-	if (node->start_trigger_mode == WORKFLOW_OVERRIDE &&
-		strcmp(node->start_trigger_value, "Enable") == 0)
-		obs_data_set_int(settings, "start_trigger", 5);
+	/* Workflow owns sequencing. Force the duplicated Move filter through
+	 * exeldro's native LOAD start path rather than merely enabling it. */
+	obs_data_set_int(settings, "start_trigger", 13);
+	workflow_debug_log("Move dispatch: forcing LOAD trigger on temporary filter");
 	obs_source_update(filter, settings);
 	obs_data_release(settings);
 }
