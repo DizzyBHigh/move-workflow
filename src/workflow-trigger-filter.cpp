@@ -35,15 +35,20 @@ static void enabled_signal(void *param, calldata_t *calldata)
     const char *workflow = obs_data_get_string(settings, "workflow");
     const char *trigger = obs_data_get_string(settings, "trigger");
     const bool valid_target = workflow && workflow[0] && trigger && trigger[0];
-    if (valid_target)
-        workflow_engine_service_trigger(workflow, trigger);
-
+    const char *workflow_id = workflow ? bstrdup(workflow) : nullptr;
+    const char *trigger_id = trigger ? bstrdup(trigger) : nullptr;
     obs_data_release(settings);
 
-    // Reset the state before disabling so the nested enable signal can update
-    // it correctly and the next Move Filter Enable can trigger again.
+    // Reset the adapter before firing the workflow so it is immediately ready
+    // for the next Move Filter Enable action.
     data->enabled = false;
     obs_source_set_enabled(data->source, false);
+
+    if (valid_target)
+        workflow_engine_service_trigger(workflow_id, trigger_id);
+
+    bfree((void *)workflow_id);
+    bfree((void *)trigger_id);
 }
 
 static void *create(obs_data_t *, obs_source_t *source)
