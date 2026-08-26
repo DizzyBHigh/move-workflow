@@ -44,17 +44,26 @@ static bool frontend_matches(runtime *d, enum obs_frontend_event e)
 }
 static void frontend(enum obs_frontend_event e, void *p) { auto *d = static_cast<runtime *>(p); if (frontend_matches(d, e)) fire(d); }
 static void hotkey(void *p, obs_hotkey_id, obs_hotkey_t *, bool pressed) { if (pressed) fire(static_cast<runtime *>(p)); }
-static obs_source_t *by_uuid(const char *u) { return u && u[0] ? obs_get_source_by_uuid(u) : nullptr; }
-struct filter_lookup { const char *uuid; obs_source_t *filter; };
+static obs_source_t *find_source(const char *value)
+{
+	if (!value || !value[0]) return nullptr;
+	obs_source_t *source = obs_get_source_by_uuid(value);
+	return source ? source : obs_get_source_by_name(value);
+}
+struct filter_lookup { const char *value; obs_source_t *filter; };
 static void find_filter(obs_source_t *, obs_source_t *filter, void *param)
 {
 	auto *lookup = static_cast<filter_lookup *>(param);
-	if (!lookup->filter && lookup->uuid && !std::strcmp(obs_source_get_uuid(filter), lookup->uuid)) lookup->filter = obs_source_get_ref(filter);
+	if (lookup->filter || !lookup->value) return;
+	const char *uuid = obs_source_get_uuid(filter);
+	const char *name = obs_source_get_name(filter);
+	if ((uuid && !std::strcmp(uuid, lookup->value)) || (name && !std::strcmp(name, lookup->value)))
+		lookup->filter = obs_source_get_ref(filter);
 }
-static obs_source_t *filter_by_uuid(obs_source_t *source, const char *uuid)
+static obs_source_t *find_filter_target(obs_source_t *source, const char *value)
 {
-	if (!source || !uuid || !uuid[0]) return nullptr;
-	filter_lookup lookup{uuid, nullptr}; obs_source_enum_filters(source, find_filter, &lookup); return lookup.filter;
+	if (!source || !value || !value[0]) return nullptr;
+	filter_lookup lookup{value, nullptr}; obs_source_enum_filters(source, find_filter, &lookup); return lookup.filter;
 }
 static void disconnect(runtime *d)
 {
@@ -81,8 +90,8 @@ void workflow_trigger_filter_methods_update(void **o, obs_source_t *, obs_data_t
 	std::strncpy(d->source_uuid, obs_data_get_string(s, "method_source"), WORKFLOW_MAX_NAME - 1); std::strncpy(d->filter_uuid, obs_data_get_string(s, "method_filter"), WORKFLOW_MAX_NAME - 1);
 	std::strncpy(d->action, obs_data_get_string(s, "method_frontend"), WORKFLOW_MAX_NAME - 1); if (!d->action[0]) std::strncpy(d->action, obs_data_get_string(s, "method_hotkey"), WORKFLOW_MAX_NAME - 1);
 	if (d->type == WORKFLOW_TRIGGER_SETTING) { std::strncpy(d->setting, obs_data_get_string(s, "method_setting"), WORKFLOW_MAX_NAME - 1); std::strncpy(d->value, obs_data_get_string(s, "method_value"), WORKFLOW_MAX_VALUE - 1); }
-	if (d->type == WORKFLOW_TRIGGER_SOURCE_VISIBILITY || d->type == WORKFLOW_TRIGGER_SOURCE_MUTE || d->type == WORKFLOW_TRIGGER_SETTING || d->type == WORKFLOW_TRIGGER_SOURCE_HOTKEY || d->type == WORKFLOW_TRIGGER_FILTER_ENABLE || d->type == WORKFLOW_TRIGGER_SOURCE_AUDIO_TRACK) d->watch_source = by_uuid(d->source_uuid);
-	if (d->type == WORKFLOW_TRIGGER_FILTER_ENABLE && d->watch_source) d->watch_filter = filter_by_uuid(d->watch_source, d->filter_uuid);
+	if (d->type == WORKFLOW_TRIGGER_SOURCE_VISIBILITY || d->type == WORKFLOW_TRIGGER_SOURCE_MUTE || d->type == WORKFLOW_TRIGGER_SETTING || d->type == WORKFLOW_TRIGGER_SOURCE_HOTKEY || d->type == WORKFLOW_TRIGGER_FILTER_ENABLE || d->type == WORKFLOW_TRIGGER_SOURCE_AUDIO_TRACK) d->watch_source = find_source(d->source_uuid);
+	if (d->type == WORKFLOW_TRIGGER_FILTER_ENABLE && d->watch_source) d->watch_filter = find_filter_target(d->watch_source, d->filter_uuid);
 	if (d->watch_source) d->source_handler = obs_source_get_signal_handler(d->watch_source); if (d->watch_filter) d->filter_handler = obs_source_get_signal_handler(d->watch_filter);
 	if (d->type == WORKFLOW_TRIGGER_SOURCE_VISIBILITY && d->source_handler) signal_handler_connect(d->source_handler, d->state == WORKFLOW_TRIGGER_STATE_ENABLED ? "show" : "hide", show, d);
 	if (d->type == WORKFLOW_TRIGGER_SOURCE_MUTE && d->source_handler) signal_handler_connect(d->source_handler, "mute", mute, d);
