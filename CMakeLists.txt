@@ -24,7 +24,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-manager-ui.cpp src/workflow-manager-ui.h src/workflow-workspace.cpp src/workflow-workspace.h
   src/workflow-scene.cpp src/workflow-scene.h src/workflow-node.cpp src/workflow-node.h src/workflow-node-copy.c src/workflow-node-copy.h
   src/workflow-node-duplicate-ui.cpp src/workflow-node-duplicate-ui.h src/workflow-node-settings.cpp src/workflow-node-settings.h
-  src/workflow-node-settings-action.cpp src/workflow-node-settings-trigger.cpp src/workflow-node-settings-trigger-data.cpp src/workflow-node-settings-common.h
+  src/workflow-node-settings-action.cpp src/workflow-node-settings-scene.cpp src/workflow-node-settings-scene.h
+  src/workflow-node-settings-trigger.cpp src/workflow-node-settings-trigger-data.cpp src/workflow-node-settings-common.h
   src/workflow-node-dialog.h src/workflow-node-timing-defaults.cpp src/workflow-node-timing-defaults.h src/workflow-clipboard.cpp src/workflow-clipboard.h
   src/workflow-persistence.cpp src/workflow-persistence.h src/workflow-persistence-json.cpp src/workflow-persistence-json.h src/workflow-export.cpp src/workflow-export.h src/workflow-import.cpp src/workflow-import.h
   src/workflow-undo.cpp src/workflow-undo.h src/workflow-runtime.c src/workflow-runtime.h src/workflow-move-runtime.c src/workflow-move-runtime.h
