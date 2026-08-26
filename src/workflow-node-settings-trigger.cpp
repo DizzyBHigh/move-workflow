@@ -20,38 +20,11 @@ static bool add_source(void *data, obs_source_t *source)
         combo->addItem(QString::fromUtf8(obs_source_get_name(source)), QString::fromUtf8(obs_source_get_uuid(source)));
     return true;
 }
-static QString trigger_name(const char *workflowId, const char *triggerId)
-{
-    if (!triggerId || !triggerId[0]) return QString("Unassigned");
-    auto *manager = workflow_persistence_manager();
-    if (!manager) return QString::fromUtf8(triggerId);
-    auto find_in = [triggerId](const workflow_t *workflow) -> QString {
-        if (!workflow) return {};
-        for (size_t i = 0; i < workflow->node_count; ++i) {
-            const auto &node = workflow->nodes[i];
-            if (!std::strcmp(node.id, triggerId)) return QString::fromUtf8(node.name[0] ? node.name : node.id);
-        }
-        return {};
-    };
-    if (workflowId && workflowId[0]) {
-        if (auto *workflow = workflow_manager_find(manager, workflowId)) {
-            const QString name = find_in(workflow);
-            if (!name.isEmpty()) return name;
-        }
-    }
-    for (size_t i = 0; i < manager->workflow_count; ++i) {
-        const QString name = find_in(&manager->workflows[i]);
-        if (!name.isEmpty()) return name;
-    }
-    return QString::fromUtf8(triggerId);
-}
 static void add_filter(obs_source_t *, obs_source_t *filter, void *data)
 {
     auto *combo = static_cast<QComboBox *>(data);
     if (!combo || !workflow_trigger_filter_is_instance(filter)) return;
-    char workflowId[WORKFLOW_MAX_NAME]{}, triggerId[WORKFLOW_MAX_NAME]{};
-    workflow_trigger_filter_get_target(filter, workflowId, triggerId);
-    combo->addItem(trigger_name(workflowId, triggerId), QString::fromUtf8(obs_source_get_uuid(filter)));
+    combo->addItem(QString::fromUtf8(obs_source_get_name(filter)), QString::fromUtf8(obs_source_get_uuid(filter)));
 }
 static QString selected(QComboBox *combo)
 {
