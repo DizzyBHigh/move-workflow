@@ -26,10 +26,7 @@ static void *create(obs_data_t *settings, obs_source_t *source)
     return data;
 }
 
-static void destroy(void *opaque)
-{
-    delete static_cast<trigger_filter *>(opaque);
-}
+static void destroy(void *opaque) { delete static_cast<trigger_filter *>(opaque); }
 
 static void update(void *opaque, obs_data_t *settings)
 {
@@ -59,18 +56,6 @@ static void hide(void *opaque)
         data->visible = false;
 }
 
-static void fill_triggers(obs_property_t *property, const workflow_t *workflow)
-{
-    obs_property_list_clear(property);
-    if (!workflow)
-        return;
-    for (size_t i = 0; i < workflow->node_count; ++i) {
-        const workflow_node_t &node = workflow->nodes[i];
-        if (node.type == WORKFLOW_NODE_TRIGGER)
-            obs_property_list_add_string(property, node.name, node.id);
-    }
-}
-
 static obs_properties_t *properties(void *)
 {
     obs_properties_t *props = obs_properties_create();
@@ -80,7 +65,7 @@ static obs_properties_t *properties(void *)
         props, "trigger", "Trigger", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
     obs_property_list_add_string(trigger, "Select a workflow first", "");
 
-    workflow_persistence_manager_t *manager = workflow_persistence_manager();
+    workflow_manager_t *manager = workflow_persistence_manager();
     if (manager) {
         for (size_t i = 0; i < manager->workflow_count; ++i)
             obs_property_list_add_string(workflow, manager->workflows[i].name,
