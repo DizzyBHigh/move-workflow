@@ -1,17 +1,17 @@
 #include <obs-module.h>
 #include <obs-frontend-api.h>
 #include <plugin-support.h>
-
 #include "workflow-engine.h"
 #include "workflow-engine-service.h"
 #include "workflow-hotkeys.h"
 #include "workflow-persistence.h"
 #include "workflow-runtime.h"
 #include "workflow-test-menu.h"
+#include "workflow-trigger-filter.h"
+#include "workflow-scene-trigger.h"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
-
 static workflow_engine_t *engine;
 
 bool obs_module_load(void)
@@ -19,9 +19,10 @@ bool obs_module_load(void)
     workflow_persistence_init();
     workflow_t *workflow = workflow_runtime_test_workflow();
     engine = workflow_engine_create();
-    if (!engine)
-        return false;
+    if (!engine) return false;
     workflow_engine_service_set(engine);
+    workflow_trigger_filter_register();
+    workflow_scene_trigger_register();
     blog(LOG_INFO, "[Move Workflow] Loaded");
     workflow_hotkeys_register();
     workflow_test_menu_register(workflow, engine);
@@ -30,6 +31,7 @@ bool obs_module_load(void)
 
 void obs_module_unload(void)
 {
+    workflow_scene_trigger_unregister();
     workflow_persistence_save();
     workflow_hotkeys_unregister();
     workflow_engine_service_set(NULL);
