@@ -13,6 +13,10 @@
 #include <utility>
 
 namespace {
+constexpr uint64_t DEFAULT_START_DELAY_MS = 0;
+constexpr uint64_t DEFAULT_DURATION_MS = 300;
+constexpr uint64_t DEFAULT_END_DELAY_MS = 0;
+
 QString listValues(size_t count, const char ids[][WORKFLOW_MAX_NAME])
 {
     QStringList values;
@@ -21,11 +25,11 @@ QString listValues(size_t count, const char ids[][WORKFLOW_MAX_NAME])
     return values.isEmpty() ? QStringLiteral("None") : values.join(", ");
 }
 
-QString timingText(workflow_value_mode_t mode, uint64_t value, const char *label)
+QString timingText(workflow_value_mode_t mode, uint64_t value, uint64_t defaultValue)
 {
-    if (mode != WORKFLOW_OVERRIDE)
-        return QString();
-    return QString("%1 ms").arg(static_cast<qulonglong>(value));
+    if (mode == WORKFLOW_OVERRIDE)
+        return QString("%1 ms").arg(static_cast<qulonglong>(value));
+    return QString("%1 ms (default)").arg(static_cast<qulonglong>(defaultValue));
 }
 
 class EditorProperties final : public QWidget {
@@ -88,16 +92,9 @@ public:
             add("Filter ID", data->action.filter_id);
         }
 
-        const QString duration = timingText(data->duration.mode, data->duration.duration_ms, "Duration");
-        if (!duration.isEmpty())
-            add("Duration", duration);
-        const QString startDelay = timingText(data->start_delay.mode, data->start_delay.delay_ms, "Start Delay");
-        if (!startDelay.isEmpty())
-            add("Start Delay", startDelay);
-        const QString endDelay = timingText(data->end_delay.mode, data->end_delay.delay_ms, "End Delay");
-        if (!endDelay.isEmpty())
-            add("End Delay", endDelay);
-
+        add("Start Delay", timingText(data->start_delay.mode, data->start_delay.delay_ms, DEFAULT_START_DELAY_MS));
+        add("Duration", timingText(data->duration.mode, data->duration.duration_ms, DEFAULT_DURATION_MS));
+        add("End Delay", timingText(data->end_delay.mode, data->end_delay.delay_ms, DEFAULT_END_DELAY_MS));
         add("Simultaneous Nodes", listValues(data->simultaneous_node_count, data->simultaneous_node_ids));
         add("Next Nodes", listValues(data->next_node_count, data->next_node_ids));
         add("Shortcut Nodes", listValues(data->shortcut_node_count, data->shortcut_node_ids));
