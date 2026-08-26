@@ -18,8 +18,6 @@ static void apply_node_settings(obs_source_t *filter, const workflow_node_t *nod
 		obs_data_set_bool(settings, "custom_duration", true);
 		obs_data_set_int(settings, "duration", (long long)*duration_ms);
 	}
-	/* Workflow sequencing owns Move chaining. Temporarily use the native
-	 * Enable trigger so the existing Move filter starts itself. */
 	obs_data_set_string(settings, "simultaneous_move", "");
 	obs_data_set_string(settings, "next_move", "");
 	obs_data_set_string(settings, "next_move_on", "move_end");
@@ -64,6 +62,7 @@ void workflow_filter_instance_destroy(workflow_filter_instance *instance)
 
 typedef struct destroy_context {
 	workflow_filter_instance *instance;
+	obs_data_t *restore_settings;
 	uint64_t delay_ms;
 } destroy_context;
 
@@ -73,15 +72,11 @@ static void destroy_on_ui(void *data)
 	if (!ctx) return;
 	workflow_debug_log("Filter instance: restoring native Move filter");
 	if (ctx->instance && ctx->instance->instance) {
-		obs_source_t *filter = ctx->instance->instance;
-		obs_source_set_enabled(filter, false);
-		obs_data_t *settings = obs_source_get_settings(filter);
-		if (settings) {
-			obs_data_set_int(settings, "start_trigger", 0);
-			obs_source_update(filter, settings);
-			obs_data_release(settings);
-		}
+		obs_source_set_enabled(ctx->instance->instance, false);
+		if (ctx->restore_settings)
+			obs_source_update(ctx->instance->instance, ctx->restore_settings);
 	}
+	if (ctx->restore_settings) obs_data_release(ctx->restore_settings);
 	workflow_filter_instance_destroy(ctx->instance);
 	free(ctx);
 }
@@ -95,17 +90,25 @@ static void *destroy_thread(void *data)
 	return NULL;
 }
 
-static void schedule_destroy(workflow_filter_instance *instance, uint64_t duration_ms)
+static void schedule_destroy(workflow_filter_instance *instance,
+							 obs_data_t *restore_settings, uint64_t duration_ms)
 {
 	destroy_context *ctx = (destroy_context *)calloc(1, sizeof(*ctx));
-	if (!ctx) return;
+	if (!ctx) {
+		obs_data_release(restore_settings);
+		workflow_filter_instance_destroy(instance);
+		return;
+	}
 	ctx->instance = instance;
+	ctx->restore_settings = restore_settings;
 	ctx->delay_ms = duration_ms ? duration_ms + 25 : 25;
 	pthread_t thread;
-	if (pthread_create(&thread, NULL, destroy_thread, ctx) != 0)
+	if (pthread_create(&thread, NULL, destroy_thread, ctx) != 0) {
+		obs_data_release(ctx->restore_settings);
 		free(ctx);
-	else
+	} else {
 		pthread_detach(thread);
+	}
 }
 
 bool workflow_filter_instance_execute_node(workflow_t *workflow, workflow_node_t *node)
@@ -125,17 +128,22 @@ bool workflow_filter_instance_execute_node(workflow_t *workflow, workflow_node_t
 		obs_source_release(parent);
 		return false;
 	}
+	obs_data_t *restore_settings = obs_source_get_settings(original);
 	workflow_filter_instance *instance =
 		workflow_filter_instance_create(original, parent, node);
 	obs_source_release(original);
 	obs_source_release(parent);
-	if (!instance) return false;
+	if (!instance) {
+		if (restore_settings) obs_data_release(restore_settings);
+		return false;
+	}
 	uint64_t duration_ms = 0;
 	apply_node_settings(instance->instance, node, &duration_ms);
 	if (!workflow_filter_instance_execute(instance)) {
+		if (restore_settings) obs_data_release(restore_settings);
 		workflow_filter_instance_destroy(instance);
 		return false;
 	}
-	schedule_destroy(instance, duration_ms);
+	schedule_destroy(instance, restore_settings, duration_ms);
 	return true;
 }
