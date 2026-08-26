@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <obs-module.h>
 #include <cstdio>
+#include <memory>
 
 bool workflow_export_selected(const workflow_manager_t *manager, const char *path)
 {
@@ -12,13 +13,13 @@ bool workflow_export_selected(const workflow_manager_t *manager, const char *pat
     const workflow_t *selected = workflow_manager_selected_const(manager);
     if (!selected) return false;
 
-    workflow_manager_t temporary{};
-    workflow_manager_init(&temporary);
-    temporary.workflows[0] = *selected;
-    temporary.workflow_count = 1;
-    snprintf(temporary.selected_workflow_id, WORKFLOW_MAX_NAME, "%s", selected->id);
+    auto temporary = std::make_unique<workflow_manager_t>();
+    workflow_manager_init(temporary.get());
+    temporary->workflows[0] = *selected;
+    temporary->workflow_count = 1;
+    snprintf(temporary->selected_workflow_id, WORKFLOW_MAX_NAME, "%s", selected->id);
 
-    QJsonObject root = workflow_manager_to_json(&temporary);
+    QJsonObject root = workflow_manager_to_json(temporary.get());
     root["format"] = "obs-move-workflow";
     root["format_version"] = 1;
     root.remove("selected");
