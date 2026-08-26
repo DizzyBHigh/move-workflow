@@ -3,6 +3,7 @@
 class QWidget;
 
 void show_move_workflow_editor(QWidget *parent = nullptr);
+void destroy_move_workflow_editor(void);
 
 #ifdef __cplusplus
 extern "C" {
