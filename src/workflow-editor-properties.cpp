@@ -30,10 +30,9 @@ public:
         const auto duration = data->duration.mode == WORKFLOW_OVERRIDE ? QString::number(static_cast<qulonglong>(data->duration.duration_ms)) + " ms" : "Use existing"; timing_->setText(duration);
     }
 private:
-    NodeItem *node_ = nullptr; std::function<void(NodeItem *)> editNode_; QGroupBox *group_ = nullptr; QLabels *unused_ = nullptr; QLabel *name_ = nullptr; QLabel *type_ = nullptr; QLabel *target_ = nullptr; QLabel *timing_ = nullptr; QPushButton *edit_ = nullptr;
+    NodeItem *node_ = nullptr; std::function<void(NodeItem *)> editNode_; QGroupBox *group_ = nullptr; QLabel *name_ = nullptr; QLabel *type_ = nullptr; QLabel *target_ = nullptr; QLabel *timing_ = nullptr; QPushButton *edit_ = nullptr;
 };
 }
-
 QWidget *create_workflow_editor_properties(QWidget *parent, std::function<void(NodeItem *)> edit_node)
 {return new EditorProperties(parent, std::move(edit_node));}
 void workflow_editor_properties_set_node(QWidget *properties, NodeItem *node)
