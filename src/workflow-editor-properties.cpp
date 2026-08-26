@@ -12,7 +12,7 @@
 namespace {
 class EditorProperties final : public QWidget {
 public:
-    EditorProperties(QWidget *parent, void (*editNode)(NodeItem *)) : QWidget(parent), editNode_(editNode) {
+    EditorProperties(QWidget *parent, std::function<void(NodeItem *)> editNode) : QWidget(parent), editNode_(std::move(editNode)) {
         setObjectName("workflowEditorProperties"); setMinimumWidth(250); setMaximumWidth(340);
         auto *root = new QVBoxLayout(this); root->setContentsMargins(12, 12, 12, 12); root->setSpacing(10);
         auto *heading = new QLabel("NODE PROPERTIES", this); heading->setObjectName("sidebarHeading"); root->addWidget(heading);
@@ -26,19 +26,15 @@ public:
         node_ = node; edit_->setEnabled(node != nullptr);
         if (!node) { group_->setTitle("No node selected"); name_->setText("—"); type_->setText("—"); target_->setText("—"); timing_->setText("—"); return; }
         const auto *data = node->workflowNode(); group_->setTitle("Selected Node"); name_->setText(QString::fromUtf8(data->name)); type_->setText(QString::fromUtf8(workflow_node_type_name(data->type)));
-        if (data->type == WORKFLOW_NODE_ACTION) target_->setText(QString::fromUtf8(data->action.filter_name));
-        else target_->setText(QString::number(static_cast<qulonglong>(data->trigger_count)) + " trigger filter(s)");
-        const auto duration = data->duration.mode == WORKFLOW_OVERRIDE ? QString::number(static_cast<qulonglong>(data->duration.duration_ms)) + " ms" : "Use existing";
-        timing_->setText(duration);
+        if (data->type == WORKFLOW_NODE_ACTION) target_->setText(QString::fromUtf8(data->action.filter_name)); else target_->setText(QString::number(static_cast<qulonglong>(data->trigger_count)) + " trigger filter(s)");
+        const auto duration = data->duration.mode == WORKFLOW_OVERRIDE ? QString::number(static_cast<qulonglong>(data->duration.duration_ms)) + " ms" : "Use existing"; timing_->setText(duration);
     }
 private:
-    NodeItem *node_ = nullptr; void (*editNode_)(NodeItem *) = nullptr; QGroupBox *group_ = nullptr; QLabel *name_ = nullptr;
-    QLabel *type_ = nullptr; QLabel *target_ = nullptr; QLabel *timing_ = nullptr; QPushButton *edit_ = nullptr;
+    NodeItem *node_ = nullptr; std::function<void(NodeItem *)> editNode_; QGroupBox *group_ = nullptr; QLabels *unused_ = nullptr; QLabel *name_ = nullptr; QLabel *type_ = nullptr; QLabel *target_ = nullptr; QLabel *timing_ = nullptr; QPushButton *edit_ = nullptr;
 };
 }
 
-QWidget *create_workflow_editor_properties(QWidget *parent, void (*edit_node)(NodeItem *))
-{return new EditorProperties(parent, edit_node);}
-
+QWidget *create_workflow_editor_properties(QWidget *parent, std::function<void(NodeItem *)> edit_node)
+{return new EditorProperties(parent, std::move(edit_node));}
 void workflow_editor_properties_set_node(QWidget *properties, NodeItem *node)
 {if (auto *widget = dynamic_cast<EditorProperties *>(properties)) widget->setNode(node);}
