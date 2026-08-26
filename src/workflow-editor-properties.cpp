@@ -4,7 +4,6 @@
 
 #include <QFormLayout>
 #include <QFrame>
-#include <QGroupBox>
 #include <QLabel>
 #include <QPushButton>
 #include <QScrollArea>
@@ -22,9 +21,11 @@ QString listValues(size_t count, const char ids[][WORKFLOW_MAX_NAME])
     return values.isEmpty() ? QStringLiteral("None") : values.join(", ");
 }
 
-QString completionName(workflow_scene_completion_t completion)
+QString timingText(workflow_value_mode_t mode, uint64_t value, const char *label)
 {
-    return completion == WORKFLOW_SCENE_COMPLETE_TRANSITION ? QStringLiteral("Transition") : QStringLiteral("Immediate");
+    if (mode != WORKFLOW_OVERRIDE)
+        return QString();
+    return QString("%1 ms").arg(static_cast<qulonglong>(value));
 }
 
 class EditorProperties final : public QWidget {
@@ -37,8 +38,6 @@ public:
         setMaximumWidth(380);
         setStyleSheet("QWidget#workflowEditorProperties{background:#111820;border:1px solid #27313c;} "
                       "QLabel#propertiesHeading{color:#aab6c3;font-size:11px;font-weight:700;letter-spacing:1px;} "
-                      "QGroupBox{background:#141d26;color:#e6edf3;border:1px solid #293643;border-radius:5px;margin-top:10px;padding:10px;} "
-                      "QGroupBox::title{color:#dce6ef;subcontrol-origin:margin;left:10px;padding:0 4px;} "
                       "QFormLayout QLabel{color:#c5d0da;} QPushButton{background:#1b4f7c;color:#eef7ff;border:1px solid #2d78b4;border-radius:4px;padding:5px 10px;min-height:28px;} "
                       "QPushButton:hover{background:#245f91;} QPushButton:disabled{background:#18212a;color:#65727f;border-color:#29333d;}");
         auto *root = new QVBoxLayout(this);
@@ -47,7 +46,6 @@ public:
         auto *heading = new QLabel("NODE PROPERTIES", this);
         heading->setObjectName("propertiesHeading");
         root->addWidget(heading);
-
         auto *scroll = new QScrollArea(this);
         scroll->setWidgetResizable(true);
         scroll->setFrameShape(QFrame::NoFrame);
@@ -75,33 +73,31 @@ public:
         add("Name", data->name);
         add("ID", data->id);
         add("Type", workflow_node_type_name(data->type));
-        add("Position", QString("%1, %2").arg(data->position_x).arg(data->position_y));
-        add("Trigger Filters", QString::number(static_cast<qulonglong>(data->trigger_count)));
-        for (size_t i = 0; i < data->trigger_count; ++i) {
-            add(QString("Trigger %1 Source UUID").arg(i + 1), data->triggers[i].source_uuid);
-            add(QString("Trigger %1 Filter UUID").arg(i + 1), data->triggers[i].filter_uuid);
-        }
-        if (data->type == WORKFLOW_NODE_ACTION) {
+
+        if (data->type == WORKFLOW_NODE_TRIGGER) {
+            add("Trigger Filters", QString::number(static_cast<qulonglong>(data->trigger_count)));
+            for (size_t i = 0; i < data->trigger_count; ++i) {
+                add(QString("Trigger %1 Source").arg(i + 1), data->triggers[i].source_uuid);
+                add(QString("Trigger %1 Filter").arg(i + 1), data->triggers[i].filter_uuid);
+            }
+        } else if (data->type == WORKFLOW_NODE_ACTION) {
             add("Move Kind", workflow_move_kind_name(data->action.kind));
             add("Scene", data->action.scene_name);
             add("Source", data->action.source_name);
             add("Filter", data->action.filter_name);
             add("Filter ID", data->action.filter_id);
-            add("Scene Completion", completionName(data->action.scene_completion));
         }
-        add("Start Delay", overrideText(data->start_delay.mode, data->start_delay.delay_ms));
-        add("Duration", overrideText(data->duration.mode, data->duration.duration_ms));
-        add("End Delay", overrideText(data->end_delay.mode, data->end_delay.delay_ms));
-        add("Simultaneous Mode", workflow_value_mode_name(data->simultaneous_actions_mode));
-        add("End Actions Mode", workflow_value_mode_name(data->end_actions_mode));
-        add("Next Actions Mode", workflow_value_mode_name(data->next_actions_mode));
-        add("Start Trigger Mode", workflow_value_mode_name(data->start_trigger_mode));
-        add("Start Trigger Value", data->start_trigger_value);
-        add("Stop Trigger Mode", workflow_value_mode_name(data->stop_trigger_mode));
-        add("Stop Trigger Value", data->stop_trigger_value);
-        add("Next Move On Mode", workflow_value_mode_name(data->next_move_on_mode));
-        add("Next Move On Value", data->next_move_on_value);
-        add("End Nodes", listValues(data->end_node_count, data->end_node_ids));
+
+        const QString duration = timingText(data->duration.mode, data->duration.duration_ms, "Duration");
+        if (!duration.isEmpty())
+            add("Duration", duration);
+        const QString startDelay = timingText(data->start_delay.mode, data->start_delay.delay_ms, "Start Delay");
+        if (!startDelay.isEmpty())
+            add("Start Delay", startDelay);
+        const QString endDelay = timingText(data->end_delay.mode, data->end_delay.delay_ms, "End Delay");
+        if (!endDelay.isEmpty())
+            add("End Delay", endDelay);
+
         add("Simultaneous Nodes", listValues(data->simultaneous_node_count, data->simultaneous_node_ids));
         add("Next Nodes", listValues(data->next_node_count, data->next_node_ids));
         add("Shortcut Nodes", listValues(data->shortcut_node_count, data->shortcut_node_ids));
@@ -116,8 +112,6 @@ private:
         form_->addRow(name, label);
     }
     void add(const QString &name, const char *value) { add(name, QString::fromUtf8(value ? value : "")); }
-    QString overrideText(workflow_value_mode_t mode, uint64_t value) const
-    { return QString("%1 (%2 ms)").arg(QString::fromUtf8(workflow_value_mode_name(mode))).arg(static_cast<qulonglong>(value)); }
     void clear()
     {
         while (form_->rowCount() > 0)
