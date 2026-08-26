@@ -32,8 +32,7 @@ QIcon nodeTypeIcon(workflow_node_type_t type)
         painter.drawPolygon(bolt);
     } else {
         QPolygonF action;
-        action << QPointF(4, 9) << QPointF(10, 3) << QPointF(16, 9)
-               << QPointF(10, 15);
+        action << QPointF(4, 9) << QPointF(10, 3) << QPointF(16, 9) << QPointF(10, 15);
         painter.drawPolygon(action);
     }
     return QIcon(pixmap);
@@ -54,13 +53,15 @@ public:
                       "QListWidget::item:selected{background:#173f66;color:#ffffff;} "
                       "QPushButton{background:#17212b;color:#dbe4ec;border:1px solid #2d3946;border-radius:4px;padding:4px 7px;min-height:26px;} "
                       "QPushButton:hover{background:#20303d;border-color:#3d5266;} QPushButton:disabled{color:#687583;background:#141b22;} "
-                      "QPushButton#triggerButton{background:#173f66;border-color:#2f79b7;} QPushButton#actionButton{background:#26344a;border-color:#49698f;} "
+                      "QPushButton#triggerButton{background:#246b43;border-color:#3aa86a;color:#ffffff;} "
+                      "QPushButton#triggerButton:hover{background:#2d8151;border-color:#51c77d;} "
+                      "QPushButton#actionButton{background:#245d96;border-color:#347fc4;color:#ffffff;} "
+                      "QPushButton#actionButton:hover{background:#2d70b2;border-color:#4b9be0;} "
                       "QLabel#heading{color:#aab6c3;font-size:11px;font-weight:700;letter-spacing:1px;}");
 
         auto *root = new QVBoxLayout(this);
         root->setContentsMargins(10, 10, 10, 10);
         root->setSpacing(6);
-
         auto *addTitle = new QLabel("ADD NODE", this);
         addTitle->setObjectName("heading");
         root->addWidget(addTitle);
@@ -79,17 +80,13 @@ public:
         edit_ = button("Edit");
         copy_ = button("Copy");
         paste_ = button("Paste");
-        editRow1->addWidget(edit_);
-        editRow1->addWidget(copy_);
-        editRow1->addWidget(paste_);
+        editRow1->addWidget(edit_); editRow1->addWidget(copy_); editRow1->addWidget(paste_);
         root->addLayout(editRow1);
-
         auto *editRow2 = new QHBoxLayout;
         editRow2->setSpacing(4);
         duplicate_ = button("Duplicate");
         remove_ = button("Delete");
-        editRow2->addWidget(duplicate_);
-        editRow2->addWidget(remove_);
+        editRow2->addWidget(duplicate_); editRow2->addWidget(remove_);
         root->addLayout(editRow2);
 
         auto *workflowTitle = new QLabel("WORKFLOW NODES", this);
@@ -102,17 +99,12 @@ public:
         root->addWidget(workflowNodes_, 1);
 
         connect(search_, &QLineEdit::textChanged, this, [this](const QString &text) { filterWorkflowNodes(text); });
-        connect(workflowNodes_, &QListWidget::currentItemChanged, this,
-                [this](QListWidgetItem *item) {
-                    if (item && callbacks_.select_node)
-                        callbacks_.select_node(item->data(Qt::UserRole).toByteArray().constData());
-                });
-        connect(addTrigger_, &QPushButton::clicked, this, [this] {
-            if (callbacks_.add_trigger) callbacks_.add_trigger();
+        connect(workflowNodes_, &QListWidget::currentItemChanged, this, [this](QListWidgetItem *item) {
+            if (item && callbacks_.select_node)
+                callbacks_.select_node(item->data(Qt::UserRole).toByteArray().constData());
         });
-        connect(addAction_, &QPushButton::clicked, this, [this] {
-            if (callbacks_.add_node) callbacks_.add_node("action");
-        });
+        connect(addTrigger_, &QPushButton::clicked, this, [this] { if (callbacks_.add_trigger) callbacks_.add_trigger(); });
+        connect(addAction_, &QPushButton::clicked, this, [this] { if (callbacks_.add_node) callbacks_.add_node("action"); });
         connect(edit_, &QPushButton::clicked, this, [this] { if (callbacks_.edit_node) callbacks_.edit_node(); });
         connect(copy_, &QPushButton::clicked, this, [this] { if (callbacks_.copy_node) callbacks_.copy_node(); });
         connect(paste_, &QPushButton::clicked, this, [this] { if (callbacks_.paste_node) callbacks_.paste_node(); });
@@ -148,7 +140,6 @@ private:
         for (int i = 0; i < workflowNodes_->count(); ++i)
             workflowNodes_->item(i)->setHidden(!workflowNodes_->item(i)->text().contains(text, Qt::CaseInsensitive));
     }
-
     workflow_editor_sidebar_callbacks callbacks_;
     QLineEdit *search_ = nullptr;
     QListWidget *workflowNodes_ = nullptr;
@@ -159,16 +150,10 @@ private:
 }
 
 QWidget *create_workflow_editor_sidebar(QWidget *parent, workflow_editor_sidebar_callbacks callbacks)
-{
-    return new EditorSidebar(parent, std::move(callbacks));
-}
+{ return new EditorSidebar(parent, std::move(callbacks)); }
 
 void workflow_editor_sidebar_set_selection_state(QWidget *sidebar, bool selected, bool paste)
-{
-    if (auto *widget = dynamic_cast<EditorSidebar *>(sidebar)) widget->setSelectionState(selected, paste);
-}
+{ if (auto *widget = dynamic_cast<EditorSidebar *>(sidebar)) widget->setSelectionState(selected, paste); }
 
 void workflow_editor_sidebar_set_workflow_nodes(QWidget *sidebar, const QList<NodeItem *> &nodes, NodeItem *selected)
-{
-    if (auto *widget = dynamic_cast<EditorSidebar *>(sidebar)) widget->setWorkflowNodes(nodes, selected);
-}
+{ if (auto *widget = dynamic_cast<EditorSidebar *>(sidebar)) widget->setWorkflowNodes(nodes, selected); }
