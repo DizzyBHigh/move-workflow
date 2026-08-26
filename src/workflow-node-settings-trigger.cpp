@@ -24,9 +24,23 @@ static void add_filter(obs_source_t *, obs_source_t *filter, void *data)
 {
     auto *combo = static_cast<QComboBox *>(data);
     if (!combo || !workflow_trigger_filter_is_instance(filter)) return;
-    char workflow[WORKFLOW_MAX_NAME]{}, trigger[WORKFLOW_MAX_NAME]{};
-    workflow_trigger_filter_get_target(filter, workflow, trigger);
-    combo->addItem(trigger[0] ? QString::fromUtf8(trigger) : QString("Unassigned"), QString::fromUtf8(obs_source_get_uuid(filter)));
+    char workflowId[WORKFLOW_MAX_NAME]{}, triggerId[WORKFLOW_MAX_NAME]{};
+    workflow_trigger_filter_get_target(filter, workflowId, triggerId);
+    QString label = triggerId[0] ? QString::fromUtf8(triggerId) : QString("Unassigned");
+    if (workflowId[0] && triggerId[0]) {
+        auto *manager = workflow_persistence_manager();
+        auto *workflow = manager ? workflow_manager_find(manager, workflowId) : nullptr;
+        if (workflow) {
+            for (size_t i = 0; i < workflow->node_count; ++i) {
+                const auto &node = workflow->nodes[i];
+                if (!std::strcmp(node.id, triggerId)) {
+                    label = QString::fromUtf8(node.name[0] ? node.name : node.id);
+                    break;
+                }
+            }
+        }
+    }
+    combo->addItem(label, QString::fromUtf8(obs_source_get_uuid(filter)));
 }
 static QString selected(QComboBox *combo)
 {
@@ -47,7 +61,7 @@ void NodeSettingsDialog::rebuildTriggerRows()
 }
 void NodeSettingsDialog::addTriggerRow(const TriggerSelection &selection)
 {
-    auto *row = new QHBoxLayout; auto *source = new QComboBox(triggerBox_); auto *trigger = new QComboBox(triggerBox_); auto *remove = new QPushButton("−", triggerBox_); remove->setFixedWidth(28); settings_searchable(source); settings_searchable(trigger);
+    auto *row = new QHBoxLayout; auto *source = new QComboBox(triggerBox_); auto *trigger = new QComboBox(triggerBox_); auto *remove = new QPushButton("X", triggerBox_); remove->setFixedWidth(28); remove->setToolTip("Remove trigger"); settings_searchable(source); settings_searchable(trigger);
     populateTriggerSources(source, selection.sourceUuid); populateTriggerFilters(trigger, selected(source), selection.filterUuid); row->addWidget(source, 1); row->addWidget(trigger, 1); row->addWidget(remove); triggerRowsLayout_->insertLayout(triggerRowsLayout_->count(), row); triggerRows_.push_back({source, trigger, remove});
     connect(source, &QComboBox::currentIndexChanged, this, [this, source, trigger] { populateTriggerFilters(trigger, selected(source)); });
     connect(remove, &QPushButton::clicked, this, [this, remove] { for (int i = 0; i < triggerRows_.size(); ++i) if (triggerRows_[i].remove == remove) { auto *item = triggerRowsLayout_->takeAt(i); delete item; triggerRows_.removeAt(i); break; } });
