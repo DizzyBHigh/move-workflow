@@ -8,7 +8,7 @@
 namespace {
 struct trigger_filter {
     obs_source_t *source;
-    bool visible;
+    bool enabled;
     char workflow_id[WORKFLOW_MAX_NAME];
     char trigger_id[WORKFLOW_MAX_NAME];
 };
@@ -19,6 +19,7 @@ static void *create(obs_data_t *settings, obs_source_t *source)
 {
     trigger_filter *data = new trigger_filter{};
     data->source = source;
+    data->enabled = obs_source_enabled(source);
     std::strncpy(data->workflow_id, obs_data_get_string(settings, "workflow"),
                  sizeof(data->workflow_id) - 1);
     std::strncpy(data->trigger_id, obs_data_get_string(settings, "trigger"),
@@ -39,21 +40,43 @@ static void update(void *opaque, obs_data_t *settings)
                  sizeof(data->trigger_id) - 1);
 }
 
-static void show(void *opaque)
+static void enabled_signal(void *param, calldata_t *calldata)
 {
-    trigger_filter *data = static_cast<trigger_filter *>(opaque);
-    if (!data || data->visible)
+    trigger_filter *data = static_cast<trigger_filter *>(param);
+    if (!data)
         return;
-    data->visible = true;
-    if (data->workflow_id[0] && data->trigger_id[0])
-        workflow_engine_service_trigger(data->workflow_id, data->trigger_id);
+
+    const bool enabled = calldata_bool(calldata, "enabled");
+    if (enabled == data->enabled)
+        return;
+
+    data->enabled = enabled;
+    if (!enabled || !data->workflow_id[0] || !data->trigger_id[0])
+        return;
+
+    workflow_engine_service_trigger(data->workflow_id, data->trigger_id);
 }
 
-static void hide(void *opaque)
+static void init_signal(void *opaque)
 {
     trigger_filter *data = static_cast<trigger_filter *>(opaque);
-    if (data)
-        data->visible = false;
+    if (!data)
+        return;
+
+    signal_handler_t *handler = obs_source_get_signal_handler(data->source);
+    if (handler)
+        signal_handler_connect(handler, "enable", enabled_signal, data);
+}
+
+static void destroy_signal(void *opaque)
+{
+    trigger_filter *data = static_cast<trigger_filter *>(opaque);
+    if (!data)
+        return;
+
+    signal_handler_t *handler = obs_source_get_signal_handler(data->source);
+    if (handler)
+        signal_handler_disconnect(handler, "enable", enabled_signal, data);
 }
 
 static void fill_triggers(obs_property_t *property, const workflow_t *workflow)
@@ -116,8 +139,6 @@ static obs_source_info info = []() {
     value.destroy = destroy;
     value.update = update;
     value.get_properties = properties;
-    value.show = show;
-    value.hide = hide;
     return value;
 }();
 }
