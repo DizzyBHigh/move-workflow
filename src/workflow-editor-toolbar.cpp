@@ -1,4 +1,5 @@
 #include "workflow-editor-toolbar.h"
+#include "workflow-debug-ui.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -20,7 +21,8 @@ public:
         auto *layout = new QHBoxLayout(this); layout->setContentsMargins(7,5,7,5); layout->setSpacing(4);
         layout->addWidget(new QLabel("Workflow", this)); workflow_ = new QComboBox(this); workflow_->setMinimumWidth(230); layout->addWidget(workflow_);
         add_ = button("+"); copy_ = button("Copy"); rename_ = button("Rename"); remove_ = button("Delete"); import_ = button("Import"); export_ = button("Export"); enabled_ = new QCheckBox("Enabled", this);
-        layout->addWidget(add_); layout->addWidget(copy_); layout->addWidget(rename_); layout->addWidget(remove_); layout->addWidget(import_); layout->addWidget(export_); layout->addWidget(enabled_); layout->addStretch();
+        layout->addWidget(add_); layout->addWidget(copy_); layout->addWidget(rename_); layout->addWidget(remove_); layout->addWidget(import_); layout->addWidget(export_); layout->addWidget(enabled_);
+        layout->addWidget(workflow_debug_create_control(this)); layout->addStretch();
         zoomOut_ = button("−"); zoomReset_ = button("100%"); zoomIn_ = button("+"); fit_ = button("Fit"); close_ = button("Close");
         layout->addWidget(zoomOut_); layout->addWidget(zoomReset_); layout->addWidget(zoomIn_); layout->addWidget(fit_); layout->addWidget(close_);
         connect(workflow_, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int index){if(index>=0&&callbacks_.select_workflow)callbacks_.select_workflow(workflow_->itemData(index).toByteArray().constData());});
