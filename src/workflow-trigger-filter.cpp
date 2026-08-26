@@ -40,8 +40,9 @@ static void enabled_signal(void *param, calldata_t *calldata)
 
     obs_data_release(settings);
 
-    // Workflow trigger filters are one-shot adapters. Move's Filter Enable
-    // action only enables a disabled filter, so reset after every trigger.
+    // Reset the state before disabling so the nested enable signal can update
+    // it correctly and the next Move Filter Enable can trigger again.
+    data->enabled = false;
     obs_source_set_enabled(data->source, false);
 }
 
