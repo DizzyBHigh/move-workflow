@@ -1,295 +1,230 @@
 # OBS Move Workflow
 
-OBS Move Workflow adds a workflow layer on top of Exeldro's Move Transition filters for OBS Studio.
+OBS Move Workflow adds a workflow system to OBS Studio that works with the Move filters from Exeldro's Move Transition plugin.
 
-It lets you build reusable workflows from connected nodes. A workflow can respond to a trigger and then execute one or more Move filters and/or change the active OBS scene, with workflow-controlled timing and sequencing.
+The idea is simple: Move Transition handles what happens to a source, while Move Workflow handles when it happens and what should happen next.
+
+You build a workflow in the editor by adding Trigger and Action nodes and connecting them together. A trigger starts the workflow, and the workflow engine then runs the actions in the order you have defined.
 
 ## What it does
 
-A workflow separates **when something happens** from **what the target filter does**.
+A workflow can:
 
-- **Trigger nodes** are entry points into a workflow.
-- **Action nodes** execute an existing Move filter or change the OBS scene.
-- Actions can run simultaneously or lead to other actions.
-- Each action can have a Start Delay, Duration and End Delay.
-- The workflow engine controls sequencing instead of relying on Move Transition's own Next Move or Simultaneous Move chaining.
-- Workflows can be saved, loaded, imported and exported.
+- Start from a Trigger Workflow filter.
+- Run existing Move filters attached to OBS sources.
+- Change the active OBS scene.
+- Run several actions at the same time.
+- Run actions after another action has finished.
+- Add a Start Delay, Duration and End Delay to each action.
+- Save workflows between OBS restarts.
+- Export and import workflows as `.obsworkflow.json` files.
 
-The plugin does not replace the functionality of Move Transition. Move Transition remains responsible for performing the actual movement, value change, swap or action; Move Workflow controls when that operation participates in a workflow.
+Move Workflow does not replace Move Transition. Move Transition still performs the actual move, value change, source swap or Move Action. Move Workflow controls when that filter is run and how it fits into the workflow.
 
 ## Requirements
 
 - OBS Studio 31.x or a compatible version supported by the build.
-- Exeldro's **Move Transition** plugin for Move-based actions.
+- Exeldro's Move Transition plugin for Move actions.
 
-Move Workflow uses the existing Move filters rather than implementing their movement functionality itself.
+## How it works
 
-## How the system works
+A workflow is a graph made up of nodes.
 
-A workflow is a graph of nodes.
+A Trigger node is an entry point into the workflow. It starts the actions connected to it.
 
-```text
-Trigger
-   │
-   ├──── Action A
-   │
-   ├──── Action B
-   │
-   └──── Action C
-             │
-             ▼
-          Next Action
-```
+An Action node does the work. It can either run a Move filter or change the current OBS scene.
 
-The graph determines which actions run together and which actions follow another action.
+The connections between nodes tell the workflow engine what to do next. This means you do not need to use Move Transition's Next Move or Simultaneous Move settings to build your workflow.
 
-### Trigger nodes
+### Action types
 
-A Trigger node is an entry point. It does not perform a Move operation itself. It provides a point that can be activated by a **Trigger Workflow** filter.
+Action nodes have two choices:
 
-A workflow can contain multiple Trigger nodes, allowing different external triggers to enter the same workflow at different points.
+**Move**
 
-### Action nodes
+Select an OBS source and then select one of the supported Move filters attached to that source. The workflow uses the existing filter and does not recreate its settings.
 
-Action nodes currently have two high-level action types:
-
-- **Move** — selects a source and one of the supported Move filters attached to it.
-- **Change Scene** — switches OBS to a selected scene.
-
-For Move actions, the editor displays the Move filters attached to the selected source. The workflow therefore references the existing filter instead of recreating its settings.
-
-Supported Move filter types include:
+Supported Move filters include:
 
 - Move Action
 - Move Source
 - Move Source Swap
 - Move Value
 
+**Change Scene**
+
+Select the OBS scene that should become active when the action runs. The scene list can be searched in the node editor.
+
 ### Action timing
 
-Each Action node has three timing stages:
+Each Action node has three timing values:
 
-```text
-Start Delay
-    │
-    ▼
-Configure / execute target
-    │
-    ▼
-Duration
-    │
-    ▼
-End Delay
-    │
-    ▼
-Workflow continues
-```
+1. Start Delay - how long to wait before starting the action.
+2. Duration - how long the action is considered to be running.
+3. End Delay - how long to wait after the action has finished before the workflow moves on.
 
-**Duration is the execution time assigned to the action.** It is not simply a delay before the next node starts.
+Duration is the time assigned to the action itself. It is not just a delay before the next node starts.
 
-The workflow engine considers an action active during its configured duration and only allows dependent workflow actions to proceed after the action's End Delay has completed.
+If an action cannot be run because its Move filter or scene no longer exists, its End Delay is still applied before the workflow continues.
 
-The action editor also exposes easing fields for planned functionality; easing is not currently implemented by the workflow engine.
+Easing and Easing Function are shown in the workflow data for future use but are not implemented in 1.0.0.
 
 ## Getting started
 
-1. Install OBS Studio and Exeldro's Move Transition plugin.
-2. Install OBS Move Workflow.
-3. Start OBS and open **Tools → Move Workflow**.
-4. Create a workflow and give it a useful name.
-5. Add Trigger and Action nodes.
-6. Configure each Action node.
-7. Connect the nodes to define simultaneous and next actions.
-8. Add a Trigger Workflow filter to something that should start the workflow.
-9. Enable the workflow/trigger and test it.
+1. Install OBS Studio.
+2. Install Exeldro's Move Transition plugin if you want to use Move actions.
+3. Install OBS Move Workflow.
+4. Start OBS and open **Tools > Move Workflow**.
+5. Create a workflow and give it a useful name.
+6. Add a Trigger node.
+7. Add the Action nodes you need.
+8. Connect the nodes to define how the workflow should run.
+9. Add a Trigger Workflow filter to something that should start the workflow.
+10. Select the workflow and Trigger node in that filter.
+11. Test the workflow.
 
-Workflows are persisted by the plugin, so they remain available when OBS is restarted.
+Workflows are saved by the plugin and are restored when OBS starts.
 
 ## Creating nodes
 
-### Creating an Action node
+The workflow editor provides controls for adding nodes. New nodes can then be moved around the editor to make the workflow easy to read.
 
-Add an Action node in the workflow editor and open its settings.
+### Trigger node
+
+Add a Trigger node and give it a name that describes what it starts. For example:
+
+- Start Intro
+- Show Camera
+- End Credits
+
+The name is also used to identify the trigger when you configure a Trigger Workflow filter.
+
+A workflow can have more than one Trigger node. This is useful when different triggers should enter the same workflow at different points.
+
+### Action node
+
+Add an Action node and open its settings.
 
 Choose **Move** or **Change Scene**.
 
-#### Move
+For a Move action:
 
-1. Select the OBS source containing the Move filter.
-2. Select the Move filter you want the workflow to execute.
-3. Configure Start Delay, Duration and End Delay as required.
-4. Configure its Simultaneous Actions and Next Actions connections.
+1. Select the OBS source containing the filter.
+2. Select the Move filter.
+3. Set the Start Delay, Duration and End Delay if required.
+4. Set up its Simultaneous Actions and Next Actions connections.
 
-The filter itself remains responsible for the movement/action. The workflow only controls its participation in the workflow.
+For a Change Scene action:
 
-#### Change Scene
-
-1. Select **Change Scene** as the Action Type.
-2. Search for/select the target scene.
-3. Configure its timing.
-4. Connect its following actions if required.
-
-Change Scene is a workflow action and does not require a Move filter.
-
-### Creating a Trigger node
-
-Create a Trigger node and give it a descriptive name, such as:
-
-- `Intro`
-- `Show Main Camera`
-- `End Credits`
-
-The Trigger node becomes selectable from a Trigger Workflow filter once the workflow has been saved/updated.
+1. Select **Change Scene**.
+2. Search for and select the target scene.
+3. Set the timing if required.
+4. Set up any following connections.
 
 ## Connecting nodes
 
-The workflow editor supports different relationships between nodes.
+Connections are made directly in the workflow editor.
+
+To create a connection, drag from the connection point at the **bottom of a node** and release it over the node you want to connect to.
+
+After you release the connection, the editor will ask which type of connection you want to create.
+
+The available connection types determine how the target action relates to the node you started from.
 
 ### Simultaneous Actions
 
-Use **Simultaneous Actions** when several actions should begin together.
+Use a Simultaneous Action connection when several actions should start together.
 
-For example:
+For example, one Trigger can start a camera move, a logo move and another action at the same time.
 
-```text
-              ┌── Move Logo ─────┐
-              │                  │
-Trigger ──────┼── Move Camera ───┼── Next
-              │                  │
-              └── Change Scene ──┘
-```
-
-The workflow engine coordinates these actions. Do not use Move Transition's Simultaneous Move setting to implement workflow sequencing.
+The workflow engine coordinates these actions. Do not use Move Transition's Simultaneous Move setting to control workflow sequencing.
 
 ### Next Actions
 
-Use **Next Actions** when an action should lead to another action after its configured Duration and End Delay.
+Use a Next Action connection when another action should start after the current action has completed its Duration and End Delay.
 
-The workflow graph decides what runs next. The target Move filter's own Next Move chain does not control workflow progression.
+The workflow graph decides what runs next. Move Transition's Next Move setting does not control the workflow.
 
-## Setting up triggers
+## Setting up a trigger
 
-The normal way to start a workflow from OBS is with the **Trigger Workflow** filter.
+The Trigger Workflow filter is the normal way to start a workflow from OBS.
 
-### Add a Trigger Workflow filter
-
-1. Add the **Trigger Workflow** filter to an appropriate OBS source.
+1. Add a **Trigger Workflow** filter to an OBS source.
 2. Open the filter properties.
-3. Select the workflow you want to start.
-4. Select the **Workflow Trigger** from that workflow.
+3. Select the workflow you want to run.
+4. Select the Trigger node that should start the workflow.
 
-The Workflow Trigger list is populated with the Trigger nodes belonging to the selected workflow.
+The Workflow Trigger list is filled with the Trigger nodes from the selected workflow.
 
-The trigger filter therefore provides this relationship:
+Once the Trigger Workflow filter is activated, the selected Trigger node is passed to the workflow engine and the connected actions begin according to the workflow graph.
 
-```text
-OBS event / filter activation
-            │
-            ▼
-     Trigger Workflow
-            │
-      Workflow + Trigger
-            │
-            ▼
-       Trigger Node
-            │
-            ▼
-    Workflow execution
-```
+## Using Move Action to trigger a workflow
 
-## Using Exeldro's Move Action to trigger a workflow
+Exeldro's Move Action filter can be used to activate a Trigger Workflow filter. This is a useful way to connect an existing OBS setup to a workflow.
 
-One useful way to integrate Move Workflow with existing OBS setups is to use Exeldro's **Move Action** filter to enable a Trigger Workflow filter.
+For example, you could use a Move Action hotkey to start a workflow called `Go Live`.
 
-This lets an existing Move Action event become the switch that starts a workflow.
+1. Create a `Go Live` workflow.
+2. Add a Trigger node called `Start`.
+3. Add and configure the Action nodes that should run.
+4. Connect the nodes in the workflow editor.
+5. Add a **Trigger Workflow** filter to the appropriate OBS source.
+6. Set the Trigger Workflow filter to `Go Live` and `Start`.
+7. Add an Exeldro **Move Action** filter where you want the external trigger to originate.
+8. Configure the Move Action to use **Filter Enable** on the Trigger Workflow filter.
+9. Use the Move Action's normal trigger, such as its hotkey, to activate the workflow.
 
-### Example
+The sequence is:
 
-Suppose you want a button or Move Action to start a workflow called `Go Live`.
+Move Action enables the Trigger Workflow filter, the Trigger Workflow filter activates the selected Trigger node, and the workflow engine runs the connected actions.
 
-1. Create the `Go Live` workflow.
-2. Add a Trigger node, for example `Start`.
-3. Add the Action nodes that should run when `Start` is triggered.
-4. Connect those actions in the workflow editor.
-5. Add a **Trigger Workflow** filter to an OBS source.
-6. In that filter, select `Go Live` and the `Start` Trigger node.
-7. Add/configure an Exeldro **Move Action** filter on the same source as appropriate.
-8. Configure the Move Action to perform **Filter Enable** on the Trigger Workflow filter.
-9. Use the Move Action's normal activation mechanism (for example a hotkey or another supported Move Action trigger).
+Move Action is not controlling the workflow sequence. It is simply being used as the trigger that starts it.
 
-The resulting flow is:
+See Exeldro's Move Transition documentation for the other actions and trigger methods provided by Move Action.
 
-```text
-Move Action
-    │
-    │ Filter Enable
-    ▼
-Trigger Workflow filter
-    │
-    ▼
-Go Live / Start
-    │
-    ▼
-Workflow Engine
-    │
-    ├── Action 1
-    ├── Action 2
-    └── Action 3
-```
+## Workflow sequencing
 
-The Move Action is **not** responsible for sequencing the workflow. It is simply one way to activate the Trigger Workflow filter. Once the trigger fires, Move Workflow takes control of workflow sequencing.
+The workflow graph is responsible for deciding what runs together and what runs next.
 
-For details of the Move Action's available actions and activation methods, refer to Exeldro's Move Transition documentation.
+Move Transition is responsible for performing the operation on the target. For example, Move Source moves a source and Move Value changes a value.
 
-## Workflow sequencing vs. Move Transition sequencing
-
-This distinction is important.
-
-**Move Transition** controls what an individual Move filter does.
-
-**Move Workflow** controls when that filter participates in the workflow and what workflow node runs next.
-
-When a Move filter is executed by the workflow engine, workflow sequencing takes precedence. The workflow should therefore be built using the workflow editor's node connections rather than Move Transition's Simultaneous Move or Next Move chaining.
+This separation is important when building a workflow. Configure the actual movement or action in the Move filter, and use the workflow editor to decide when that filter runs and what follows it.
 
 ## Import and export
 
-Workflows can be exported to `.obsworkflow.json` files and imported into another OBS installation or configuration.
+Workflows can be exported from the workflow manager to `.obsworkflow.json` files and imported into another OBS installation or configuration.
 
-If an imported workflow has the same name as an existing workflow, the imported copy is given a `- Copy` suffix so that the existing workflow is not overwritten.
+If the imported workflow has the same name as an existing workflow, the imported workflow is given a `- Copy` suffix rather than replacing the existing workflow.
 
 ## Persistence
 
-Workflows are stored by the plugin in its OBS plugin configuration area and are automatically restored when OBS starts.
+Workflows are stored in the plugin's OBS configuration area and are loaded again when OBS starts.
 
-Workflows are independent of OBS Scene Collections and Profiles. A workflow's saved definition remains available until it is deleted from the workflow manager or the plugin configuration is removed.
+Workflows are separate from OBS Profiles and Scene Collections. They remain available until they are deleted from the workflow manager or the plugin configuration is removed.
 
-Action nodes reference OBS scenes, sources and filters by their configured names. If a referenced target no longer exists, the action cannot execute; the workflow can still continue according to its configured timing and graph.
+Action nodes store the names of their target scenes, sources and filters. If a target has been removed, that action cannot run, but the workflow can still continue according to its timing and connections.
 
 ## Debugging
 
-The workflow editor provides a **Debug** option for enabling workflow debug logging.
+The workflow editor has a **Debug** checkbox. Enable it when you need more information in the OBS log while testing a workflow.
 
-When enabled, the OBS log can show workflow execution information such as trigger activation, node execution and workflow graph decisions.
+Debug logging can show trigger activation, node execution and decisions made by the workflow engine. This can help identify whether a trigger fired or whether an action target could not be found.
 
-This is useful when checking whether a trigger fired, whether an action target exists, and why the workflow moved to its next node.
+## Notes for 1.0.0
 
-## Important behaviour
-
-- A workflow can execute multiple actions simultaneously.
+- Multiple actions can run at the same time.
 - An Action node remains active for its configured Duration.
-- End Delay occurs after the action's execution duration, including when an action cannot be executed because its target is missing.
-- Missing Move filters or scenes do not cause the workflow to stop indefinitely; the workflow can continue through its configured graph after the node's timing has completed.
-- Move Transition remains responsible for the actual Move operation.
-- Workflow sequencing is controlled by the workflow graph, not by Move Transition's Next Move or Simultaneous Move settings.
-- Easing and Easing Function are reserved for future implementation.
+- End Delay is applied even when an action cannot find its target.
+- Workflow sequencing is controlled by node connections, not by Move Transition's Next Move or Simultaneous Move settings.
+- Easing is not implemented yet.
 
 ## Credits
 
-OBS Move Workflow is an architectural workflow layer built around Exeldro's Move Transition plugin and its existing Move filters.
+OBS Move Workflow is built as a workflow layer around Exeldro's Move Transition plugin and its existing Move filters.
 
-- OBS Studio — https://obsproject.com/
-- Move Transition by Exeldro — https://github.com/exeldro/obs-move-transition
+- OBS Studio: https://obsproject.com/
+- Move Transition by Exeldro: https://github.com/exeldro/obs-move-transition
 
 ## License
 
-See the repository license and the applicable licenses of the OBS Studio and Move Transition components used by the project.
+See the repository license and the licenses that apply to OBS Studio and the Move Transition components used by the project.
