@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
-$dll = Join-Path $PSScriptRoot '..\build_x64\RelWithDebInfo\obs-move-workflow.dll'
-$pdb = Join-Path $PSScriptRoot '..\build_x64\RelWithDebInfo\obs-move-workflow.pdb'
+$dll = Join-Path $PSScriptRoot '..\build_x64\RelWithDebInfo\move-workflow.dll'
+$pdb = Join-Path $PSScriptRoot '..\build_x64\RelWithDebInfo\move-workflow.pdb'
 $dest = 'C:\PORTABLE APPS\OBS Studio - RTS\obs-plugins\64bit'
 
 $dll = [System.IO.Path]::GetFullPath($dll)
@@ -32,7 +32,7 @@ if (Test-Path -LiteralPath $pdb) {
 }
 
 Write-Host "Move Workflow copied to OBS:"
-Write-Host "  $dest\obs-move-workflow.dll"
+Write-Host "  $dest\move-workflow.dll"
 if (Test-Path -LiteralPath $pdb) {
-    Write-Host "  $dest\obs-move-workflow.pdb"
+    Write-Host "  $dest\move-workflow.pdb"
 }
