@@ -192,7 +192,7 @@ This separation is important when building a workflow. Configure the actual move
 
 ## Import and export
 
-Workflows can be exported from the workflow manager to `.obsworkflow.json` files and imported into another OBS installation or configuration.
+Workflows can be exported from the workflow manager to `.workflow.json` files and imported into another OBS installation or configuration.
 
 If the imported workflow has the same name as an existing workflow, the imported workflow is given a `- Copy` suffix rather than replacing the existing workflow.
 
