@@ -1,5 +1,7 @@
 # OBS Move Workflow
 
+![OBS Move Workflow](images/obs-move-workflow%20Repo%20Image.jpg)
+
 OBS Move Workflow adds a workflow system to OBS Studio that works with the Move filters from [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition).
 
 The idea is simple: Move Transition handles what happens to a source, while Move Workflow handles when it happens and what should happen next.
