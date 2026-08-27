@@ -1,6 +1,6 @@
 # OBS Move Workflow
 
-OBS Move Workflow adds a workflow system to OBS Studio that works with the Move filters from Exeldro's Move Transition plugin.
+OBS Move Workflow adds a workflow system to OBS Studio that works with the Move filters from [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition).
 
 The idea is simple: Move Transition handles what happens to a source, while Move Workflow handles when it happens and what should happen next.
 
@@ -19,12 +19,12 @@ A workflow can:
 - Save workflows between OBS restarts.
 - Export and import workflows as `.obsworkflow.json` files.
 
-Move Workflow does not replace Move Transition. Move Transition still performs the actual move, value change, source swap or Move Action. Move Workflow controls when that filter is run and how it fits into the workflow.
+Move Workflow does not replace [Move Transition](https://github.com/exeldro/obs-move-transition). Move Transition still performs the actual move, value change, source swap or Move Action. Move Workflow controls when that filter is run and how it fits into the workflow.
 
 ## Requirements
 
 - OBS Studio 31.x or a compatible version supported by the build.
-- Exeldro's Move Transition plugin for Move actions.
+- [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition) for Move actions.
 
 ## How it works
 
@@ -72,7 +72,7 @@ Easing and Easing Function are shown in the workflow data for future use but are
 ## Getting started
 
 1. Install OBS Studio.
-2. Install Exeldro's Move Transition plugin if you want to use Move actions.
+2. Install [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition) if you want to use Move actions.
 3. Install OBS Move Workflow.
 4. Start OBS and open **Tools > Move Workflow**.
 5. Create a workflow and give it a useful name.
@@ -125,11 +125,9 @@ For a Change Scene action:
 
 Connections are made directly in the workflow editor.
 
-To create a connection, drag from the connection point at the **bottom of a node** and release it over the node you want to connect to.
+To create a connection, drag from the connection point at the bottom of a node and release it over the node you want to connect to.
 
-After you release the connection, the editor will ask which type of connection you want to create.
-
-The available connection types determine how the target action relates to the node you started from.
+After you release the connection, the editor will ask which type of connection you want to create. Select the connection type that matches how you want the target node to run.
 
 ### Simultaneous Actions
 
@@ -160,7 +158,7 @@ Once the Trigger Workflow filter is activated, the selected Trigger node is pass
 
 ## Using Move Action to trigger a workflow
 
-Exeldro's Move Action filter can be used to activate a Trigger Workflow filter. This is a useful way to connect an existing OBS setup to a workflow.
+[Exeldro's Move Action](https://github.com/exeldro/obs-move-transition) filter can be used to activate a Trigger Workflow filter. This is a useful way to connect an existing OBS setup to a workflow.
 
 For example, you could use a Move Action hotkey to start a workflow called `Go Live`.
 
@@ -170,7 +168,7 @@ For example, you could use a Move Action hotkey to start a workflow called `Go L
 4. Connect the nodes in the workflow editor.
 5. Add a **Trigger Workflow** filter to the appropriate OBS source.
 6. Set the Trigger Workflow filter to `Go Live` and `Start`.
-7. Add an Exeldro **Move Action** filter where you want the external trigger to originate.
+7. Add an [Exeldro Move Action](https://github.com/exeldro/obs-move-transition) filter where you want the external trigger to originate.
 8. Configure the Move Action to use **Filter Enable** on the Trigger Workflow filter.
 9. Use the Move Action's normal trigger, such as its hotkey, to activate the workflow.
 
@@ -180,7 +178,7 @@ Move Action enables the Trigger Workflow filter, the Trigger Workflow filter act
 
 Move Action is not controlling the workflow sequence. It is simply being used as the trigger that starts it.
 
-See Exeldro's Move Transition documentation for the other actions and trigger methods provided by Move Action.
+See [Exeldro's Move Transition repository](https://github.com/exeldro/obs-move-transition) for the other actions and trigger methods provided by Move Action.
 
 ## Workflow sequencing
 
@@ -220,7 +218,7 @@ Debug logging can show trigger activation, node execution and decisions made by 
 
 ## Credits
 
-OBS Move Workflow is built as a workflow layer around Exeldro's Move Transition plugin and its existing Move filters.
+OBS Move Workflow is built as a workflow layer around [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition) and its existing Move filters.
 
 - OBS Studio: https://obsproject.com/
 - Move Transition by Exeldro: https://github.com/exeldro/obs-move-transition
