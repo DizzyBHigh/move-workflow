@@ -44,8 +44,7 @@ void NodeSettingsDialog::buildTriggerEditor(QVBoxLayout *layout, QVBoxLayout *co
     connect(test, &QPushButton::clicked, this, [this] {
         auto *manager = workflow_persistence_manager();
         auto *workflow = manager ? workflow_manager_selected(manager) : nullptr;
-        if (workflow && node_)
-            workflow_engine_service_test_node(workflow->id, node_->workflowNode()->id);
+        if (workflow && node_) workflow_engine_service_test_node(workflow->id, node_->workflowNode()->id);
     });
     startActions_ = new WorkflowActionList("Start Actions", "These actions start when this Trigger fires. Multiple actions run in parallel.", node_, nodes_, node_->workflowNode()->simultaneous_node_ids, node_->workflowNode()->simultaneous_node_count, this); contentLayout->addWidget(startActions_);
     auto *hint = new QLabel("Any referenced Workflow Trigger Filter can start this Trigger Node.", this); hint->setWordWrap(true); hint->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred); contentLayout->addWidget(hint);
@@ -57,7 +56,8 @@ void NodeSettingsDialog::rebuildTriggerRows()
 }
 void NodeSettingsDialog::addTriggerRow(const TriggerSelection &selection)
 {
-    auto *row = new QHBoxLayout; auto *source = new QComboBox(triggerBox_); auto *trigger = new QComboBox(triggerBox_); auto *remove = new QPushButton("X", triggerBox_); remove->setFixedWidth(28); remove->setToolTip("Remove trigger"); settings_searchable(source); settings_searchable(trigger);
+    auto *row = new QHBoxLayout; auto *source = new QComboBox(triggerBox_); auto *trigger = new QComboBox(triggerBox_); auto *remove = new QPushButton(QStringLiteral("×"), triggerBox_);
+    remove->setFixedSize(30, 30); remove->setToolTip("Remove trigger"); remove->setStyleSheet("QPushButton{font-size:16px;font-weight:700;padding:0;}"); settings_searchable(source); settings_searchable(trigger);
     populateTriggerSources(source, selection.sourceUuid); populateTriggerFilters(trigger, selected(source), selection.filterUuid); row->addWidget(source, 1); row->addWidget(trigger, 1); row->addWidget(remove); triggerRowsLayout_->insertLayout(triggerRowsLayout_->count(), row); triggerRows_.push_back({source, trigger, remove});
     connect(source, &QComboBox::currentIndexChanged, this, [this, source, trigger] { populateTriggerFilters(trigger, selected(source)); });
     connect(remove, &QPushButton::clicked, this, [this, remove] { for (int i = 0; i < triggerRows_.size(); ++i) if (triggerRows_[i].remove == remove) { auto *item = triggerRowsLayout_->takeAt(i); delete item; triggerRows_.removeAt(i); break; } });

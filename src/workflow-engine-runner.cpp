@@ -8,7 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 
-enum continuation_phase { PHASE_START_DELAY, PHASE_DURATION, PHASE_END_DELAY };
+enum continuation_phase { PHASE_START_DELAY, PHASE_DURATION, PHASE_END_DELAY, PHASE_FAILED_END_DELAY };
 struct continuation {
     workflow_engine_state_t *state;
     char node_id[WORKFLOW_MAX_NAME];
@@ -40,7 +40,8 @@ static bool schedule_phase(workflow_engine_state_t *state, workflow_node_t *node
     workflow_debug_log("Action lifecycle: node='%s' scheduling %s for %llu ms",
                        node->id,
                        phase == PHASE_START_DELAY ? "start delay" :
-                       phase == PHASE_DURATION ? "duration" : "end delay",
+                       phase == PHASE_DURATION ? "duration" :
+                       phase == PHASE_END_DELAY ? "end delay" : "failed-action end delay",
                        (unsigned long long)delay_ms);
     extern void workflow_engine_runner_continue(void *);
     if (!workflow_engine_delay_start(delay_ms, workflow_engine_runner_continue, next)) {
@@ -53,15 +54,20 @@ static bool schedule_phase(workflow_engine_state_t *state, workflow_node_t *node
 
 static bool run_action(workflow_engine_state_t *state, workflow_node_t *node, size_t depth)
 {
-    if (!workflow_engine_execute_node(state, node)) return false;
+    const bool executed = workflow_engine_execute_node(state, node);
+    if (!executed) {
+        workflow_debug_log("Action lifecycle: node='%s' failed to execute; continuing workflow", node->id);
+        const uint64_t end_delay = delay_value(node->end_delay.mode, node->end_delay.delay_ms);
+        run_simultaneous(state, node, depth);
+        if (end_delay) {
+            if (schedule_phase(state, node, end_delay, PHASE_FAILED_END_DELAY)) return true;
+            workflow_engine_state_stop(state);
+            return false;
+        }
+        return run_next_links(state, node, depth);
+    }
 
-    /*
-     * Simultaneous branches start when this action starts, not when it
-     * completes. Each branch owns its own start delay/duration/end delay.
-     * The parent's next links remain blocked until the parent completes.
-     */
     const bool simultaneous_ok = run_simultaneous(state, node, depth);
-
     workflow_action_runtime_t *runtime =
         workflow_action_runtime_create(state->workflow, node, state->generation);
     if (!runtime) return false;
@@ -94,14 +100,12 @@ void workflow_engine_runner_continue(void *data)
             } else if (next->phase == PHASE_DURATION) {
                 workflow_debug_log("Action lifecycle: duration complete node='%s'", node->id);
                 const uint64_t end_delay = delay_value(node->end_delay.mode, node->end_delay.delay_ms);
-                if (!end_delay) {
-                    run_next_links(state, node, 0);
-                } else if (!schedule_phase(state, node, end_delay, PHASE_END_DELAY)) {
-                    workflow_engine_state_stop(state);
-                }
+                if (!end_delay) run_next_links(state, node, 0);
+                else if (!schedule_phase(state, node, end_delay, PHASE_END_DELAY)) workflow_engine_state_stop(state);
             } else {
-                workflow_debug_log("Action lifecycle: end delay complete node='%s'", node->id);
-                workflow_debug_log("Action lifecycle: node='%s' complete; advancing workflow graph", node->id);
+                workflow_debug_log("Action lifecycle: %s complete node='%s'",
+                                   next->phase == PHASE_FAILED_END_DELAY ? "failed-action end delay" : "end delay",
+                                   node->id);
                 run_next_links(state, node, 0);
             }
         }
