@@ -12,7 +12,7 @@ bool initialized = false;
 
 QString path()
 {
-    char *p = obs_module_config_path("obs-move-workflow.json");
+    char *p = obs_module_config_path("move-workflow.json");
     if (!p) {
         blog(LOG_WARNING, "[Move Workflow] Could not resolve config path");
         return {};
@@ -21,19 +21,6 @@ QString path()
     bfree(p);
     blog(LOG_INFO, "[Move Workflow] Persistence path: %s", result.toUtf8().constData());
     return result;
-}
-
-void migrate_legacy(const QString &file)
-{
-    const QFileInfo info(file);
-    const QString legacy = QDir(info.absolutePath()).filePath(
-        "../plugintemplate-for-obs/move-workflow.json");
-    if (!QFile::exists(legacy) || QFile::exists(file)) return;
-    QDir().mkpath(info.absolutePath());
-    if (QFile::rename(legacy, file))
-        blog(LOG_INFO, "[Move Workflow] Migrated legacy workflow file");
-    else
-        blog(LOG_WARNING, "[Move Workflow] Failed to migrate legacy workflow file");
 }
 }
 
@@ -44,7 +31,6 @@ void workflow_persistence_init(void)
     workflow_manager_init(&manager);
     const QString file = path();
     if (file.isEmpty()) return;
-    migrate_legacy(file);
     QFile input(file);
     if (!input.open(QIODevice::ReadOnly)) {
         blog(LOG_INFO, "[Move Workflow] No saved workflow file: %s", file.toUtf8().constData());
