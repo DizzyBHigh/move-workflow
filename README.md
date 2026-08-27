@@ -1,8 +1,8 @@
-# OBS Move Workflow
+# Move Workflow
 
-![OBS Move Workflow](images/obs-move-workflow%20Repo%20Image.jpg)
+![Move Workflow](images/obs-move-workflow%20Repo%20Image.jpg)
 
-OBS Move Workflow adds a workflow system to OBS Studio that works with the Move filters from [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition).
+Move Workflow adds a workflow system to OBS Studio that works with the Move filters from [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition).
 
 The idea is simple: Move Transition handles what happens to a source, while Move Workflow handles when it happens and what should happen next.
 
@@ -25,7 +25,7 @@ Move Workflow does not replace [Move Transition](https://github.com/exeldro/obs-
 
 ## Requirements
 
-- OBS Studio 31.x or a compatible version supported by the build.
+- OBS Studio 31.1.1 or newer.
 - [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition) for Move actions.
 
 ## How it works
@@ -75,7 +75,7 @@ Easing and Easing Function are shown in the workflow data for future use but are
 
 1. Install OBS Studio.
 2. Install [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition) if you want to use Move actions.
-3. Install OBS Move Workflow.
+3. Install Move Workflow.
 4. Start OBS and open **Tools > Move Workflow**.
 5. Create a workflow and give it a useful name.
 6. Add a Trigger node.
@@ -220,14 +220,14 @@ Debug logging can show trigger activation, node execution and decisions made by 
 
 ## Credits
 
-OBS Move Workflow is built as a workflow layer around [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition) and its existing Move filters.
+Move Workflow is built as a workflow layer around [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition) and its existing Move filters.
 
 - OBS Studio: https://obsproject.com/
 - Move Transition by Exeldro: https://github.com/exeldro/obs-move-transition
 
 ## License
 
-OBS Move Workflow is licensed under the **GNU General Public License version 2 (GPL-2.0)**.
+Move Workflow is licensed under the **GNU General Public License version 2 (GPL-2.0)**.
 
 You can find the full license text in the [LICENSE](LICENSE) file in this repository.
 
