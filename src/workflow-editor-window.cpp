@@ -64,6 +64,7 @@ public:
     }
     ~EditorWindow() override{beginShutdown();if(qApp)qApp->removeEventFilter(this);}
 public slots:void redoFromHotkey(){if(shuttingDown_)return;blog(LOG_INFO,"[Move Workflow] Ctrl+Y Qt slot reached.");redoWorkflow();}
+    void prepareForShutdown(){beginShutdown();}
 protected:bool eventFilter(QObject *watched,QEvent *event)override{return QDialog::eventFilter(watched,event);}void keyPressEvent(QKeyEvent *event)override{QDialog::keyPressEvent(event);}
 private:
     void beginShutdown(){if(shuttingDown_)return;shuttingDown_=true;if(scene_)QObject::disconnect(scene_,nullptr,this,nullptr);}
@@ -71,8 +72,8 @@ private:
     void resetUndo(){if(applyingUndoRedo_)return;++syncGeneration_;syncPending_=false;undo_.reset(workflow_manager_selected(workflow_workspace_manager(&workspace_)),workflow_workspace_manager(&workspace_));}
     void syncLoadedSelection(){const auto *s=workflow_manager_selected_const(workflow_workspace_manager(&workspace_));if(s){std::strncpy(workspace_.loaded_workflow_id,s->id,WORKFLOW_MAX_NAME-1);workspace_.loaded_workflow_id[WORKFLOW_MAX_NAME-1]='\0';}else workspace_.loaded_workflow_id[0]='\0';}
     void refreshUi(){if(shuttingDown_)return;workflow_editor_toolbar_refresh(toolbar_);updateButtonState();}
-    void undoWorkflow(){if(shuttingDown_)return;++syncGeneration_;syncPending_=false;applyingUndoRedo_=true;if(undo_.undo()){syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_workspace_manager(&workspace_));refreshUi();}applyingUndoRedo_=false;}
-    void redoWorkflow(){if(shuttingDown_)return;++syncGeneration_;syncPending_=false;applyingUndoRedo_=true;if(undo_.redo()){syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_manager_selected_const(workflow_workspace_manager(&workspace_))?workflow_workspace_manager(&workspace_):workflow_workspace_manager(&workspace_));refreshUi();}applyingUndoRedo_=false;}
+    void undoWorkflow(){if(shuttingDown_)return;++syncGeneration_;syncPending_=false;applyingUndoRedo_=true;if(undo_.undo()){syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_manager_selected_const(workflow_workspace_manager(&workspace_))?workflow_workspace_manager(&workspace_):workflow_workspace_manager(&workspace_));refreshUi();}applyingUndoRedo_=false;}
+    void redoWorkflow(){if(shuttingDown_)return;++syncGeneration_;syncPending_=false;applyingUndoRedo_=true;if(undo_.redo()){syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(workflow_workspace_manager(&workspace_));refreshUi();}applyingUndoRedo_=false;}
     bool deleteWorkflow(){workflow_workspace_sync_scene(&workspace_);auto *manager=workflow_workspace_manager(&workspace_);const auto *selected=workflow_manager_selected_const(manager);if(!selected)return false;undo_.prepareManagerCapture();if(!workflow_manager_remove(manager,selected->id))return false;syncLoadedSelection();if(workspace_.loaded_workflow_id[0])workflow_workspace_reload(&workspace_);else{const QList<NodeItem*>nodes=scene_->nodes();for(NodeItem *node:nodes)scene_->deleteNode(node);}undo_.captureManager();workflow_persistence_sync(manager);refreshUi();return true;}
     void renameWorkflow(){auto *selected=workflow_manager_selected(workflow_workspace_manager(&workspace_));if(!selected)return;bool ok=false;const QString name=QInputDialog::getText(this,"Rename Workflow","Workflow name:",QLineEdit::Normal,QString::fromUtf8(selected->name),&ok);if(ok&&!name.trimmed().isEmpty()){std::snprintf(selected->name,sizeof(selected->name),"%s",name.trimmed().toUtf8().constData());workflow_persistence_sync(workflow_workspace_manager(&workspace_));undo_.captureManager();refreshUi();}}
     void importWorkflow(){const QString file=QFileDialog::getOpenFileName(this,"Import Workflow",{},"Move Workflow (*.obsworkflow.json)");if(file.isEmpty())return;auto *manager=workflow_workspace_manager(&workspace_);if(workflow_import_file(manager,file.toUtf8().constData())){syncLoadedSelection();workflow_workspace_reload(&workspace_);workflow_persistence_sync(manager);resetUndo();refreshUi();view_->fitAll();}}
@@ -87,5 +88,5 @@ private:
 }
 extern "C" void workflow_editor_redo_from_hotkey(void){EditorWindow *editor=window.data();if(!editor){blog(LOG_WARNING,"[Move Workflow] Ctrl+Y bridge fired but editor is not open.");return;}QMetaObject::invokeMethod(editor,"redoFromHotkey",Qt::QueuedConnection);}
 void show_move_workflow_editor(QWidget *parent){if(!window){auto *mainWindow=parent?parent:static_cast<QWidget*>(obs_frontend_get_main_window());window=new EditorWindow(mainWindow);}window->show();window->raise();window->activateWindow();}
-void destroy_move_workflow_editor(void){if(!window)return;window->close();delete window.data();window=nullptr;}
+void destroy_move_workflow_editor(void){if(!window)return;window->data()->prepareForShutdown();window->close();delete window.data();window=nullptr;}
 #include "workflow-editor-window.moc"
