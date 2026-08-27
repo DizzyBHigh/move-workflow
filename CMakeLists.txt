@@ -37,7 +37,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-filter-instance.h src/workflow-filter-instance.cpp src/workflow-execution-tests.cpp
   src/workflow-trigger-filter.h src/workflow-trigger-filter.cpp src/workflow-trigger-filter-ui.h src/workflow-trigger-filter-ui.cpp src/workflow-trigger-filter-instance.h src/workflow-trigger-filter-instance.cpp
   src/workflow-scene-trigger.h src/workflow-scene-trigger.cpp src/workflow-change-scene.h src/workflow-change-scene.cpp
-  src/move-workflow-tests.cpp src/move-workflow-tests.h src/move-workflow-editor.cpp src/move-workflow-editor.h src/workflow-editor-window.cpp src/workflow-editor-window.h
+  src/move-workflow-editor.cpp src/move-workflow-editor.h src/workflow-editor-window.cpp src/workflow-editor-window.h
   src/workflow-editor-view.cpp src/workflow-editor-view.h src/workflow-action-list.cpp src/workflow-action-list.h
   src/workflow-editor-toolbar.cpp src/workflow-editor-toolbar.h src/workflow-editor-sidebar.cpp src/workflow-editor-sidebar.h
   src/workflow-editor-properties.cpp src/workflow-editor-properties.h
