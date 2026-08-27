@@ -225,4 +225,6 @@ OBS Move Workflow is built as a workflow layer around [Exeldro's Move Transition
 
 ## License
 
-See the repository license and the licenses that apply to OBS Studio and the Move Transition components used by the project.
+OBS Move Workflow is licensed under the GNU General Public License version 2. See the [LICENSE](LICENSE) file for the full license text.
+
+The project also uses OBS Studio and components from [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition), which have their own licensing terms.
