@@ -34,7 +34,7 @@ A Trigger node is an entry point into the workflow. It starts the actions connec
 
 An Action node does the work. It can either run a Move filter or change the current OBS scene.
 
-The connections between nodes tell the workflow engine what to do next. This means you do not need to use Move Transition's Next Move or Simultaneous Move settings to build your workflow.
+The connections between nodes tell the workflow engine what to do next. This means you do not need to use [Move Transition](https://github.com/exeldro/obs-move-transition)'s Next Move or Simultaneous Move settings to build your workflow.
 
 ### Action types
 
@@ -135,13 +135,13 @@ Use a Simultaneous Action connection when several actions should start together.
 
 For example, one Trigger can start a camera move, a logo move and another action at the same time.
 
-The workflow engine coordinates these actions. Do not use Move Transition's Simultaneous Move setting to control workflow sequencing.
+The workflow engine coordinates these actions. Do not use [Move Transition](https://github.com/exeldro/obs-move-transition)'s Simultaneous Move setting to control workflow sequencing.
 
 ### Next Actions
 
 Use a Next Action connection when another action should start after the current action has completed its Duration and End Delay.
 
-The workflow graph decides what runs next. Move Transition's Next Move setting does not control the workflow.
+The workflow graph decides what runs next. [Move Transition](https://github.com/exeldro/obs-move-transition)'s Next Move setting does not control the workflow.
 
 ## Setting up a trigger
 
@@ -213,7 +213,7 @@ Debug logging can show trigger activation, node execution and decisions made by 
 - Multiple actions can run at the same time.
 - An Action node remains active for its configured Duration.
 - End Delay is applied even when an action cannot find its target.
-- Workflow sequencing is controlled by node connections, not by Move Transition's Next Move or Simultaneous Move settings.
+- Workflow sequencing is controlled by node connections, not by [Move Transition](https://github.com/exeldro/obs-move-transition)'s Next Move or Simultaneous Move settings.
 - Easing is not implemented yet.
 
 ## Credits
@@ -225,6 +225,4 @@ OBS Move Workflow is built as a workflow layer around [Exeldro's Move Transition
 
 ## License
 
-OBS Move Workflow is licensed under the GNU General Public License version 2. See the [LICENSE](LICENSE) file for the full license text.
-
-The project also uses OBS Studio and components from [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition), which have their own licensing terms.
+See the repository license and the licenses that apply to OBS Studio and the Move Transition components used by the project.
