@@ -33,13 +33,13 @@
     },
     "platformConfig": {
         "macos": {
-            "bundleId": "com.dizzybhigh.obs-move-workflow"
+            "bundleId": "com.dizzybhigh.move-workflow"
         }
     },
-    "name": "obs-move-workflow",
-    "displayName": "OBS Move Workflow",
+    "name": "move-workflow",
+    "displayName": "Move Workflow",
     "version": "1.0.0",
     "author": "DizzyBHigh",
-    "website": "https://github.com/DizzyBHigh/obs-move-workflow",
+    "website": "https://github.com/DizzyBHigh/move-workflow",
     "email": "me@example.com"
 }
