@@ -12,6 +12,7 @@ class EditorScene final : public QGraphicsScene {
 
 public:
     explicit EditorScene(QObject *parent = nullptr);
+    void setWorkflowId(const QString &workflowId);
     NodeItem *addNode(workflow_node_type_t type, const QString &name);
     NodeItem *selectedNode() const;
     QList<NodeItem *> selectedNodes() const;
@@ -54,4 +55,5 @@ private:
     NodeItem *dragSource_ = nullptr;
     QGraphicsPathItem *dragPreview_ = nullptr;
     bool draggingConnection_ = false;
+    QString workflowId_;
 };
