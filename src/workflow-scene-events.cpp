@@ -1,5 +1,6 @@
 #include "workflow-scene.h"
 #include "workflow-connection-editor.h"
+#include "workflow-debug.h"
 
 #include <QGraphicsSceneMouseEvent>
 #include <QPainterPath>
@@ -50,8 +51,12 @@ void EditorScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         path.cubicTo(start + QPointF(dx * 0.35, dy * 0.05), end - QPointF(dx * 0.35, dy * 0.05), end);
         dragPreview_->setPath(path); event->accept(); return;
     }
+    workflow_debug_log("node move begin: nodes=%d connections=%d pos=(%.1f,%.1f)",
+                       nodes_.size(), connections_.size(), event->scenePos().x(), event->scenePos().y());
     QGraphicsScene::mouseMoveEvent(event);
+    workflow_debug_log("node move after scene event: nodes=%d connections=%d", nodes_.size(), connections_.size());
     updateConnections();
+    workflow_debug_log("node move complete: nodes=%d connections=%d", nodes_.size(), connections_.size());
 }
 
 void EditorScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
