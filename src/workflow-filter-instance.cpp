@@ -43,15 +43,24 @@ workflow_filter_instance *workflow_filter_instance_create(
     return result;
 }
 
-workflow_filter_instance *workflow_filter_instance_execute(workflow_filter_instance *instance)
+static void enable_on_ui(void *data)
+{
+    workflow_filter_instance *instance = (workflow_filter_instance *)data;
+    if (!instance || !instance->instance)
+        return;
+    obs_source_set_enabled(instance->instance, true);
+    workflow_debug_log("Filter instance: enabled native Move filter '%s'",
+                       obs_source_get_name(instance->instance));
+}
+
+bool workflow_filter_instance_execute(workflow_filter_instance *instance)
 {
     if (!instance || !instance->instance)
-        return nullptr;
+        return false;
     obs_source_set_enabled(instance->instance, false);
-    obs_source_set_enabled(instance->instance, true);
-    workflow_debug_log("Filter instance: re-enabled native Move filter '%s'",
-                       obs_source_get_name(instance->instance));
-    return instance;
+    obs_queue_task(OBS_TASK_UI, enable_on_ui, instance, false);
+    workflow_debug_log("Filter instance: queued native Move filter enable");
+    return true;
 }
 
 void workflow_filter_instance_destroy(workflow_filter_instance *instance)
