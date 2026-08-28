@@ -1,6 +1,6 @@
 #pragma once
 
-#include "workflow-model.h"
+#include "workflow-manager.h"
 
 #include <stdbool.h>
 #include <stddef.h>
