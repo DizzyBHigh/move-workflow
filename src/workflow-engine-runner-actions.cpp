@@ -16,7 +16,8 @@ static bool run_simultaneous(workflow_engine_state_t *state, workflow_node_t *no
     return result;
 }
 
-static bool run_next_links(workflow_engine_state_t *state, workflow_node_t *node, size_t depth)
+bool workflow_engine_runner_run_next_links(workflow_engine_state_t *state,
+                                           workflow_node_t *node, size_t depth)
 {
     if (node->next_node_count) {
         workflow_debug_log("Workflow graph: node='%s' completed; executing %zu next node(s)",
@@ -44,7 +45,7 @@ static bool run_action(workflow_engine_state_t *state, workflow_node_t *node, si
             workflow_engine_state_stop(state);
             return false;
         }
-        return run_next_links(state, node, depth);
+        return workflow_engine_runner_run_next_links(state, node, depth);
     }
 
     const bool simultaneous_ok = run_simultaneous(state, node, depth);
@@ -63,7 +64,7 @@ static bool run_action(workflow_engine_state_t *state, workflow_node_t *node, si
         if (workflow_engine_runner_schedule_phase(state, node, end_delay, PHASE_END_DELAY)) return simultaneous_ok;
         return false;
     }
-    return simultaneous_ok && run_next_links(state, node, depth);
+    return simultaneous_ok && workflow_engine_runner_run_next_links(state, node, depth);
 }
 
 bool workflow_engine_runner_run_node_now(workflow_engine_state_t *state,
@@ -72,5 +73,5 @@ bool workflow_engine_runner_run_node_now(workflow_engine_state_t *state,
     if (node->type == WORKFLOW_NODE_ACTION) return run_action(state, node, depth);
     if (!workflow_engine_execute_node(state, node)) return false;
     run_simultaneous(state, node, depth);
-    return run_next_links(state, node, depth);
+    return workflow_engine_runner_run_next_links(state, node, depth);
 }
