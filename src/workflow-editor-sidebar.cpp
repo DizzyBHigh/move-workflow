@@ -1,12 +1,11 @@
 #include "workflow-editor-sidebar.h"
+#include "workflow-editor-sidebar-icons.h"
 #include "workflow-node.h"
 
 #include <QHBoxLayout>
-#include <QIcon>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
-#include <QPainter>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
@@ -14,30 +13,6 @@
 #include <utility>
 
 namespace {
-QIcon nodeTypeIcon(workflow_node_type_t type)
-{
-    QPixmap pixmap(18, 18);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    const QColor background = type == WORKFLOW_NODE_TRIGGER ? QColor("#2e9d62") : QColor("#3478c7");
-    painter.setBrush(background);
-    painter.setPen(Qt::NoPen);
-    painter.drawRoundedRect(QRectF(0, 0, 18, 18), 3, 3);
-    painter.setBrush(Qt::white);
-    if (type == WORKFLOW_NODE_TRIGGER) {
-        QPolygonF bolt;
-        bolt << QPointF(10, 2) << QPointF(5, 10) << QPointF(9, 10)
-             << QPointF(7, 16) << QPointF(14, 7) << QPointF(10, 7);
-        painter.drawPolygon(bolt);
-    } else {
-        QPolygonF action;
-        action << QPointF(4, 9) << QPointF(10, 3) << QPointF(16, 9) << QPointF(10, 15);
-        painter.drawPolygon(action);
-    }
-    return QIcon(pixmap);
-}
-
 class EditorSidebar final : public QWidget {
 public:
     EditorSidebar(QWidget *parent, workflow_editor_sidebar_callbacks callbacks)
@@ -74,21 +49,16 @@ public:
         addRow->addWidget(addTrigger_);
         addRow->addWidget(addAction_);
         root->addLayout(addRow);
-
         auto *editRow1 = new QHBoxLayout;
         editRow1->setSpacing(4);
-        edit_ = button("Edit");
-        copy_ = button("Copy");
-        paste_ = button("Paste");
+        edit_ = button("Edit"); copy_ = button("Copy"); paste_ = button("Paste");
         editRow1->addWidget(edit_); editRow1->addWidget(copy_); editRow1->addWidget(paste_);
         root->addLayout(editRow1);
         auto *editRow2 = new QHBoxLayout;
         editRow2->setSpacing(4);
-        duplicate_ = button("Duplicate");
-        remove_ = button("Delete");
+        duplicate_ = button("Duplicate"); remove_ = button("Delete");
         editRow2->addWidget(duplicate_); editRow2->addWidget(remove_);
         root->addLayout(editRow2);
-
         auto *workflowTitle = new QLabel("WORKFLOW NODES", this);
         workflowTitle->setObjectName("heading");
         root->addWidget(workflowTitle);
@@ -97,7 +67,6 @@ public:
         root->addWidget(search_);
         workflowNodes_ = new QListWidget(this);
         root->addWidget(workflowNodes_, 1);
-
         connect(search_, &QLineEdit::textChanged, this, [this](const QString &text) { filterWorkflowNodes(text); });
         connect(workflowNodes_, &QListWidget::currentItemChanged, this, [this](QListWidgetItem *item) {
             if (item && callbacks_.select_node)
@@ -125,7 +94,7 @@ public:
         int selectedRow = -1;
         for (int i = 0; i < nodes.size(); ++i) {
             auto *node = nodes.at(i);
-            auto *item = new QListWidgetItem(nodeTypeIcon(node->workflowNode()->type), node->nodeName(), workflowNodes_);
+            auto *item = new QListWidgetItem(workflow_editor_sidebar_node_type_icon(node->workflowNode()->type), node->nodeName(), workflowNodes_);
             item->setData(Qt::UserRole, node->id());
             if (node == selected) selectedRow = i;
         }
