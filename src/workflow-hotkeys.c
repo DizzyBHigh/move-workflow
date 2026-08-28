@@ -1,6 +1,6 @@
 #include "workflow-hotkeys.h"
 #include "workflow-model.h"
-#include "workflow-engine-service.h"
+#include "workflow-persistence.h"
 #include "workflow-shortcuts.h"
 
 #include <obs-module.h>
@@ -35,9 +35,8 @@ static void redo_cb(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pre
     UNUSED_PARAMETER(data);
     UNUSED_PARAMETER(id);
     UNUSED_PARAMETER(hotkey);
-    if (!pressed)
-        return;
-    workflow_editor_redo_from_hotkey();
+    if (pressed)
+        workflow_editor_redo_from_hotkey();
 }
 
 static void register_shortcut(workflow_t *workflow, const char *source_id, const char *target_id)
@@ -71,7 +70,8 @@ void workflow_hotkeys_register(void)
     obs_hotkey_load_bindings(redo_hotkey_id, &combo, 1);
 
     binding_count = 0;
-    workflow_t *workflow = workflow_engine_service_current_workflow();
+    workflow_manager_t *manager = workflow_persistence_manager();
+    workflow_t *workflow = workflow_manager_selected(manager);
     if (!workflow)
         return;
 
