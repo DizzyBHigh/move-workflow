@@ -1,5 +1,6 @@
 #pragma once
 
+#include "workflow-engine-node-runtime.h"
 #include "workflow-model.h"
 
 #ifdef __cplusplus
@@ -18,6 +19,9 @@ bool workflow_engine_run_entries(workflow_engine_t *engine);
 bool workflow_engine_run_node(workflow_engine_t *engine, const char *node_id);
 bool workflow_engine_test_node(workflow_engine_t *engine, workflow_t *workflow, const char *node_id);
 bool workflow_engine_start_trigger(workflow_engine_t *engine, workflow_t *workflow, const char *node_id);
+bool workflow_engine_get_node_runtime(const workflow_engine_t *engine,
+                                      const char *workflow_id, const char *node_id,
+                                      workflow_engine_node_runtime_t *out);
 
 #ifdef __cplusplus
 }
