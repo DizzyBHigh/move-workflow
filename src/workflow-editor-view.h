@@ -3,6 +3,7 @@
 #include <QGraphicsView>
 
 class QLabel;
+class QTimer;
 
 class WorkflowGraphicsView final : public QGraphicsView {
 public:
@@ -24,6 +25,7 @@ private:
     void updateZoomLabel();
 
     QLabel *zoomLabel_ = nullptr;
+    QTimer *runtimeTimer_ = nullptr;
     bool panning_ = false;
     QPoint panStart_;
 };
