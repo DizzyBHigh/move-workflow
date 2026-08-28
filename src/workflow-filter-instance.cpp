@@ -18,12 +18,15 @@ static void apply_node_settings(obs_source_t *filter, const workflow_node_t *nod
         obs_data_set_bool(settings, "custom_duration", true);
         obs_data_set_int(settings, "duration", (long long)*duration_ms);
     }
+    obs_data_set_string(settings, "simultaneous_move", "");
+    obs_data_set_string(settings, "next_move", "");
+    obs_data_set_string(settings, "next_move_on", "move_end");
     if (node->start_trigger_mode == WORKFLOW_OVERRIDE &&
         strcmp(node->start_trigger_value, "Enable") == 0)
         obs_data_set_int(settings, "start_trigger", 5);
     obs_source_update(filter, settings);
     obs_data_release(settings);
-    workflow_debug_log("Move dispatch: configured native Move filter settings");
+    workflow_debug_log("Move dispatch: applied workflow execution overrides");
 }
 
 workflow_filter_instance *workflow_filter_instance_create(
