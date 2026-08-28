@@ -6,6 +6,7 @@
 #include "workflow-engine-runner-actions.h"
 #include "workflow-engine-runner-internal.h"
 
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 
@@ -17,6 +18,32 @@ struct continuation {
 };
 
 void workflow_engine_runner_continue(void *data);
+
+static int64_t now_ms(void)
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+static void set_phase(workflow_engine_state_t *state, workflow_node_t *node,
+                      workflow_engine_node_phase_t phase, uint64_t duration_ms)
+{
+    workflow_engine_node_runtime_t *runtime =
+        workflow_engine_state_node_runtime(state, node->id);
+    if (!runtime)
+        return;
+    runtime->phase = phase;
+    runtime->active = phase != WORKFLOW_NODE_PHASE_IDLE;
+    runtime->deadline_ms = now_ms() + (int64_t)duration_ms;
+}
+
+static void clear_phase(workflow_engine_state_t *state, workflow_node_t *node)
+{
+    workflow_engine_node_runtime_t *runtime =
+        workflow_engine_state_node_runtime(state, node->id);
+    if (runtime)
+        workflow_engine_node_runtime_reset(runtime);
+}
 
 static uint64_t delay_value(workflow_value_mode_t mode, uint64_t value)
 {
@@ -33,6 +60,12 @@ bool workflow_engine_runner_schedule_phase(workflow_engine_state_t *state, workf
     next->generation = state->generation;
     next->phase = phase;
     strncpy(next->node_id, node->id, WORKFLOW_MAX_NAME - 1);
+    if (phase == PHASE_START_DELAY)
+        set_phase(state, node, WORKFLOW_NODE_PHASE_START_DELAY, delay_ms);
+    else if (phase == PHASE_DURATION)
+        set_phase(state, node, WORKFLOW_NODE_PHASE_EXECUTION, delay_ms);
+    else if (phase == PHASE_END_DELAY)
+        set_phase(state, node, WORKFLOW_NODE_PHASE_END_DELAY, delay_ms);
     workflow_engine_state_delay_begin(state);
     workflow_debug_log("Action lifecycle: node='%s' scheduling %s for %llu ms",
                        node->id,
@@ -42,6 +75,7 @@ bool workflow_engine_runner_schedule_phase(workflow_engine_state_t *state, workf
                        (unsigned long long)delay_ms);
     if (!workflow_engine_delay_start(delay_ms, workflow_engine_runner_continue, next)) {
         workflow_engine_state_delay_end(state);
+        clear_phase(state, node);
         free(next);
         return false;
     }
@@ -58,17 +92,21 @@ void workflow_engine_runner_continue(void *data)
         if (node) {
             if (next->phase == PHASE_START_DELAY) {
                 workflow_debug_log("Action lifecycle: start delay complete node='%s'", node->id);
+                clear_phase(state, node);
                 workflow_engine_runner_run_node_now(state, node, 0);
             } else if (next->phase == PHASE_DURATION) {
                 workflow_debug_log("Action lifecycle: duration complete node='%s'", node->id);
                 const uint64_t end_delay = delay_value(node->end_delay.mode, node->end_delay.delay_ms);
-                if (!end_delay) workflow_engine_runner_run_next_links(state, node, 0);
-                else if (!workflow_engine_runner_schedule_phase(state, node, end_delay, PHASE_END_DELAY))
+                if (!end_delay) {
+                    clear_phase(state, node);
+                    workflow_engine_runner_run_next_links(state, node, 0);
+                } else if (!workflow_engine_runner_schedule_phase(state, node, end_delay, PHASE_END_DELAY))
                     workflow_engine_state_stop(state);
             } else {
                 workflow_debug_log("Action lifecycle: %s complete node='%s'",
                                    next->phase == PHASE_FAILED_END_DELAY ? "failed-action end delay" : "end delay",
                                    node->id);
+                clear_phase(state, node);
                 workflow_engine_runner_run_next_links(state, node, 0);
             }
         }
