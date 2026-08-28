@@ -1,4 +1,4 @@
-#include "workflow-runtime.h"
+#include "workflow-model.h"
 
 #define TEST_SCENE_NAME "obs-move-workflow test scene"
 
