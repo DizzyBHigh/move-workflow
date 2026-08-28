@@ -1,5 +1,6 @@
 #pragma once
 
+#include "workflow-engine-node-runtime.h"
 #include "workflow-model.h"
 
 #include <stdbool.h>
@@ -15,6 +16,7 @@ typedef struct workflow_engine_state {
     workflow_t *workflow;
     workflow_engine_run_t *owner_run;
     char current_node_id[WORKFLOW_MAX_NAME];
+    workflow_engine_node_runtime_t node_runtime[WORKFLOW_MAX_NODES];
     bool running;
     bool stopping;
     unsigned long generation;
@@ -27,6 +29,11 @@ void workflow_engine_state_stop(workflow_engine_state_t *state);
 bool workflow_engine_state_is_active(const workflow_engine_state_t *state);
 void workflow_engine_state_delay_begin(workflow_engine_state_t *state);
 void workflow_engine_state_delay_end(workflow_engine_state_t *state);
+
+workflow_engine_node_runtime_t *workflow_engine_state_node_runtime(
+    workflow_engine_state_t *state, const char *node_id);
+const workflow_engine_node_runtime_t *workflow_engine_state_node_runtime_const(
+    const workflow_engine_state_t *state, const char *node_id);
 
 #ifdef __cplusplus
 }
