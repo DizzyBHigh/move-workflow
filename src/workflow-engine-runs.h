@@ -7,8 +7,8 @@
 extern "C" {
 #endif
 
-typedef struct workflow_engine_run workflow_engine_run_t;
 typedef struct workflow_engine_runs workflow_engine_runs_t;
+
 workflow_engine_runs_t *workflow_engine_runs_create(void);
 void workflow_engine_runs_destroy(workflow_engine_runs_t *runs);
 workflow_engine_run_t *workflow_engine_runs_start(workflow_engine_runs_t *runs, workflow_t *workflow);
@@ -19,6 +19,8 @@ workflow_engine_run_t *workflow_engine_runs_head(workflow_engine_runs_t *runs);
 workflow_engine_run_t *workflow_engine_runs_current(workflow_engine_runs_t *runs);
 void workflow_engine_runs_stop_all(workflow_engine_runs_t *runs);
 bool workflow_engine_runs_any_active(const workflow_engine_runs_t *runs);
+void workflow_engine_run_retain(workflow_engine_run_t *run);
+void workflow_engine_run_release(workflow_engine_run_t *run);
 
 #ifdef __cplusplus
 }
