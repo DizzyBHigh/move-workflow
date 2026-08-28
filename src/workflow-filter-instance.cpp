@@ -32,7 +32,7 @@ static void apply_node_settings(obs_source_t *filter, const workflow_node_t *nod
             *restore_delay_ms = *workflow_duration_ms;
             obs_data_set_bool(settings, "custom_duration", true);
             obs_data_set_int(settings, "duration", (long long)*workflow_duration_ms);
-        } else if (*restore_delay_ms && *restore_delay_ms < *workflow_duration_ms) {
+        } else if (*restore_delay_ms < *workflow_duration_ms) {
             *restore_delay_ms = *workflow_duration_ms;
         }
     }
