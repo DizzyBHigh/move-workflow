@@ -28,7 +28,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-node-settings-trigger.cpp src/workflow-node-settings-trigger-data.cpp src/workflow-node-settings-common.h
   src/workflow-node-dialog.h src/workflow-node-timing-defaults.cpp src/workflow-node-timing-defaults.h src/workflow-clipboard.cpp src/workflow-clipboard.h
   src/workflow-persistence.cpp src/workflow-persistence.h src/workflow-persistence-json.cpp src/workflow-persistence-json.h src/workflow-export.cpp src/workflow-export.h src/workflow-import.cpp src/workflow-import.h
-  src/workflow-undo.cpp src/workflow-undo.h src/workflow-runtime.c src/workflow-runtime.h src/workflow-move-runtime.c src/workflow-move-runtime.h
+  src/workflow-undo.cpp src/workflow-undo.h src/workflow-move-runtime.c src/workflow-move-runtime.h
   src/workflow-shortcuts.c src/workflow-shortcuts.h src/workflow-test-data.c src/workflow-test-menu.c src/workflow-test-menu.h src/workflow-hotkeys.c src/workflow-hotkeys.h
   src/workflow-debug.h src/workflow-debug.cpp src/workflow-debug-ui.h src/workflow-debug-ui.cpp src/workflow-engine.h src/workflow-engine.cpp
   src/workflow-engine-state.h src/workflow-engine-state.cpp src/workflow-engine-node.h src/workflow-engine-node.cpp src/workflow-engine-delay.h src/workflow-engine-delay.cpp
