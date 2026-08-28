@@ -118,12 +118,19 @@ void EditorScene::connectActionToAction(NodeItem *source, NodeItem *target, cons
 {
     auto *wf = source->workflowNode();
     const QString id = target->id();
+    const size_t beforeSimultaneous = wf->simultaneous_node_count;
+    const size_t beforeNext = wf->next_node_count;
+    const size_t beforeShortcut = wf->shortcut_node_count;
     workflow_scene_utils::remove_id(wf->simultaneous_node_count, wf->simultaneous_node_ids, id);
     workflow_scene_utils::remove_id(wf->next_node_count, wf->next_node_ids, id);
     workflow_scene_utils::remove_id(wf->shortcut_node_count, wf->shortcut_node_ids, id);
     if (type == "Simultaneous") workflow_scene_utils::add_node_id(wf->simultaneous_node_count, wf->simultaneous_node_ids, id);
     else if (type == "Next") workflow_scene_utils::add_node_id(wf->next_node_count, wf->next_node_ids, id);
     else workflow_scene_utils::add_node_id(wf->shortcut_node_count, wf->shortcut_node_ids, id);
+    blog(LOG_INFO, "[Move Workflow] CONNECT: source=%s target=%s type=%s counts(before=%zu,%zu,%zu after=%zu,%zu,%zu)",
+         source->id().toUtf8().constData(), id.toUtf8().constData(), type.toUtf8().constData(),
+         beforeSimultaneous, beforeNext, beforeShortcut,
+         wf->simultaneous_node_count, wf->next_node_count, wf->shortcut_node_count);
 }
 
 void EditorScene::addRelationshipLines(NodeItem *from, size_t count, const char ids[][WORKFLOW_MAX_NAME], const QString &type)
