@@ -51,6 +51,7 @@ void EditorScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         dragPreview_->setPath(path); event->accept(); return;
     }
     QGraphicsScene::mouseMoveEvent(event);
+    updateConnections();
 }
 
 void EditorScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
@@ -59,6 +60,7 @@ void EditorScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         finishConnectionDrag(event->scenePos()); event->accept(); return;
     }
     QGraphicsScene::mouseReleaseEvent(event);
+    updateConnections();
 }
 
 void EditorScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
