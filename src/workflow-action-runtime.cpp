@@ -24,7 +24,7 @@ workflow_action_runtime_t *workflow_action_runtime_create(workflow_t *workflow,
                                                           uint64_t generation)
 {
     if (!workflow || !node || node->type != WORKFLOW_NODE_ACTION) return nullptr;
-    auto *runtime = (workflow_action_runtime_t *)calloc(1, sizeof(*runtime));
+    auto *runtime = (workflow_action_runtime_t *)calloc(1, sizeof(workflow_action_runtime_t));
     if (!runtime) return nullptr;
     runtime->workflow = workflow; runtime->node = node;
     runtime->state = WORKFLOW_ACTION_RUNTIME_WAIT_START_DELAY;
