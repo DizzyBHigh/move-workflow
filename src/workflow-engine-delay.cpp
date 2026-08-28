@@ -46,7 +46,8 @@ static void run_scheduler()
             pending.begin(), pending.end(), [](const auto *left, const auto *right) {
                 return left->due < right->due;
             });
-        if (condition.wait_until(lock, context->due, [] { return shutting_down; }))
+        condition.wait_until(lock, context->due);
+        if (shutting_down)
             break;
 
         auto it = std::find(pending.begin(), pending.end(), context);
