@@ -4,6 +4,7 @@
 #include "workflow-scene.h"
 
 #include <QGraphicsPathItem>
+#include <QGraphicsScene>
 #include <QPainterPath>
 #include <QLineF>
 #include <QtMath>
@@ -16,18 +17,15 @@ NodeItem *node_at(EditorScene *scene, const QPointF &scene_pos)
     if (!scene)
         return nullptr;
 
-    NodeItem *nearest = nullptr;
-    qreal nearestDistance = std::numeric_limits<qreal>::max();
-    for (NodeItem *node : scene->nodes()) {
-        if (!node || !node->contains(node->mapFromScene(scene_pos)))
-            continue;
-        const qreal distance = QLineF(node->sceneBoundingRect().center(), scene_pos).length();
-        if (distance < nearestDistance) {
-            nearestDistance = distance;
-            nearest = node;
+    const QList<QGraphicsItem *> items = scene->items(
+        scene_pos, Qt::IntersectsItemShape, Qt::DescendingOrder, QTransform());
+    for (QGraphicsItem *item : items) {
+        for (QGraphicsItem *candidate = item; candidate; candidate = candidate->parentItem()) {
+            if (auto *node = dynamic_cast<NodeItem *>(candidate))
+                return node;
         }
     }
-    return nearest;
+    return nullptr;
 }
 
 QString target_id(NodeItem *node)
@@ -58,7 +56,14 @@ void update_path(QGraphicsPathItem *line, NodeItem *from, NodeItem *to)
         return;
 
     const QPointF start = edgePoint(from, to->sceneBoundingRect().center());
-    const QPointF end = edgePoint(to, from->sceneBoundingRect().center());
+    const QPointF targetEdge = edgePoint(to, from->sceneBoundingRect().center());
+    const QPointF targetCenter = to->sceneBoundingRect().center();
+    const QLineF targetDirection(targetCenter, from->sceneBoundingRect().center());
+    const qreal length = targetDirection.length();
+    const QPointF direction = length > 0.0
+                                  ? QPointF(targetDirection.dx() / length, targetDirection.dy() / length)
+                                  : QPointF(1.0, 0.0);
+    const QPointF end = targetEdge + direction * 14.0;
     const qreal dx = end.x() - start.x();
     const qreal dy = end.y() - start.y();
     const QPointF control1 = start + QPointF(dx * 0.35, dy * 0.05);
