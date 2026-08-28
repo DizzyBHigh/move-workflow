@@ -9,7 +9,6 @@
 
 EditorScene::EditorScene(QObject *parent) : QGraphicsScene(parent)
 {
-    connect(this, &QGraphicsScene::changed, this, [this] { updateConnections(); });
 }
 
 NodeItem *EditorScene::addNode(workflow_node_type_t type, const QString &name)
