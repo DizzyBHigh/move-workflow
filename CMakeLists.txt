@@ -22,7 +22,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/plugin-main.c src/workflow-model.h
   src/workflow-manager.c src/workflow-manager.h src/workflow-manager-copy.c src/workflow-manager-copy.h
   src/workflow-manager-ui.cpp src/workflow-manager-ui.h src/workflow-workspace.cpp src/workflow-workspace.h
-  src/workflow-scene.cpp src/workflow-scene.h src/workflow-node.cpp src/workflow-node.h src/workflow-node-copy.c src/workflow-node-copy.h
+  src/workflow-scene.cpp src/workflow-scene.h src/workflow-scene-connections.cpp src/workflow-scene-events.cpp
+  src/workflow-scene-utils.cpp src/workflow-scene-utils.h src/workflow-node.cpp src/workflow-node.h src/workflow-node-copy.c src/workflow-node-copy.h
   src/workflow-node-duplicate-ui.cpp src/workflow-node-duplicate-ui.h src/workflow-node-settings.cpp src/workflow-node-settings.h
   src/workflow-node-settings-action.cpp src/workflow-node-settings-scene.cpp src/workflow-node-settings-scene.h
   src/workflow-node-settings-trigger.cpp src/workflow-node-settings-trigger-data.cpp src/workflow-node-settings-common.h
@@ -40,7 +41,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/move-workflow-editor.cpp src/move-workflow-editor.h src/workflow-editor-window.cpp src/workflow-editor-window.h
   src/workflow-editor-view.cpp src/workflow-editor-view.h src/workflow-action-list.cpp src/workflow-action-list.h
   src/workflow-editor-toolbar.cpp src/workflow-editor-toolbar.h src/workflow-editor-sidebar.cpp src/workflow-editor-sidebar.h
-  src/workflow-editor-properties.cpp src/workflow-editor-properties.h
+  src/workflow-editor-properties.cpp src/workflow-editor-properties.h src/workflow-editor-connections.cpp src/workflow-editor-connections.hpp
   src/workflow-connection-editor.cpp src/workflow-connection-editor.h
 )
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
