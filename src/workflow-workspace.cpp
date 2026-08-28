@@ -1,5 +1,6 @@
 #include "workflow-workspace.h"
 #include "workflow-manager-copy.h"
+#include "workflow-node-identity.hpp"
 #include "workflow-persistence.h"
 #include "workflow-scene.h"
 #include <QList>
@@ -62,6 +63,7 @@ void workflow_workspace_init(workflow_workspace_t *workspace, EditorScene *scene
     const workflow_manager_t *saved = workflow_persistence_manager();
     workflow_manager_init(&workspace->manager);
     if (saved && saved->workflow_count) workspace->manager = *saved;
+    workflow_manager_repair_node_ids(&workspace->manager);
     workspace->scene = scene; workspace->loaded_workflow_id[0] = '\0';
     if (!workspace->manager.workflow_count) {
         workflow_t *workflow = workflow_manager_create(&workspace->manager, "workflow_1", "New Workflow");
@@ -78,6 +80,7 @@ void workflow_workspace_sync_scene(workflow_workspace_t *workspace)
     if (!workspace || !workspace->scene || !workspace->loaded_workflow_id[0]) return;
     workflow_t *workflow = workflow_manager_find(&workspace->manager, workspace->loaded_workflow_id);
     copy_scene_to_workflow(workspace->scene, workflow);
+    workflow_manager_repair_node_ids(&workspace->manager);
     workflow_persistence_sync(&workspace->manager);
 }
 
