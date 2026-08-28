@@ -26,6 +26,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMetaObject>
+#include <QMouseEvent>
 #include <QPointer>
 #include <QShortcut>
 #include <QSplitter>
@@ -65,10 +66,10 @@ public:
     ~EditorWindow() override{beginShutdown();if(qApp)qApp->removeEventFilter(this);}
 public slots:void redoFromHotkey(){if(shuttingDown_)return;blog(LOG_INFO,"[Move Workflow] Ctrl+Y Qt slot reached.");redoWorkflow();}
     void prepareForShutdown(){beginShutdown();}
-protected:bool eventFilter(QObject *watched,QEvent *event)override{return QDialog::eventFilter(watched,event);}void keyPressEvent(QKeyEvent *event)override{QDialog::keyPressEvent(event);}
+protected:bool eventFilter(QObject *watched,QEvent *event)override{if(watched==view_&&event->type()==QEvent::MouseButtonRelease) scheduleSync();return QDialog::eventFilter(watched,event);}void keyPressEvent(QKeyEvent *event)override{QDialog::keyPressEvent(event);}
 private:
     void beginShutdown(){if(shuttingDown_)return;shuttingDown_=true;if(scene_)QObject::disconnect(scene_,nullptr,this,nullptr);}
-    void scheduleSync(){if(shuttingDown_||syncPending_||applyingUndoRedo_||syncingScene_)return;syncPending_=true;const auto generation=syncGeneration_;QTimer::singleShot(0,this,[this,generation]{if(shuttingDown_)return;syncPending_=false;if(applyingUndoRedo_||generation!=syncGeneration_)return;syncingScene_=true;workflow_workspace_sync_scene(&workspace_);syncingScene_=false;undo_.capture();updateButtonState();});}
+    void scheduleSync(){if(shuttingDown_||syncPending_||applyingUndoRedo_||syncingScene_)return;syncPending_=true;const auto generation=syncGeneration_;QTimer::singleShot(0,this,[this,generation]{if(shuttingDown_)return;syncPending_=false;if(applyingUndoRedo_||generation!=syncGeneration_)return;if(QApplication::mouseButtons()&Qt::LeftButton)return;syncingScene_=true;workflow_workspace_sync_scene(&workspace_);syncingScene_=false;undo_.capture();updateButtonState();});}
     void resetUndo(){if(applyingUndoRedo_)return;++syncGeneration_;syncPending_=false;undo_.reset(workflow_manager_selected(workflow_workspace_manager(&workspace_)),workflow_workspace_manager(&workspace_));}
     void syncLoadedSelection(){const auto *s=workflow_manager_selected_const(workflow_workspace_manager(&workspace_));if(s){std::strncpy(workspace_.loaded_workflow_id,s->id,WORKFLOW_MAX_NAME-1);workspace_.loaded_workflow_id[WORKFLOW_MAX_NAME-1]='\0';}else workspace_.loaded_workflow_id[0]='\0';}
     void refreshUi(){if(shuttingDown_)return;workflow_editor_toolbar_refresh(toolbar_);updateButtonState();}
