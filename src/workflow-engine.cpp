@@ -1,5 +1,6 @@
 #include "workflow-engine.h"
 #include "workflow-debug.h"
+#include "workflow-engine-delay.h"
 #include "workflow-engine-node.h"
 #include "workflow-engine-runner.h"
 #include "workflow-engine-runs.h"
@@ -26,6 +27,7 @@ void workflow_engine_destroy(workflow_engine_t *engine)
     if (!engine)
         return;
     workflow_engine_stop(engine);
+    workflow_engine_delay_shutdown();
     workflow_engine_runs_destroy(engine->runs);
     free(engine);
 }
