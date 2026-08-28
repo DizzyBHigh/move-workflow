@@ -1,6 +1,7 @@
 #include "workflow-scene.h"
 #include "workflow-connection-editor.h"
 #include "workflow-editor-connections.hpp"
+#include "workflow-node-identity.hpp"
 #include "workflow-scene-utils.h"
 
 #include <obs.h>
@@ -27,11 +28,9 @@ QGraphicsPathItem *EditorScene::connectionAt(const QPointF &scenePos) const
     QPainterPathStroker stroker;
     stroker.setWidth(12.0);
     for (auto it = connections_.crbegin(); it != connections_.crend(); ++it) {
-        if (!it->line)
-            continue;
+        if (!it->line) continue;
         const QPointF local = it->line->mapFromScene(scenePos);
-        if (stroker.createStroke(it->line->path()).contains(local))
-            return it->line;
+        if (stroker.createStroke(it->line->path()).contains(local)) return it->line;
     }
     return nullptr;
 }
@@ -68,11 +67,12 @@ NodeItem *EditorScene::nodeAt(const QPointF &scenePos) const
     return workflow_editor_connections::node_at(const_cast<EditorScene *>(this), scenePos);
 }
 
-NodeItem *EditorScene::findNodeById(const char *id) const
+NodeItem *EditorScene::findNodeById(const workflow_t *workflow, const char *id) const
 {
-    if (!id) return nullptr;
+    if (!workflow || !id || !workflow_node_belongs_to_workflow(workflow, id)) return nullptr;
     for (NodeItem *node : nodes_)
-        if (node && node->id() == QString::fromUtf8(id)) return node;
+        if (node && node->workflowNode() && node->workflowNode()->id[0] &&
+            strcmp(node->workflowNode()->id, id) == 0) return node;
     return nullptr;
 }
 
@@ -82,7 +82,8 @@ void EditorScene::finishConnectionDrag(const QPointF &scenePos)
     NodeItem *target = workflow_editor_connections::node_at(this, scenePos);
     if (dragPreview_) { removeItem(dragPreview_); delete dragPreview_; }
     dragPreview_ = nullptr; dragSource_ = nullptr; draggingConnection_ = false;
-    if (!source || !target || source == target) return;
+    if (!source || !target || source == target ||
+        source->workflowNode() != target->workflowNode()) return;
 
     blog(LOG_DEBUG, "[Move Workflow] Connection target: '%s' -> '%s' (%s)",
          source->id().toUtf8().constData(), target->id().toUtf8().constData(),
@@ -130,8 +131,10 @@ void EditorScene::connectActionToAction(NodeItem *source, NodeItem *target, cons
 
 void EditorScene::addRelationshipLines(NodeItem *from, size_t count, const char ids[][WORKFLOW_MAX_NAME], const QString &type)
 {
+    if (!from || !from->workflowNode()) return;
+    const workflow_t *workflow = from->workflowNode()->workflow;
     for (size_t i = 0; i < count; ++i) {
-        NodeItem *to = findNodeById(ids[i]);
+        NodeItem *to = findNodeById(workflow, ids[i]);
         if (!to || to == from) continue;
         auto *line = new QGraphicsPathItem;
         if (type == "Simultaneous") line->setPen(QPen(QColor(90, 190, 120), 2));
