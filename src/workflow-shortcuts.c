@@ -1,6 +1,6 @@
 #include "workflow-shortcuts.h"
 
-#include "workflow-runtime.h"
+#include "workflow-engine-service.h"
 
 #include <string.h>
 
@@ -48,8 +48,7 @@ bool workflow_shortcuts_accept(workflow_t *workflow, const char *source_id,
 
     pending_workflow = NULL;
     pending_source[0] = '\0';
-    workflow_runtime_execute_node_by_id(workflow, target_id);
-    return true;
+    return workflow_engine_service_test_node(workflow->id, target_id);
 }
 
 void workflow_shortcuts_cancel(void)
