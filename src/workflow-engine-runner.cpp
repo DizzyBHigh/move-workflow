@@ -16,6 +16,8 @@ struct continuation {
     continuation_phase phase;
 };
 
+void workflow_engine_runner_continue(void *data);
+
 static uint64_t delay_value(workflow_value_mode_t mode, uint64_t value)
 {
     return mode == WORKFLOW_OVERRIDE ? value : 0;
