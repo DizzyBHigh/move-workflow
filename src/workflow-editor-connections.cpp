@@ -8,7 +8,6 @@
 #include <QPainterPath>
 #include <QLineF>
 #include <QtMath>
-#include <limits>
 
 namespace workflow_editor_connections {
 
@@ -33,21 +32,16 @@ QString target_id(NodeItem *node)
     return node ? node->id() : QString();
 }
 
-static QPointF edgePoint(NodeItem *node, const QPointF &toward)
+static QPointF sourcePoint(NodeItem *node)
 {
     const QRectF rect = node->sceneBoundingRect();
-    const QPointF center = rect.center();
-    const qreal dx = toward.x() - center.x();
-    const qreal dy = toward.y() - center.y();
-    if (qFuzzyIsNull(dx) && qFuzzyIsNull(dy))
-        return center;
+    return QPointF(rect.center().x(), rect.bottom());
+}
 
-    const qreal tx = qFuzzyIsNull(dx) ? std::numeric_limits<qreal>::max()
-                                      : (rect.width() * 0.5) / qAbs(dx);
-    const qreal ty = qFuzzyIsNull(dy) ? std::numeric_limits<qreal>::max()
-                                      : (rect.height() * 0.5) / qAbs(dy);
-    const qreal scale = qMin(tx, ty);
-    return center + QPointF(dx * scale, dy * scale);
+static QPointF targetPoint(NodeItem *node)
+{
+    const QRectF rect = node->sceneBoundingRect();
+    return QPointF(rect.center().x(), rect.top());
 }
 
 void update_path(QGraphicsPathItem *line, NodeItem *from, NodeItem *to)
@@ -55,34 +49,30 @@ void update_path(QGraphicsPathItem *line, NodeItem *from, NodeItem *to)
     if (!line || !from || !to)
         return;
 
-    const QPointF start = edgePoint(from, to->sceneBoundingRect().center());
-    const QPointF targetEdge = edgePoint(to, from->sceneBoundingRect().center());
-    const QPointF targetCenter = to->sceneBoundingRect().center();
-    const QLineF targetDirection(targetCenter, from->sceneBoundingRect().center());
-    const qreal length = targetDirection.length();
-    const QPointF direction = length > 0.0
-                                  ? QPointF(targetDirection.dx() / length, targetDirection.dy() / length)
-                                  : QPointF(1.0, 0.0);
-    const QPointF end = targetEdge + direction * 14.0;
-    const qreal dx = end.x() - start.x();
-    const qreal dy = end.y() - start.y();
-    const QPointF control1 = start + QPointF(dx * 0.35, dy * 0.05);
-    const QPointF control2 = end - QPointF(dx * 0.35, dy * 0.05);
-    QPainterPath path(start);
-    path.cubicTo(control1, control2, end);
+    const QPointF start = sourcePoint(from);
+    const QPointF target = targetPoint(to);
+    const qreal direction = target.y() >= start.y() ? 1.0 : -1.0;
+    const qreal distance = qAbs(target.y() - start.y());
+    const qreal curve = qMax(40.0, distance * 0.35);
+    const QPointF control1 = start + QPointF(0.0, direction * curve);
+    const QPointF control2 = target - QPointF(0.0, direction * curve);
 
-    const qreal angle = qAtan2(end.y() - control2.y(), end.x() - control2.x());
+    QPainterPath path(start);
+    path.cubicTo(control1, control2, target);
+
+    const qreal angle = qAtan2(target.y() - control2.y(), target.x() - control2.x());
     const qreal size = 12.0;
-    const QPointF left(end.x() - qCos(angle - M_PI / 6.0) * size,
-                       end.y() - qSin(angle - M_PI / 6.0) * size);
-    const QPointF right(end.x() - qCos(angle + M_PI / 6.0) * size,
-                        end.y() - qSin(angle + M_PI / 6.0) * size);
+    const QPointF left(target.x() - qCos(angle - M_PI / 6.0) * size,
+                       target.y() - qSin(angle - M_PI / 6.0) * size);
+    const QPointF right(target.x() - qCos(angle + M_PI / 6.0) * size,
+                        target.y() - qSin(angle + M_PI / 6.0) * size);
     QPainterPath arrow;
-    arrow.moveTo(end);
+    arrow.moveTo(target);
     arrow.lineTo(left);
     arrow.lineTo(right);
     arrow.closeSubpath();
     path.addPath(arrow);
+
     line->setBrush(line->pen().color());
     line->setPath(path);
 }
