@@ -81,18 +81,23 @@ void NodeItem::paint(QPainter *p, const QStyleOptionGraphicsItem *o, QWidget *w)
     const QRectF r(rect().left(),rect().bottom()-dragBarHeight,rect().width(),dragBarHeight);
     p->setPen(Qt::NoPen); p->setBrush(node_.workflow.type==WORKFLOW_NODE_TRIGGER?QColor(48,174,76):QColor(47,122,190)); p->drawRect(r);
     workflow_engine_node_runtime_t runtime{};
-    if (node_.workflow.type == WORKFLOW_NODE_ACTION && !workflowId_.isEmpty() &&
-        workflow_engine_service_node_runtime(workflowId_.toUtf8().constData(), node_.workflow.id, &runtime)) {
-        const qreal h = 24.0;
-        const QRectF status(rect().left(), rect().bottom() - dragBarHeight - h, rect().width(), h);
+    const bool active = node_.workflow.type == WORKFLOW_NODE_ACTION && !workflowId_.isEmpty() &&
+        workflow_engine_service_node_runtime(workflowId_.toUtf8().constData(), node_.workflow.id, &runtime);
+    if (active) {
+        type_->setVisible(false); details_->setVisible(false);
+        const QRectF body(rect().left()+2, rect().top()+42, rect().width()-4,
+                          rect().height()-44-dragBarHeight);
+        p->setPen(Qt::NoPen); p->setBrush(QColor(29,39,49)); p->drawRect(body);
         const int64_t remaining = workflow_engine_node_runtime_remaining_ms(&runtime, runtime_now_ms());
         const QString phase = runtime.phase == WORKFLOW_NODE_PHASE_START_DELAY ? "START DELAY" :
                               runtime.phase == WORKFLOW_NODE_PHASE_EXECUTION ? "EXECUTION" : "END DELAY";
-        p->setPen(Qt::NoPen); p->setBrush(QColor(36,45,54)); p->drawRect(status);
-        p->setPen(QColor(225,230,235)); p->setFont(QFont(QStringLiteral("Segoe UI"), 9, QFont::DemiBold));
-        p->drawText(status.adjusted(10,0,-10,0), Qt::AlignVCenter | Qt::AlignLeft, phase);
-        p->drawText(status.adjusted(10,0,-10,0), Qt::AlignVCenter | Qt::AlignRight,
+        p->setPen(QColor(220,225,230)); p->setFont(QFont(QStringLiteral("Segoe UI"), 12, QFont::DemiBold));
+        p->drawText(body.adjusted(14,20,-14,-38), Qt::AlignCenter, phase);
+        p->setFont(QFont(QStringLiteral("Segoe UI"), 28, QFont::Normal));
+        p->drawText(body.adjusted(14,48,-14,-8), Qt::AlignCenter,
                     QString::number(remaining / 1000.0, 'f', 1) + " s");
+    } else {
+        type_->setVisible(true); details_->setVisible(true);
     }
 }
 
