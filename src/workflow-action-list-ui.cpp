@@ -8,14 +8,6 @@
 #include <QVBoxLayout>
 
 namespace {
-bool contains_id(const QStringList &ids, const QString &id)
-{
-    for (const QString &existing : ids)
-        if (existing.compare(id, Qt::CaseInsensitive) == 0)
-            return true;
-    return false;
-}
-
 NodeItem *find_id(const QList<NodeItem *> &nodes, const QString &id)
 {
     for (NodeItem *node : nodes)
@@ -57,9 +49,11 @@ NodeItem *workflow_action_list_find_match(const QList<NodeItem *> &nodes,
     return nullptr;
 }
 
-void workflow_action_list_rebuild_rows(QVBoxLayout *layout,
-                                       const QList<NodeItem *> &nodes,
-                                       const QStringList &attached_ids)
+void workflow_action_list_rebuild_rows(
+    QVBoxLayout *layout,
+    const QList<NodeItem *> &nodes,
+    const QStringList &attached_ids,
+    const std::function<void(const QString &)> &remove_callback)
 {
     if (!layout)
         return;
@@ -89,5 +83,7 @@ void workflow_action_list_rebuild_rows(QVBoxLayout *layout,
         remove_button->setToolTip("Remove this action");
         row_layout->addWidget(remove_button);
         layout->addWidget(row);
+        QObject::connect(remove_button, &QPushButton::clicked, row,
+                         [remove_callback, id] { remove_callback(id); });
     }
 }
