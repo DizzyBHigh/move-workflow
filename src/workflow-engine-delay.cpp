@@ -46,7 +46,9 @@ static void run_scheduler()
             pending.begin(), pending.end(), [](const auto *left, const auto *right) {
                 return left->due < right->due;
             });
-        condition.wait_until(lock, context->due);
+
+        if (condition.wait_until(lock, context->due) != std::cv_status::timeout)
+            continue;
         if (shutting_down)
             break;
 
