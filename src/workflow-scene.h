@@ -12,7 +12,6 @@ class EditorScene final : public QGraphicsScene {
 
 public:
     explicit EditorScene(QObject *parent = nullptr);
-
     NodeItem *addNode(workflow_node_type_t type, const QString &name);
     NodeItem *selectedNode() const;
     QList<NodeItem *> selectedNodes() const;
@@ -37,7 +36,7 @@ protected:
 
 private:
     struct Connection { NodeItem *from = nullptr; NodeItem *to = nullptr; QGraphicsPathItem *line = nullptr; QString type; };
-    NodeItem *findNodeById(const char *id) const;
+    NodeItem *findNodeById(const workflow_t *workflow, const char *id) const;
     NodeItem *nodeAt(const QPointF &scenePos) const;
     QGraphicsPathItem *connectionAt(const QPointF &scenePos) const;
     Connection *findConnection(QGraphicsPathItem *line);
