@@ -36,7 +36,7 @@ protected:
 
 private:
     struct Connection { NodeItem *from = nullptr; NodeItem *to = nullptr; QGraphicsPathItem *line = nullptr; QString type; };
-    NodeItem *findNodeById(const workflow_t *workflow, const char *id) const;
+    NodeItem *findNodeById(const char *id) const;
     NodeItem *nodeAt(const QPointF &scenePos) const;
     QGraphicsPathItem *connectionAt(const QPointF &scenePos) const;
     Connection *findConnection(QGraphicsPathItem *line);
