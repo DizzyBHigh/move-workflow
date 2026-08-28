@@ -14,6 +14,8 @@ void workflow_engine_state_reset(workflow_engine_state_t *state)
     state->running = running;
     state->generation = generation;
     state->owner_run = owner_run;
+    for (size_t i = 0; i < WORKFLOW_MAX_NODES; ++i)
+        workflow_engine_node_runtime_reset(&state->node_runtime[i]);
 }
 
 void workflow_engine_state_begin(workflow_engine_state_t *state, workflow_t *workflow)
@@ -60,4 +62,32 @@ void workflow_engine_state_delay_end(workflow_engine_state_t *state)
         workflow_engine_state_stop(state);
     if (owner_run)
         workflow_engine_run_release(owner_run);
+}
+
+workflow_engine_node_runtime_t *workflow_engine_state_node_runtime(
+    workflow_engine_state_t *state, const char *node_id)
+{
+    if (!state || !node_id || !*node_id)
+        return nullptr;
+    for (size_t i = 0; i < WORKFLOW_MAX_NODES; ++i)
+        if (!strcmp(state->node_runtime[i].node_id, node_id))
+            return &state->node_runtime[i];
+    for (size_t i = 0; i < WORKFLOW_MAX_NODES; ++i)
+        if (!state->node_runtime[i].node_id[0]) {
+            strncpy(state->node_runtime[i].node_id, node_id,
+                    sizeof(state->node_runtime[i].node_id) - 1);
+            return &state->node_runtime[i];
+        }
+    return nullptr;
+}
+
+const workflow_engine_node_runtime_t *workflow_engine_state_node_runtime_const(
+    const workflow_engine_state_t *state, const char *node_id)
+{
+    if (!state || !node_id || !*node_id)
+        return nullptr;
+    for (size_t i = 0; i < WORKFLOW_MAX_NODES; ++i)
+        if (!strcmp(state->node_runtime[i].node_id, node_id))
+            return &state->node_runtime[i];
+    return nullptr;
 }
