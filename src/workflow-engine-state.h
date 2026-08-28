@@ -9,8 +9,11 @@
 extern "C" {
 #endif
 
+typedef struct workflow_engine_run workflow_engine_run_t;
+
 typedef struct workflow_engine_state {
     workflow_t *workflow;
+    workflow_engine_run_t *owner_run;
     char current_node_id[WORKFLOW_MAX_NAME];
     bool running;
     bool stopping;
