@@ -33,7 +33,6 @@ void workflow_engine_state_stop(workflow_engine_state_t *state)
         return;
     state->stopping = true;
     state->running = false;
-    state->pending_branches = 0;
     state->generation++;
 }
 
