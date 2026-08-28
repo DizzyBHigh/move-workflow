@@ -25,3 +25,7 @@ bool workflow_engine_runner_run_internal(workflow_engine_state_t *state,
 bool workflow_engine_runner_run_node_now(workflow_engine_state_t *state,
                                          workflow_node_t *node,
                                          size_t depth);
+
+bool workflow_engine_runner_run_next_links(workflow_engine_state_t *state,
+                                           workflow_node_t *node,
+                                           size_t depth);
