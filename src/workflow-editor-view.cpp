@@ -16,7 +16,7 @@ WorkflowGraphicsView::WorkflowGraphicsView(QGraphicsScene *scene, QWidget *paren
     setBackgroundBrush(QColor(10,16,22)); setFrameShape(QFrame::NoFrame);
     setStyleSheet("QGraphicsView{background:#0a1016;border:0;} QScrollBar:vertical,QScrollBar:horizontal{background:#0e151c;border:0;} QScrollBar::handle:vertical,QScrollBar::handle:horizontal{background:#2b3946;border-radius:4px;min-height:24px;min-width:24px;} QScrollBar::handle:hover{background:#3c5062;} QScrollBar::add-line,QScrollBar::sub-line{background:none;border:0;}");
     runtimeTimer_ = new QTimer(this);
-    connect(runtimeTimer_, &QTimer::timeout, this, [this]() { if (this->scene()) this->scene()->update(); });
+    connect(runtimeTimer_, &QTimer::timeout, this, [this]() { viewport()->update(); });
     runtimeTimer_->start(50);
 }
 
