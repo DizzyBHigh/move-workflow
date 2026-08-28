@@ -54,6 +54,17 @@ void set_loaded_id(workflow_workspace_t *workspace, const char *id)
     std::strncpy(workspace->loaded_workflow_id, id ? id : "", WORKFLOW_MAX_NAME - 1);
     workspace->loaded_workflow_id[WORKFLOW_MAX_NAME - 1] = '\0';
 }
+void ensure_scene_node_ids(workflow_workspace_t *workspace)
+{
+    if (!workspace || !workspace->scene) return;
+    QList<NodeItem *> nodes = workspace->scene->nodes();
+    for (NodeItem *item : nodes) {
+        if (!item) continue;
+        workflow_node_t *node = item->workflowNode();
+        if (!node->id[0])
+            workflow_manager_generate_node_id(&workspace->manager, node->id, sizeof(node->id));
+    }
+}
 }
 
 void workflow_workspace_init(workflow_workspace_t *workspace, EditorScene *scene)
@@ -78,6 +89,7 @@ void workflow_workspace_init(workflow_workspace_t *workspace, EditorScene *scene
 void workflow_workspace_sync_scene(workflow_workspace_t *workspace)
 {
     if (!workspace || !workspace->scene || !workspace->loaded_workflow_id[0]) return;
+    ensure_scene_node_ids(workspace);
     workflow_t *workflow = workflow_manager_find(&workspace->manager, workspace->loaded_workflow_id);
     copy_scene_to_workflow(workspace->scene, workflow);
     workflow_manager_repair_node_ids(&workspace->manager);
@@ -126,6 +138,11 @@ bool workflow_workspace_duplicate(workflow_workspace_t *workspace, const char *n
 }
 
 workflow_manager_t *workflow_workspace_manager(workflow_workspace_t *workspace)
+{
+    return workspace ? &workspace->manager : nullptr;
+}
+
+const workflow_manager_t *workflow_workspace_manager_const(const workflow_workspace_t *workspace)
 {
     return workspace ? &workspace->manager : nullptr;
 }
