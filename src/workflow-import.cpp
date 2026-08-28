@@ -52,7 +52,10 @@ bool workflow_import_file(workflow_manager_t *manager, const char *path)
     make_copy_name(manager, workflow);
     if (!workflow->id[0] || !workflow->name[0] || !workflow_manager_node_ids_unique(imported.get()))
         return false;
+
     manager->workflows[manager->workflow_count++] = *workflow;
+    workflow_manager_repair_node_ids(manager);
+    if (!workflow_manager_node_ids_unique(manager)) return false;
     workflow_manager_set_selected(manager, workflow->id);
     blog(LOG_INFO, "[Move Workflow] Imported workflow '%s'", workflow->name);
     return true;
