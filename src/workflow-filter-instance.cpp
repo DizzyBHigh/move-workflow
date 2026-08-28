@@ -18,13 +18,12 @@ static void apply_node_settings(obs_source_t *filter, const workflow_node_t *nod
         obs_data_set_bool(settings, "custom_duration", true);
         obs_data_set_int(settings, "duration", (long long)*duration_ms);
     }
-    obs_data_set_string(settings, "simultaneous_move", "");
-    obs_data_set_string(settings, "next_move", "");
-    obs_data_set_string(settings, "next_move_on", "move_end");
-    obs_data_set_int(settings, "start_trigger", 5);
+    if (node->start_trigger_mode == WORKFLOW_OVERRIDE &&
+        strcmp(node->start_trigger_value, "Enable") == 0)
+        obs_data_set_int(settings, "start_trigger", 5);
     obs_source_update(filter, settings);
     obs_data_release(settings);
-    workflow_debug_log("Move dispatch: using original filter with native ENABLE trigger");
+    workflow_debug_log("Move dispatch: configured native Move filter settings");
 }
 
 workflow_filter_instance *workflow_filter_instance_create(
@@ -44,14 +43,15 @@ workflow_filter_instance *workflow_filter_instance_create(
     return result;
 }
 
-bool workflow_filter_instance_execute(workflow_filter_instance *instance)
+workflow_filter_instance *workflow_filter_instance_execute(workflow_filter_instance *instance)
 {
     if (!instance || !instance->instance)
-        return false;
+        return nullptr;
+    obs_source_set_enabled(instance->instance, false);
     obs_source_set_enabled(instance->instance, true);
-    workflow_debug_log("Filter instance: enabled native Move filter '%s'",
+    workflow_debug_log("Filter instance: re-enabled native Move filter '%s'",
                        obs_source_get_name(instance->instance));
-    return true;
+    return instance;
 }
 
 void workflow_filter_instance_destroy(workflow_filter_instance *instance)
