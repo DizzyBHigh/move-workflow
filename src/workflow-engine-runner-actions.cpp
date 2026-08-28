@@ -2,6 +2,7 @@
 
 #include "workflow-action-runtime.h"
 #include "workflow-debug.h"
+#include "workflow-engine-node.h"
 #include "workflow-engine-runner-internal.h"
 
 static bool run_simultaneous(workflow_engine_state_t *state, workflow_node_t *node, size_t depth)
