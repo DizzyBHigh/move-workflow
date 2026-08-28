@@ -3,6 +3,7 @@
 #include "workflow-editor-connections.hpp"
 #include "workflow-scene-utils.h"
 
+#include <obs.h>
 #include <QMessageBox>
 #include <QPainterPath>
 #include <QPen>
@@ -83,6 +84,10 @@ void EditorScene::finishConnectionDrag(const QPointF &scenePos)
     dragPreview_ = nullptr; dragSource_ = nullptr; draggingConnection_ = false;
     if (!source || !target || source == target) return;
 
+    blog(LOG_DEBUG, "[Move Workflow] Connection target: '%s' -> '%s' (%s)",
+         source->id().toUtf8().constData(), target->id().toUtf8().constData(),
+         target->nodeName().toUtf8().constData());
+
     const auto sourceType = source->workflowNode()->type;
     const auto targetType = target->workflowNode()->type;
     if (sourceType == WORKFLOW_NODE_ACTION && targetType == WORKFLOW_NODE_ACTION) {
@@ -132,6 +137,7 @@ void EditorScene::addRelationshipLines(NodeItem *from, size_t count, const char 
         if (type == "Simultaneous") line->setPen(QPen(QColor(90, 190, 120), 2));
         else if (type == "Next Action") line->setPen(QPen(QColor(230, 170, 70), 2));
         else line->setPen(QPen(QColor(180, 120, 220), 2));
+        line->setBrush(line->pen().color());
         line->setZValue(-1); addItem(line); connections_.push_back({from, to, line, type});
     }
 }
