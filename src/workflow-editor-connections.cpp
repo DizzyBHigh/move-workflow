@@ -7,6 +7,7 @@
 #include <QGraphicsScene>
 #include <QPainterPath>
 #include <QLineF>
+#include <QtMath>
 
 namespace workflow_editor_connections {
 
@@ -31,28 +32,21 @@ QString target_id(NodeItem *node)
     return node ? node->id() : QString();
 }
 
-static QPointF sourcePoint(NodeItem *node)
+static QPointF edgePoint(NodeItem *node, const QPointF &other)
 {
     const QRectF rect = node->sceneBoundingRect();
-    return QPointF(rect.center().x(), rect.bottom());
+    const QPointF center = rect.center();
+    const qreal dx = other.x() - center.x();
+    const qreal dy = other.y() - center.y();
+
+    if (qAbs(dx) > qAbs(dy))
+        return QPointF(dx >= 0 ? rect.right() : rect.left(), center.y());
+    return QPointF(center.x(), dy >= 0 ? rect.bottom() : rect.top());
 }
 
-static QPointF targetPoint(NodeItem *node)
+static void addPort(QPainterPath &path, const QPointF &point)
 {
-    const QRectF rect = node->sceneBoundingRect();
-    return QPointF(rect.center().x(), rect.top());
-}
-
-static void addArrow(QPainterPath &path, const QPointF &tip, const QPointF &direction)
-{
-    const QPointF side(-direction.y(), direction.x());
-    const qreal length = 8.0;
-    const qreal width = 4.0;
-    const QPointF base = tip - direction * length;
-
-    path.moveTo(base + side * width);
-    path.lineTo(tip);
-    path.lineTo(base - side * width);
+    path.addEllipse(point, 3.0, 3.0);
 }
 
 void update_path(QGraphicsPathItem *line, NodeItem *from, NodeItem *to)
@@ -60,40 +54,43 @@ void update_path(QGraphicsPathItem *line, NodeItem *from, NodeItem *to)
     if (!line || !from || !to)
         return;
 
-    const QPointF start = sourcePoint(from);
-    const QPointF target = targetPoint(to);
+    const QRectF fromRect = from->sceneBoundingRect();
+    const QRectF toRect = to->sceneBoundingRect();
+    const QPointF start = edgePoint(from, toRect.center());
+    const QPointF target = edgePoint(to, fromRect.center());
+
+    const bool horizontal = qAbs(toRect.center().x() - fromRect.center().x()) >
+                            qAbs(toRect.center().y() - fromRect.center().y());
+    const qreal midX = (start.x() + target.x()) * 0.5;
     const qreal midY = (start.y() + target.y()) * 0.5;
-    const QPointF bendA(start.x(), midY);
-    const QPointF bendB(target.x(), midY);
-    const qreal firstLength = QLineF(start, bendA).length();
-    const qreal secondLength = QLineF(bendA, bendB).length();
-    const qreal thirdLength = QLineF(bendB, target).length();
-    const qreal halfway = (firstLength + secondLength + thirdLength) * 0.5;
 
     QPainterPath path(start);
-    path.lineTo(bendA);
-    path.lineTo(bendB);
+    if (horizontal) {
+        path.lineTo(QPointF(midX, start.y()));
+        path.lineTo(QPointF(midX, target.y()));
+    } else {
+        path.lineTo(QPointF(start.x(), midY));
+        path.lineTo(QPointF(target.x(), midY));
+    }
     path.lineTo(target);
 
-    QPointF arrowTip;
-    QPointF direction;
-    if (halfway <= firstLength && firstLength > 0.0) {
-        arrowTip = start + (bendA - start) * (halfway / firstLength);
-        direction = QPointF(0.0, 1.0);
-    } else if (halfway <= firstLength + secondLength && secondLength > 0.0) {
-        arrowTip = bendA + (bendB - bendA) *
-            ((halfway - firstLength) / secondLength);
-        direction = bendB.x() >= bendA.x() ? QPointF(1.0, 0.0) : QPointF(-1.0, 0.0);
-    } else if (thirdLength > 0.0) {
-        arrowTip = bendB + (target - bendB) *
-            ((halfway - firstLength - secondLength) / thirdLength);
-        direction = QPointF(0.0, 1.0);
-    } else {
-        arrowTip = start;
-        direction = QPointF(0.0, 1.0);
-    }
+    const QPointF arrowTip = horizontal ? QPointF(midX, start.y())
+                                        : QPointF(start.x(), midY);
+    const QPointF direction = horizontal
+        ? QPointF(target.x() >= start.x() ? 1.0 : -1.0, 0.0)
+        : QPointF(0.0, target.y() >= start.y() ? 1.0 : -1.0);
+    const QPointF side(-direction.y(), direction.x());
+    const qreal size = 7.0;
+    const qreal halfWidth = 4.0;
 
-    addArrow(path, arrowTip, direction);
+    QPainterPath arrow;
+    arrow.moveTo(arrowTip - direction * size + side * halfWidth);
+    arrow.lineTo(arrowTip);
+    arrow.lineTo(arrowTip - direction * size - side * halfWidth);
+    path.addPath(arrow);
+
+    addPort(path, start);
+    addPort(path, target);
     line->setBrush(Qt::NoBrush);
     line->setPath(path);
 }
