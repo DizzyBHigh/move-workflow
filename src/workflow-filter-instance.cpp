@@ -3,21 +3,40 @@
 #include "workflow-debug.h"
 #include "workflow-engine-delay.h"
 
+#include <obs-frontend-api.h>
 #include <cstdlib>
 #include <cstring>
 
 static void apply_node_settings(obs_source_t *filter, const workflow_node_t *node,
-                                uint64_t *duration_ms)
+                                uint64_t *workflow_duration_ms, uint64_t *restore_delay_ms)
 {
     obs_data_t *settings = obs_source_get_settings(filter);
     if (!settings)
         return;
-    *duration_ms = (uint64_t)obs_data_get_int(settings, "duration");
-    if (node->duration.mode == WORKFLOW_OVERRIDE) {
-        *duration_ms = node->duration.duration_ms;
-        obs_data_set_bool(settings, "custom_duration", true);
-        obs_data_set_int(settings, "duration", (long long)*duration_ms);
+
+    const uint64_t native_duration = (uint64_t)obs_data_get_int(settings, "duration");
+    *workflow_duration_ms = native_duration;
+    *restore_delay_ms = native_duration;
+
+    if (node->action.kind == WORKFLOW_MOVE_ACTION) {
+        const int duration_type = (int)obs_data_get_int(settings, "duration_type");
+        if (duration_type == 1)
+            *restore_delay_ms = (uint64_t)obs_frontend_get_transition_duration();
+        else if (duration_type == 2)
+            *restore_delay_ms = 0;
     }
+
+    if (node->duration.mode == WORKFLOW_OVERRIDE) {
+        *workflow_duration_ms = node->duration.duration_ms;
+        if (node->action.kind != WORKFLOW_MOVE_ACTION) {
+            *restore_delay_ms = *workflow_duration_ms;
+            obs_data_set_bool(settings, "custom_duration", true);
+            obs_data_set_int(settings, "duration", (long long)*workflow_duration_ms);
+        } else if (*restore_delay_ms && *restore_delay_ms < *workflow_duration_ms) {
+            *restore_delay_ms = *workflow_duration_ms;
+        }
+    }
+
     obs_data_set_string(settings, "simultaneous_move", "");
     obs_data_set_string(settings, "next_move", "");
     obs_data_set_string(settings, "next_move_on", "move_end");
@@ -149,14 +168,15 @@ bool workflow_filter_instance_execute_node(workflow_t *workflow, workflow_node_t
             obs_data_release(restore_settings);
         return false;
     }
-    uint64_t duration_ms = 0;
-    apply_node_settings(instance->instance, node, &duration_ms);
+    uint64_t workflow_duration_ms = 0;
+    uint64_t restore_delay_ms = 0;
+    apply_node_settings(instance->instance, node, &workflow_duration_ms, &restore_delay_ms);
     if (!workflow_filter_instance_execute(instance)) {
         if (restore_settings)
             obs_data_release(restore_settings);
         workflow_filter_instance_destroy(instance);
         return false;
     }
-    schedule_destroy(instance, restore_settings, duration_ms);
+    schedule_destroy(instance, restore_settings, restore_delay_ms);
     return true;
 }
