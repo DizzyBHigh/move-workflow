@@ -1,4 +1,5 @@
 #include "workflow-action-list.h"
+#include "workflow-action-list-ui.h"
 
 #include <QCompleter>
 #include <QHBoxLayout>
@@ -52,14 +53,7 @@ WorkflowActionList::WorkflowActionList(const QString &title, const QString &hint
     searchRow->addWidget(addButton);
     root->addLayout(searchRow);
     auto *completerModel = new QStringListModel(this);
-    QStringList actionNames;
-    for (NodeItem *node : nodes_) {
-        if (!node || node == current_ || node->workflowNode()->type != WORKFLOW_NODE_ACTION)
-            continue;
-        actionNames.append(node->nodeName());
-    }
-    actionNames.sort(Qt::CaseInsensitive);
-    completerModel->setStringList(actionNames);
+    completerModel->setStringList(workflow_action_list_names(nodes_, current_));
     auto *completer = new QCompleter(completerModel, search_);
     completer->setCaseSensitivity(Qt::CaseInsensitive);
     completer->setFilterMode(Qt::MatchContains);
@@ -93,43 +87,9 @@ void WorkflowActionList::apply(size_t &count, char ids[][WORKFLOW_MAX_NAME]) con
 
 void WorkflowActionList::rebuildAttachedList()
 {
-    if (!attachedLayout_)
-        return;
-    while (QLayoutItem *item = attachedLayout_->takeAt(0)) {
-        if (QWidget *widget = item->widget())
-            widget->deleteLater();
-        delete item;
-    }
-    if (attachedIds_.isEmpty()) {
-        auto *empty = new QLabel("No actions attached.", this);
-        empty->setStyleSheet("color: #888;");
-        attachedLayout_->addWidget(empty);
-        return;
-    }
-    for (const QString &id : attachedIds_) {
-        NodeItem *node = nullptr;
-        for (NodeItem *candidate : nodes_) {
-            if (candidate && candidate->id().compare(id, Qt::CaseInsensitive) == 0) {
-                node = candidate;
-                break;
-            }
-        }
-        const QString displayName = node ? node->nodeName() : id;
-        auto *row = new QWidget(this);
-        auto *rowLayout = new QHBoxLayout(row);
-        rowLayout->setContentsMargins(4, 2, 2, 2);
-        auto *label = new QLabel(displayName, row);
-        rowLayout->addWidget(label, 1);
-        auto *removeButton = new QPushButton("Remove", row);
-        removeButton->setStyleSheet(
-            "QPushButton { min-width: 76px; max-width: 76px; padding: 3px 8px; "
-            "text-align: center; }"
-        );
-        removeButton->setToolTip("Remove this action");
-        rowLayout->addWidget(removeButton);
-        attachedLayout_->addWidget(row);
-        connect(removeButton, &QPushButton::clicked, this, [this, id] { removeAction(id); });
-    }
+    workflow_action_list_rebuild_rows(
+        attachedLayout_, nodes_, attachedIds_,
+        [this](const QString &id) { removeAction(id); });
 }
 
 void WorkflowActionList::addAction()
@@ -139,26 +99,7 @@ void WorkflowActionList::addAction()
     const QString query = search_->text().trimmed();
     if (query.isEmpty())
         return;
-    NodeItem *match = nullptr;
-    for (NodeItem *node : nodes_) {
-        if (!node || node == current_ || node->workflowNode()->type != WORKFLOW_NODE_ACTION)
-            continue;
-        if (node->nodeName().compare(query, Qt::CaseInsensitive) == 0 ||
-            node->id().compare(query, Qt::CaseInsensitive) == 0) {
-            match = node;
-            break;
-        }
-    }
-    if (!match) {
-        for (NodeItem *node : nodes_) {
-            if (!node || node == current_ || node->workflowNode()->type != WORKFLOW_NODE_ACTION)
-                continue;
-            if (node->nodeName().contains(query, Qt::CaseInsensitive)) {
-                match = node;
-                break;
-            }
-        }
-    }
+    NodeItem *match = workflow_action_list_find_match(nodes_, current_, query);
     if (!match || contains_id(attachedIds_, match->id()) ||
         attachedIds_.size() >= (int)WORKFLOW_MAX_LINKS)
         return;
