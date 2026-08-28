@@ -32,7 +32,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-undo.cpp src/workflow-undo.h src/workflow-move-runtime.c src/workflow-move-runtime.h
   src/workflow-shortcuts.c src/workflow-shortcuts.h src/workflow-hotkeys.c src/workflow-hotkeys.h
   src/workflow-debug.h src/workflow-debug.cpp src/workflow-debug-ui.h src/workflow-debug-ui.cpp src/workflow-engine.h src/workflow-engine.cpp
-  src/workflow-engine-state.h src/workflow-engine-state.cpp src/workflow-engine-node.h src/workflow-engine-node.cpp src/workflow-engine-delay.h src/workflow-engine-delay.cpp
+  src/workflow-engine-state.h src/workflow-engine-state.cpp src/workflow-engine-node.h src/workflow-engine-node.cpp src/workflow-engine-node-runtime.h src/workflow-engine-node-runtime.cpp src/workflow-engine-delay.h src/workflow-engine-delay.cpp
   src/workflow-engine-runner.h src/workflow-engine-runner.cpp src/workflow-engine-runner-internal.h src/workflow-engine-runner-actions.h src/workflow-engine-runner-actions.cpp
   src/workflow-engine-runs.h src/workflow-engine-runs.cpp
   src/workflow-engine-service.h src/workflow-engine-service.cpp src/workflow-action-executor.hpp src/workflow-action-executor.cpp src/workflow-action-runtime.h src/workflow-action-runtime.cpp
