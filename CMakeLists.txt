@@ -41,7 +41,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-scene-trigger.h src/workflow-scene-trigger.cpp src/workflow-change-scene.h src/workflow-change-scene.cpp
   src/move-workflow-editor.cpp src/move-workflow-editor.h src/move-workflow-editor-panel.cpp src/move-workflow-editor-panel-ui.cpp src/move-workflow-editor-panel-ui.hpp
   src/workflow-editor-window.cpp src/workflow-editor-window.h
-  src/workflow-editor-view.cpp src/workflow-editor-view.h src/workflow-action-list.cpp src/workflow-action-list.h
+  src/workflow-editor-view.cpp src/workflow-editor-view.h src/workflow-action-list.cpp src/workflow-action-list.h src/workflow-action-list-ui.cpp src/workflow-action-list-ui.h
   src/workflow-editor-toolbar.cpp src/workflow-editor-toolbar.h src/workflow-editor-sidebar.cpp src/workflow-editor-sidebar.h
   src/workflow-editor-properties.cpp src/workflow-editor-properties.h src/workflow-editor-connections.cpp src/workflow-editor-connections.hpp
   src/workflow-connection-editor.cpp src/workflow-connection-editor.h
