@@ -51,25 +51,23 @@ void update_path(QGraphicsPathItem *line, NodeItem *from, NodeItem *to)
 
     const QPointF start = sourcePoint(from);
     const QPointF target = targetPoint(to);
-    const qreal direction = target.y() >= start.y() ? 1.0 : -1.0;
-    const qreal distance = qAbs(target.y() - start.y());
-    const qreal curve = qMax(40.0, distance * 0.35);
-    const QPointF control1 = start + QPointF(0.0, direction * curve);
-    const QPointF control2 = target - QPointF(0.0, direction * curve);
+    const qreal midY = (start.y() + target.y()) * 0.5;
+    const QPointF midStart(start.x(), midY);
+    const QPointF midTarget(target.x(), midY);
 
     QPainterPath path(start);
-    path.cubicTo(control1, control2, target);
+    path.lineTo(midStart);
+    path.lineTo(midTarget);
+    path.lineTo(target);
 
-    const qreal angle = qAtan2(target.y() - control2.y(), target.x() - control2.x());
-    const qreal size = 12.0;
-    const QPointF left(target.x() - qCos(angle - M_PI / 6.0) * size,
-                       target.y() - qSin(angle - M_PI / 6.0) * size);
-    const QPointF right(target.x() - qCos(angle + M_PI / 6.0) * size,
-                        target.y() - qSin(angle + M_PI / 6.0) * size);
+    const QPointF arrowTip = QPointF((midStart.x() + midTarget.x()) * 0.5, midY);
+    const qreal direction = midTarget.x() >= midStart.x() ? 1.0 : -1.0;
+    const qreal size = 7.0;
+    const qreal halfWidth = 4.0;
     QPainterPath arrow;
-    arrow.moveTo(target);
-    arrow.lineTo(left);
-    arrow.lineTo(right);
+    arrow.moveTo(arrowTip);
+    arrow.lineTo(arrowTip - QPointF(direction * size, halfWidth));
+    arrow.lineTo(arrowTip - QPointF(direction * size, -halfWidth));
     arrow.closeSubpath();
     path.addPath(arrow);
 
