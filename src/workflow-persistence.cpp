@@ -1,4 +1,5 @@
 #include "workflow-persistence.h"
+#include "workflow-node-identity.hpp"
 #include "workflow-persistence-json.h"
 #include <obs-module.h>
 #include <QDir>
@@ -42,10 +43,12 @@ void workflow_persistence_init(void)
         blog(LOG_WARNING, "[Move Workflow] Invalid workflow JSON: %s", error.errorString().toUtf8().constData());
         return;
     }
-    if (workflow_manager_from_json(&manager, doc.object()))
+    if (workflow_manager_from_json(&manager, doc.object())) {
+        workflow_manager_repair_node_ids(&manager);
         blog(LOG_INFO, "[Move Workflow] Loaded %zu workflows", manager.workflow_count);
-    else
+    } else {
         blog(LOG_WARNING, "[Move Workflow] Workflow JSON contained no workflows");
+    }
 }
 
 workflow_manager_t *workflow_persistence_manager(void)
