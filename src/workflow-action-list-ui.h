@@ -2,6 +2,7 @@
 
 #include <QList>
 #include <QStringList>
+#include <functional>
 
 class NodeItem;
 class QVBoxLayout;
@@ -13,6 +14,8 @@ NodeItem *workflow_action_list_find_match(const QList<NodeItem *> &nodes,
                                           NodeItem *current,
                                           const QString &query);
 
-void workflow_action_list_rebuild_rows(QVBoxLayout *layout,
-                                       const QList<NodeItem *> &nodes,
-                                       const QStringList &attached_ids);
+void workflow_action_list_rebuild_rows(
+    QVBoxLayout *layout,
+    const QList<NodeItem *> &nodes,
+    const QStringList &attached_ids,
+    const std::function<void(const QString &)> &remove_callback);
