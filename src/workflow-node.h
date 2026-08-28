@@ -1,9 +1,11 @@
 #pragma once
 
+#include "workflow-engine-node-runtime.h"
 #include "workflow-model.h"
 
 #include <QGraphicsRectItem>
 #include <QPointF>
+#include <QString>
 
 struct EditorNode {
     workflow_node_t workflow{};
@@ -19,6 +21,7 @@ public:
     QString nodeName() const;
     workflow_node_t *workflowNode();
     const workflow_node_t *workflowNode() const;
+    void setWorkflowId(const QString &workflowId);
 
     void refreshDisplay();
     bool isOnConnectionHandle(const QPointF &scenePos) const;
@@ -38,6 +41,7 @@ private:
     void refreshStyle();
 
     EditorNode node_;
+    QString workflowId_;
     QGraphicsTextItem *title_ = nullptr;
     QGraphicsTextItem *type_ = nullptr;
     QGraphicsTextItem *details_ = nullptr;
