@@ -35,6 +35,7 @@ QString NodeItem::id() const { return text(node_.workflow.id); }
 QString NodeItem::nodeName() const { return text(node_.workflow.name); }
 workflow_node_t *NodeItem::workflowNode() { return &node_.workflow; }
 const workflow_node_t *NodeItem::workflowNode() const { return &node_.workflow; }
+void NodeItem::setWorkflowId(const QString &workflowId) { workflowId_ = workflowId; update(); }
 
 void NodeItem::refreshDisplay()
 {
@@ -80,8 +81,8 @@ void NodeItem::paint(QPainter *p, const QStyleOptionGraphicsItem *o, QWidget *w)
     const QRectF r(rect().left(),rect().bottom()-dragBarHeight,rect().width(),dragBarHeight);
     p->setPen(Qt::NoPen); p->setBrush(node_.workflow.type==WORKFLOW_NODE_TRIGGER?QColor(48,174,76):QColor(47,122,190)); p->drawRect(r);
     workflow_engine_node_runtime_t runtime{};
-    if (node_.workflow.type == WORKFLOW_NODE_ACTION &&
-        workflow_engine_service_node_runtime(node_.workflow.workflow_id, node_.workflow.id, &runtime)) {
+    if (node_.workflow.type == WORKFLOW_NODE_ACTION && !workflowId_.isEmpty() &&
+        workflow_engine_service_node_runtime(workflowId_.toUtf8().constData(), node_.workflow.id, &runtime)) {
         const qreal h = 24.0;
         const QRectF status(rect().left(), rect().bottom() - dragBarHeight - h, rect().width(), h);
         const int64_t remaining = workflow_engine_node_runtime_remaining_ms(&runtime, runtime_now_ms());
