@@ -112,6 +112,12 @@ jobs:
           $ProductName = $BuildSpec.name
           $ProductVersion = $BuildSpec.version
 
+          if ( $Env:GITHUB_REF_TYPE -eq 'tag' ) {
+            $ProductVersion = $Env:GITHUB_REF_NAME
+            $BuildSpec.version = $ProductVersion
+            $BuildSpec | ConvertTo-Json -Depth 10 | Set-Content -Path buildspec.json
+          }
+
           "pluginName=${ProductName}" >> $env:GITHUB_OUTPUT
           "pluginVersion=${ProductVersion}" >> $env:GITHUB_OUTPUT
 
