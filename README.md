@@ -210,15 +210,8 @@ The workflow editor has a **Debug** checkbox. Enable it when you need more infor
 
 Debug logging can show trigger activation, node execution and decisions made by the workflow engine. This can help identify whether a trigger fired or whether an action target could not be found.
 
-## Notes for 1.0.0
-
-- Multiple actions can run at the same time.
-- An Action node remains active for its configured Duration.
-- End Delay is applied even when an action cannot find its target.
-- Workflow sequencing is controlled by node connections, not by [Move Transition](https://github.com/exeldro/obs-move-transition)'s Next Move or Simultaneous Move settings.
-- Easing is not implemented yet.
-
 ## Credits
+Move Workflow is a 3rd party plugin and is not affiliated with OBS Studio or Exeldro
 
 Move Workflow is built as a workflow layer around [Exeldro's Move Transition plugin](https://github.com/exeldro/obs-move-transition) and its existing Move filters.
 
