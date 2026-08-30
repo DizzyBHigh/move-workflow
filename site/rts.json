@@ -25,7 +25,7 @@
   "hero": {
     "kicker": "OBS STUDIO PLUGIN",
     "title": "OBS Move Workflow",
-    "intro": "Move Workflow adds a layer to [link:https://github.com/exeldro/obs-move-transition|[yellow:Exeldros's Move Transistion Plugin]] for OBS Studio.\n\nMove Transition defines the action, Move Workflow decides when it happens and what happens simultaneously andnext.\n\n"
+    "intro": "Move Workflow adds a layer to [[link:https://github.com/exeldro/obs-move-transition|[[yellow:Exeldros's Move Transistion Plugin]]]] for OBS Studio.\n\nMove Transition defines the action, Move Workflow decides when it happens and what happens simultaneously andnext.\n\n"
   },
   "features": [
     {
@@ -59,7 +59,7 @@
   ],
   "requirements": [
     "OBS Studio 31.x or a compatible version supported by the build.",
-    "[link:https://github.com/exeldro/obs-move-transition|Exeldro's Move Transition plugin for Move actions]."
+    "[[link:https://github.com/exeldro/obs-move-transition|Exeldro's Move Transition plugin for Move actions]]."
   ],
   "setup": {
     "title": "Get the plugin running.",
@@ -85,7 +85,7 @@
       {
         "number": "01.3",
         "title": "Install Move Transition",
-        "description": "Install Exeldro's [link:https://github.com/exeldro/obs-move-transition|Move Transition plugin]. This is a required plugin for Move actions to work properly."
+        "description": "Install Exeldro's [[link:https://github.com/exeldro/obs-move-transition|Move Transition plugin]]. This is a required plugin for Move actions to work properly."
       },
       {
         "number": "01.4",
