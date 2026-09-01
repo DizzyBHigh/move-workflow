@@ -1,61 +1,30 @@
 {
   "schemaVersion": 1,
-  "id": "obs-move-workflow",
-  "slug": "obs-move-workflow",
-  "category": "obs-plugin",
+  "id": "move-workflow",
+  "slug": "move-workflow",
+  "category": "other",
   "featured": true,
   "description": "Orchestrate and Direct your Move Transition filters in OBS Studio. Using the Workflow canvas you can create complex workflows that control the movement of your scenes and filters in real-time.",
   "version": "1.0.0",
   "author": "Your Name",
   "email": "your.email@example.com",
   "license": "MIT",
-  "dependencies": [
-    "obs-studio"
-  ],
-  "keywords": [
-    "OBS",
-    "Move Transition"
-  ],
-  "tags": [
-    "OBS Studio",
-    "Workflow",
-    "Automation",
-    "Move Transition"
-  ],
+  "dependencies": ["obs-studio"],
+  "keywords": ["OBS", "Move Transition"],
+  "tags": ["OBS Studio", "Workflow", "Automation", "Move Transition"],
   "hero": {
     "kicker": "OBS STUDIO PLUGIN",
     "title": "OBS Move Workflow",
     "intro": "Move Workflow adds a layer to [[link:https://github.com/exeldro/obs-move-transition|[[yellow:Exeldros's Move Transistion Plugin]]]] for OBS Studio.\n\nMove Transition defines the action, Move Workflow decides when it happens and what happens simultaneously andnext.\n\n"
   },
   "features": [
-    {
-      "title": "Visual workflow editor",
-      "description": "Build workflows by adding Trigger and Action nodes and connecting them together."
-    },
-    {
-      "title": "Move filter actions",
-      "description": "Run existing Move Action, Move Source, Move Source Swap and Move Value filters."
-    },
-    {
-      "title": "Scene changes",
-      "description": "Change the active OBS scene as part of a workflow."
-    },
-    {
-      "title": "Parallel actions",
-      "description": "Start several actions together or continue to the next action after timing completes."
-    },
-    {
-      "title": "Precise timing",
-      "description": "Use the existing filters timings or override the Start Delay, Duration and End Delay."
-    },
-    {
-      "title": "Persistent workflows",
-      "description": "Workflows are saved and restored when OBS starts."
-    },
-    {
-      "title": "Import and export",
-      "description": "Move workflows between installations using .obsworkflow.json files."
-    }
+    {"title": "Visual workflow editor", "description": "Build workflows by adding Trigger and Action nodes and connecting them together."},
+    {"title": "Move filter actions", "description": "Run existing Move Action, Move Source, Move Source Swap and Move Value filters."},
+    {"title": "Scene changes", "description": "Change the active OBS scene as part of a workflow."},
+    {"title": "Parallel actions", "description": "Start several actions together or continue to the next action after timing completes."},
+    {"title": "Precise timing", "description": "Use the existing filters timings or override the Start Delay, Duration and End Delay."},
+    {"title": "Persistent workflows", "description": "Workflows are saved and restored when OBS starts."},
+    {"title": "Import and export", "description": "Move workflows between installations using .obsworkflow.json files."}
   ],
   "requirements": [
     "OBS Studio 31.x or a compatible version supported by the build.",
@@ -66,37 +35,11 @@
     "intro": "Install the plugin, restart OBS, then open the workflow editor and create your first workflow.",
     "number": "01",
     "steps": [
-      {
-        "number": "01.1",
-        "title": "Download the plugin",
-        "description": "Download the Windows x64 package from the current release below." 
-      },
-      {
-        "number": "01.2",
-        "title": "Install the plugin",
-        "description": "Extract the downloaded ZIP and copy the plugin files into your OBS plugins directory.",
-        "images": [
-          {
-            "src": "images/Installation copy the bin folder to obs root.png",
-            "alt": "Copy the bin folder to your obs root directory."
-          }
-        ]
-      },
-      {
-        "number": "01.3",
-        "title": "Install Move Transition",
-        "description": "Install Exeldro's [[link:https://github.com/exeldro/obs-move-transition|Move Transition plugin]]. This is a required plugin for Move actions to work properly."
-      },
-      {
-        "number": "01.4",
-        "title": "Restart OBS",
-        "description": "Close and restart OBS Studio so the plugin is loaded."
-      },
-      {
-        "number": "01.5",
-        "title": "Open Move Workflow",
-        "description": "In OBS, open Tools > Move Workflow."
-      }
+      {"number": "01.1", "title": "Download the plugin", "description": "Download the Windows x64 package from the current release below."},
+      {"number": "01.2", "title": "Install the plugin", "description": "Extract the downloaded ZIP and copy the plugin files into your OBS plugins directory.", "images": [{"src": "images/Installation copy the bin folder to obs root.png", "alt": "Copy the bin folder to your obs root directory."}]},
+      {"number": "01.3", "title": "Install Move Transition", "description": "Install Exeldro's [[link:https://github.com/exeldro/obs-move-transition|Move Transition plugin]]. This is a required plugin for Move actions to work properly."},
+      {"number": "01.4", "title": "Restart OBS", "description": "Close and restart OBS Studio so the plugin is loaded."},
+      {"number": "01.5", "title": "Open Move Workflow", "description": "In OBS, open Tools > Move Workflow."}
     ]
   },
   "gettingStarted": {
@@ -104,46 +47,18 @@
     "intro": "Start using the workflow manager",
     "number": "01",
     "steps": [
-      {
-        "number": "01",
-        "title": "Create a workflow",
-        "description": "Open the workflow manager and create a workflow with a useful name."
-      },
-      {
-        "number": "02",
-        "title": "Add a Trigger node",
-        "description": "Add a Trigger node and give it a name that describes what it starts, such as Start Intro or Show Camera."
-      },
-      {
-        "number": "03",
-        "title": "Add Action nodes",
-        "description": "Add the Move or Change Scene actions you need. Configure the target and timing for each action."
-      },
-      {
-        "number": "04",
-        "title": "Connect the nodes",
-        "description": "Connect nodes to decide which actions run together and which action runs next."
-      },
-      {
-        "number": "05",
-        "title": "Add a Trigger Workflow filter",
-        "description": "Add a Trigger Workflow filter to an OBS source and select the workflow and Trigger node that should start it."
-      },
-      {
-        "number": "06",
-        "title": "Test the workflow",
-        "description": "Activate the trigger and check the OBS log or enable Debug in the workflow editor if you need more information."
-      }
+      {"number": "01", "title": "Create a workflow", "description": "Open the workflow manager and create a workflow with a useful name."},
+      {"number": "02", "title": "Add a Trigger node", "description": "Add a Trigger node and give it a name that describes what it starts, such as Start Intro or Show Camera."},
+      {"number": "03", "title": "Add Action nodes", "description": "Add the Move or Change Scene actions you need. Configure the target and timing for each action."},
+      {"number": "04", "title": "Connect the nodes", "description": "Connect nodes to decide which actions run together and which action runs next."},
+      {"number": "05", "title": "Add a Trigger Workflow filter", "description": "Add a Trigger Workflow filter to an OBS source and select the workflow and Trigger node that should start it."},
+      {"number": "06", "title": "Test the workflow", "description": "Activate the trigger and check the OBS log or enable Debug in the workflow editor if you need more information."}
     ]
   },
   "notes": [
     "Move Workflow does not replace Move Transition. Move Transition performs the actual Move operation; Move Workflow controls sequencing.",
     "Easing and Easing Function are shown in workflow data for future use but are not implemented in 1.0.0."
   ],
-  "links": {
-    "moveTransition": "https://github.com/exeldro/obs-move-transition"
-  },
-  "website": {
-    "footerLabel": "Keep the workflow moving."
-  }
+  "links": {"moveTransition": "https://github.com/exeldro/obs-move-transition"},
+  "website": {"footerLabel": "Keep the workflow moving."}
 }
