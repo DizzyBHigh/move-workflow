@@ -18,7 +18,7 @@
   "hero": {
     "kicker": "OBS STUDIO PLUGIN",
     "title": "Move Workflow",
-    "intro": "Move Workflow adds a layer to [[link:https://github.com/exeldro/obs-move-transition|[[yellow:Exeldros's Move Transistion Plugin]]]] for OBS Studio.\n\nMove Transition defines the action, Move Workflow decides when it happens and what happens simultaneously andnext.\n\n"
+    "intro": "Move Workflow adds a layer to [[link:https://github.com/exeldro/obs-move-transition|[[yellow:Exeldro's Move Transition Plugin]]]] for OBS Studio.\n\nMove Transition defines the action, Move Workflow decides when it happens, what happens simultaneously, and what happens next."
   },
   "features": [
     {"title": "Visual workflow editor", "description": "Build workflows by adding Trigger and Action nodes and connecting them together."},
@@ -60,7 +60,7 @@
   },
   "notes": [
     "Move Workflow does not replace Move Transition. Move Transition performs the actual Move operation; Move Workflow controls sequencing.",
-    "Easing and Easing Function are shown in workflow data for future use but are not implemented in 1.0.0."
+    "Easing and Easing Function are shown in workflow data for future use but are not implemented in 1.1.0."
   ],
   "links": {"moveTransition": "https://github.com/exeldro/obs-move-transition"},
   "website": {"footerLabel": "Keep the workflow moving."}
