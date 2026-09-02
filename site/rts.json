@@ -14,6 +14,7 @@
   "dependencies": ["obs-studio"],
   "keywords": ["OBS", "Move Transition"],
   "tags": ["OBS Studio", "Workflow", "Automation", "Move Transition"],
+  "publish": {"assets": "images"},
   "release": {"assets": "zip"},
   "hero": {
     "kicker": "OBS STUDIO PLUGIN",
@@ -39,7 +40,7 @@
     "number": "01",
     "steps": [
       {"number": "01.1", "title": "Download the plugin", "description": "Download the Windows x64 package from the current release below."},
-      {"number": "01.2", "title": "Install the plugin", "description": "Extract the downloaded ZIP and copy the plugin files into your OBS plugins directory.", "images": [{"src": "images/Installation copy the bin folder to obs root.png", "alt": "Copy the bin folder to your obs root directory."}]},
+      {"number": "01.2", "title": "Install the plugin", "description": "Extract the downloaded ZIP and copy the plugin files into your OBS plugins directory.", "images": [{"src": "assets/Installation copy the bin folder to obs root.png", "alt": "Copy the bin folder to your obs root directory."}]},
       {"number": "01.3", "title": "Install Move Transition", "description": "Install Exeldro's [[link:https://github.com/exeldro/obs-move-transition|Move Transition plugin]]. This is a required plugin for Move actions to work properly."},
       {"number": "01.4", "title": "Restart OBS", "description": "Close and restart OBS Studio so the plugin is loaded."},
       {"number": "01.5", "title": "Open Move Workflow", "description": "In OBS, open Tools > Move Workflow."}
