@@ -7,6 +7,7 @@
   "page": {"url": "/other-tools/move-workflow/"},
   "featured": true,
   "description": "Orchestrate and Direct your Move Transition filters in OBS Studio. Using the Workflow canvas you can create complex workflows that control the movement of your scenes and filters in real-time.",
+  "tags": ["OBS", "Plugin", "Move Transition", "Productivity"],
   "status": "released",
   "author": "DuhBuhHuh",
   "email": "dizzybhigh@gmail.com",
