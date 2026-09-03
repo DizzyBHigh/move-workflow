@@ -28,53 +28,24 @@ typedef enum workflow_easing_function {
     WORKFLOW_EASING_BACK = 10
 } workflow_easing_function_t;
 
-typedef struct workflow_trigger_filter_ref {
-    char source_uuid[WORKFLOW_MAX_NAME];
-    char filter_uuid[WORKFLOW_MAX_NAME];
-} workflow_trigger_filter_ref_t;
-
-typedef struct workflow_action_ref {
-    char scene_name[WORKFLOW_MAX_NAME];
-    char source_name[WORKFLOW_MAX_NAME];
-    char filter_name[WORKFLOW_MAX_NAME];
-    char filter_id[WORKFLOW_MAX_NAME];
-    workflow_move_kind_t kind;
-    workflow_scene_completion_t scene_completion;
-} workflow_action_ref_t;
+typedef struct workflow_trigger_filter_ref { char source_uuid[WORKFLOW_MAX_NAME]; char filter_uuid[WORKFLOW_MAX_NAME]; } workflow_trigger_filter_ref_t;
+typedef struct workflow_action_ref { char scene_name[WORKFLOW_MAX_NAME]; char source_name[WORKFLOW_MAX_NAME]; char filter_name[WORKFLOW_MAX_NAME]; char filter_id[WORKFLOW_MAX_NAME]; workflow_move_kind_t kind; workflow_scene_completion_t scene_completion; } workflow_action_ref_t;
 typedef struct workflow_duration_override { workflow_value_mode_t mode; uint64_t duration_ms; } workflow_duration_override_t;
 typedef struct workflow_delay_override { workflow_value_mode_t mode; uint64_t delay_ms; } workflow_delay_override_t;
+typedef struct workflow_easing_override { workflow_value_mode_t mode; workflow_easing_t easing; workflow_easing_function_t function; } workflow_easing_override_t;
 
 typedef struct workflow_node {
-    char id[WORKFLOW_MAX_NAME];
-    char name[WORKFLOW_MAX_NAME];
-    workflow_node_type_t type;
-    int position_x;
-    int position_y;
-    size_t trigger_count;
-    workflow_trigger_filter_ref_t triggers[WORKFLOW_MAX_TRIGGERS];
-    workflow_action_ref_t action;
-    workflow_duration_override_t duration;
-    workflow_delay_override_t start_delay;
-    workflow_delay_override_t end_delay;
-    workflow_easing_t easing;
-    workflow_easing_function_t easing_function;
-    workflow_value_mode_t simultaneous_actions_mode;
-    workflow_value_mode_t end_actions_mode;
-    workflow_value_mode_t next_actions_mode;
-    workflow_value_mode_t start_trigger_mode;
-    workflow_value_mode_t stop_trigger_mode;
-    workflow_value_mode_t next_move_on_mode;
-    char start_trigger_value[WORKFLOW_MAX_VALUE];
-    char stop_trigger_value[WORKFLOW_MAX_VALUE];
-    char next_move_on_value[WORKFLOW_MAX_VALUE];
-    size_t end_node_count;
-    char end_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
-    size_t simultaneous_node_count;
-    char simultaneous_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
-    size_t next_node_count;
-    char next_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
-    size_t shortcut_node_count;
-    char shortcut_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
+    char id[WORKFLOW_MAX_NAME]; char name[WORKFLOW_MAX_NAME]; workflow_node_type_t type; int position_x; int position_y;
+    size_t trigger_count; workflow_trigger_filter_ref_t triggers[WORKFLOW_MAX_TRIGGERS]; workflow_action_ref_t action;
+    workflow_duration_override_t duration; workflow_delay_override_t start_delay; workflow_delay_override_t end_delay;
+    workflow_easing_override_t easing;
+    workflow_value_mode_t simultaneous_actions_mode; workflow_value_mode_t end_actions_mode; workflow_value_mode_t next_actions_mode;
+    workflow_value_mode_t start_trigger_mode; workflow_value_mode_t stop_trigger_mode; workflow_value_mode_t next_move_on_mode;
+    char start_trigger_value[WORKFLOW_MAX_VALUE]; char stop_trigger_value[WORKFLOW_MAX_VALUE]; char next_move_on_value[WORKFLOW_MAX_VALUE];
+    size_t end_node_count; char end_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
+    size_t simultaneous_node_count; char simultaneous_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
+    size_t next_node_count; char next_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
+    size_t shortcut_node_count; char shortcut_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
 } workflow_node_t;
 
 typedef struct workflow { char id[WORKFLOW_MAX_NAME]; char name[WORKFLOW_MAX_NAME]; bool enabled; size_t entry_node_count; char entry_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME]; size_t node_count; workflow_node_t nodes[WORKFLOW_MAX_NODES]; } workflow_t;
