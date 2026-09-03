@@ -19,7 +19,7 @@ bool add_node_id(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QString &id
     for (size_t i = 0; i < count; ++i)
         if (std::strcmp(ids[i], bytes.constData()) == 0)
             return false;
-    if (count >= WORKFLOW_MAX_NODES)
+    if (count >= WORKFLOW_MAX_LINKS)
         return false;
     std::strncpy(ids[count], bytes.constData(), WORKFLOW_MAX_NAME - 1);
     ids[count][WORKFLOW_MAX_NAME - 1] = '\0';

@@ -66,9 +66,15 @@ void workflow_workspace_init(workflow_workspace_t *workspace,EditorScene *scene)
 
 void workflow_workspace_sync_scene(workflow_workspace_t *workspace)
 {
-    if(!workspace||!workspace->scene||!workspace->loaded_workflow_id[0])return; ensure_scene_node_ids(workspace);
-    workflow_t *workflow=workflow_manager_find(&workspace->manager,workspace->loaded_workflow_id); copy_scene_to_workflow(workspace->scene,workflow);
-    workflow_manager_repair_node_ids(&workspace->manager); workflow_persistence_sync(&workspace->manager);
+    if(!workspace||!workspace->scene||!workspace->loaded_workflow_id[0])return;
+    ensure_scene_node_ids(workspace);
+    workflow_t *workflow=workflow_manager_find(&workspace->manager,workspace->loaded_workflow_id);
+    if(!workflow)return;
+    const workflow_t before=*workflow;
+    copy_scene_to_workflow(workspace->scene,workflow);
+    workflow_manager_repair_node_ids(&workspace->manager);
+    const bool changed=std::memcmp(&before,workflow,sizeof(workflow_t))!=0;
+    if(changed) workflow_persistence_sync(&workspace->manager);
 }
 void workflow_workspace_reload(workflow_workspace_t *workspace)
 {if(!workspace||!workspace->loaded_workflow_id[0])return;const workflow_t *workflow=workflow_manager_find_const(&workspace->manager,workspace->loaded_workflow_id);load_workflow(workspace->scene,workflow);}
