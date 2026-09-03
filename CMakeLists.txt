@@ -36,7 +36,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-engine-runner.h src/workflow-engine-runner.cpp src/workflow-engine-runner-internal.h src/workflow-engine-runner-actions.h src/workflow-engine-runner-actions.cpp
   src/workflow-engine-runs.h src/workflow-engine-runs.cpp
   src/workflow-engine-service.h src/workflow-engine-service.cpp src/workflow-action-executor.hpp src/workflow-action-executor.cpp src/workflow-action-runtime.h src/workflow-action-runtime.cpp
-  src/workflow-filter-instance.h src/workflow-filter-instance.cpp src/workflow-filter-settings.h src/workflow-filter-settings.cpp
+  src/workflow-filter-instance.h src/workflow-filter-instance.cpp src/workflow-filter-instance-set.cpp src/workflow-filter-settings.h src/workflow-filter-settings.cpp
   src/workflow-trigger-filter.h src/workflow-trigger-filter.cpp src/workflow-trigger-filter-ui.h src/workflow-trigger-filter-ui.cpp src/workflow-trigger-filter-instance.h src/workflow-trigger-filter-instance.cpp
   src/workflow-scene-trigger.h src/workflow-scene-trigger.cpp src/workflow-change-scene.h src/workflow-change-scene.cpp
   src/move-workflow-editor.cpp src/move-workflow-editor.h src/move-workflow-editor-panel.cpp src/move-workflow-editor-panel-ui.cpp src/move-workflow-editor-panel-ui.hpp
