@@ -28,8 +28,7 @@ bool workflow_engine_execute_node(workflow_engine_state_t *state,
         workflow_debug_log("Trigger node reached: %s", node->id);
         return true;
     }
-    const bool executed =
-        workflow_action_executor_execute(state->workflow, node);
+    const bool executed = workflow_action_executor_execute(state, node);
     workflow_debug_log("Execute node result: %s result=%d", node->id,
                        executed ? 1 : 0);
     return executed;
