@@ -36,6 +36,7 @@ QString NodeItem::nodeName() const { return text(node_.workflow.name); }
 workflow_node_t *NodeItem::workflowNode() { return &node_.workflow; }
 const workflow_node_t *NodeItem::workflowNode() const { return &node_.workflow; }
 void NodeItem::setWorkflowId(const QString &workflowId) { workflowId_ = workflowId; update(); }
+void NodeItem::setWorkflowChangedCallback(std::function<void()> callback) { workflowChangedCallback_ = std::move(callback); }
 
 void NodeItem::refreshDisplay()
 {
@@ -73,7 +74,13 @@ bool NodeItem::isOnConnectionHandle(const QPointF &p) const
 }
 
 QVariant NodeItem::itemChange(GraphicsItemChange c, const QVariant &v)
-{ if (c==ItemPositionHasChanged) node_.position=v.toPointF(); return QGraphicsRectItem::itemChange(c,v); }
+{
+    if (c==ItemPositionHasChanged) {
+        node_.position=v.toPointF();
+        if (workflowChangedCallback_) workflowChangedCallback_();
+    }
+    return QGraphicsRectItem::itemChange(c,v);
+}
 
 void NodeItem::paint(QPainter *p, const QStyleOptionGraphicsItem *o, QWidget *w)
 {
