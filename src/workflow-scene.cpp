@@ -30,7 +30,10 @@ NodeItem *EditorScene::addNode(workflow_node_type_t type, const QString &name)
     node.workflow.simultaneous_actions_mode = WORKFLOW_OVERRIDE;
     node.workflow.next_actions_mode = WORKFLOW_OVERRIDE;
     auto *item = new NodeItem(node);
-    item->setWorkflowId(workflowId_); addItem(item); nodes_.push_back(item); updateSceneBounds();
+    item->setWorkflowId(workflowId_);
+    item->setWorkflowChangedCallback([this] { emit workflowChanged(); });
+    addItem(item); nodes_.push_back(item); updateSceneBounds();
+    emit workflowChanged();
     return item;
 }
 
@@ -52,6 +55,7 @@ void EditorScene::deleteNode(NodeItem *node)
         workflow_scene_utils::remove_id(wf->shortcut_node_count, wf->shortcut_node_ids, id);
     }
     nodes_.removeAll(node); removeItem(node); delete node; rebuildConnections(); updateSceneBounds();
+    emit workflowChanged();
 }
 
 void EditorScene::refreshConnectionsFor(NodeItem *) { rebuildConnections(); updateSceneBounds(); }
