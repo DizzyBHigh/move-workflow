@@ -38,6 +38,11 @@ void workflow_filter_apply_node_settings(obs_source_t *filter,
         }
     }
 
+    if (node->easing.mode == WORKFLOW_OVERRIDE) {
+        obs_data_set_int(settings, "easing_match", node->easing.easing);
+        obs_data_set_int(settings, "easing_function_match", node->easing.function);
+    }
+
     obs_data_set_string(settings, "simultaneous_move", "");
     obs_data_set_string(settings, "next_move", "");
     obs_data_set_string(settings, "next_move_on", "move_end");
