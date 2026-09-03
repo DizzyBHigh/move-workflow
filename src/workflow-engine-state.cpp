@@ -33,6 +33,8 @@ void workflow_engine_state_stop(workflow_engine_state_t *state)
 {
     if (!state)
         return;
+    if (!state->stopping)
+        workflow_engine_run_filter_instances_cleanup(state->owner_run);
     state->stopping = true;
     state->running = false;
     state->generation++;
