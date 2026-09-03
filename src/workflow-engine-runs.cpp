@@ -1,11 +1,13 @@
 #include "workflow-engine-runs.h"
 #include "workflow-debug.h"
+#include "workflow-filter-instance.h"
 #include <cstdlib>
 
 struct workflow_engine_run {
     workflow_engine_state_t state;
     workflow_engine_run_t *next;
     size_t references;
+    workflow_filter_instance_set *filter_instances;
 };
 struct workflow_engine_runs { workflow_engine_run_t *head; workflow_engine_run_t *current; };
 
@@ -25,8 +27,10 @@ void workflow_engine_run_release(workflow_engine_run_t *run)
     if (!run || !run->references)
         return;
     --run->references;
-    if (!run->references)
+    if (!run->references) {
+        workflow_filter_instance_set_destroy(run->filter_instances);
         free(run);
+    }
 }
 
 void workflow_engine_runs_destroy(workflow_engine_runs_t *runs)
@@ -50,12 +54,18 @@ workflow_engine_run_t *workflow_engine_runs_start(workflow_engine_runs_t *runs, 
     if (!run)
         return nullptr;
     run->references = 1;
+    run->filter_instances = workflow_filter_instance_set_create(workflow);
+    if (!run->filter_instances) {
+        free(run);
+        return nullptr;
+    }
     workflow_engine_state_begin(&run->state, workflow);
     run->state.owner_run = run;
     run->next = runs->head;
     runs->head = run;
     runs->current = run;
-    workflow_debug_log("Run created: workflow='%s'", workflow->name);
+    workflow_debug_log("Run created: workflow='%s' with %s runtime filters",
+                       workflow->name, run->filter_instances ? "prepared" : "no");
     return run;
 }
 
@@ -82,6 +92,19 @@ workflow_engine_run_t *workflow_engine_runs_head(workflow_engine_runs_t *runs)
 workflow_engine_run_t *workflow_engine_runs_current(workflow_engine_runs_t *runs)
 {
     return runs ? runs->current : nullptr;
+}
+
+workflow_filter_instance_set *workflow_engine_run_filter_instances(workflow_engine_run_t *run)
+{
+    return run ? run->filter_instances : nullptr;
+}
+
+void workflow_engine_run_filter_instances_cleanup(workflow_engine_run_t *run)
+{
+    if (!run || !run->filter_instances)
+        return;
+    workflow_filter_instance_set_destroy(run->filter_instances);
+    run->filter_instances = nullptr;
 }
 
 void workflow_engine_runs_stop_all(workflow_engine_runs_t *runs)
