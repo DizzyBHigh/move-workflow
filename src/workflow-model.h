@@ -14,6 +14,19 @@ typedef enum workflow_node_type { WORKFLOW_NODE_TRIGGER = 0, WORKFLOW_NODE_ACTIO
 typedef enum workflow_move_kind { WORKFLOW_MOVE_ACTION = 0, WORKFLOW_MOVE_SOURCE, WORKFLOW_MOVE_SWAP, WORKFLOW_MOVE_VALUE, WORKFLOW_CHANGE_SCENE } workflow_move_kind_t;
 typedef enum workflow_value_mode { WORKFLOW_USE_EXISTING = 0, WORKFLOW_OVERRIDE } workflow_value_mode_t;
 typedef enum workflow_scene_completion { WORKFLOW_SCENE_COMPLETE_IMMEDIATE = 0, WORKFLOW_SCENE_COMPLETE_TRANSITION = 1 } workflow_scene_completion_t;
+typedef enum workflow_easing { WORKFLOW_EASE_NONE = 0, WORKFLOW_EASE_IN = 1, WORKFLOW_EASE_OUT = 2, WORKFLOW_EASE_IN_OUT = 3 } workflow_easing_t;
+typedef enum workflow_easing_function {
+    WORKFLOW_EASING_QUADRATIC = 1,
+    WORKFLOW_EASING_CUBIC = 2,
+    WORKFLOW_EASING_QUARTIC = 3,
+    WORKFLOW_EASING_QUINTIC = 4,
+    WORKFLOW_EASING_SINE = 5,
+    WORKFLOW_EASING_CIRCULAR = 6,
+    WORKFLOW_EASING_EXPONENTIAL = 7,
+    WORKFLOW_EASING_ELASTIC = 8,
+    WORKFLOW_EASING_BOUNCE = 9,
+    WORKFLOW_EASING_BACK = 10
+} workflow_easing_function_t;
 
 typedef struct workflow_trigger_filter_ref {
     char source_uuid[WORKFLOW_MAX_NAME];
@@ -43,6 +56,8 @@ typedef struct workflow_node {
     workflow_duration_override_t duration;
     workflow_delay_override_t start_delay;
     workflow_delay_override_t end_delay;
+    workflow_easing_t easing;
+    workflow_easing_function_t easing_function;
     workflow_value_mode_t simultaneous_actions_mode;
     workflow_value_mode_t end_actions_mode;
     workflow_value_mode_t next_actions_mode;
