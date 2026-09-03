@@ -37,6 +37,7 @@ bool NodeSettingsDialog::apply()
     wf->start_delay.mode=startDelayDefault_->isChecked()?WORKFLOW_USE_EXISTING:WORKFLOW_OVERRIDE; wf->start_delay.delay_ms=startDelayDefault_->isChecked()?startDelayOverrideMs_:(uint64_t)startDelayMs_->value();
     wf->duration.mode=durationDefault_->isChecked()?WORKFLOW_USE_EXISTING:WORKFLOW_OVERRIDE; wf->duration.duration_ms=durationDefault_->isChecked()?durationOverrideMs_:(uint64_t)durationMs_->value();
     wf->end_delay.mode=endDelayDefault_->isChecked()?WORKFLOW_USE_EXISTING:WORKFLOW_OVERRIDE; wf->end_delay.delay_ms=endDelayDefault_->isChecked()?endDelayOverrideMs_:(uint64_t)endDelayMs_->value();
+    wf->easing.mode=easingDefault_->isChecked()?WORKFLOW_USE_EXISTING:WORKFLOW_OVERRIDE; wf->easing.easing=(workflow_easing_t)easingType_->currentData().toInt(); wf->easing.function=(workflow_easing_function_t)easingFunction_->currentData().toInt();
     simultaneous_->apply(wf->simultaneous_node_count,wf->simultaneous_node_ids); nextActions_->apply(wf->next_node_count,wf->next_node_ids); shortcutActions_->apply(wf->shortcut_node_count,wf->shortcut_node_ids); wf->simultaneous_actions_mode=WORKFLOW_OVERRIDE; wf->next_actions_mode=WORKFLOW_OVERRIDE; return true;
 }
 
