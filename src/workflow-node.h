@@ -6,6 +6,7 @@
 #include <QGraphicsRectItem>
 #include <QPointF>
 #include <QString>
+#include <functional>
 
 struct EditorNode {
     workflow_node_t workflow{};
@@ -14,7 +15,6 @@ struct EditorNode {
 };
 
 class NodeItem final : public QGraphicsRectItem {
-    Q_OBJECT
 public:
     NodeItem(EditorNode node, QGraphicsItem *parent = nullptr);
 
@@ -23,12 +23,10 @@ public:
     workflow_node_t *workflowNode();
     const workflow_node_t *workflowNode() const;
     void setWorkflowId(const QString &workflowId);
+    void setWorkflowChangedCallback(std::function<void()> callback);
 
     void refreshDisplay();
     bool isOnConnectionHandle(const QPointF &scenePos) const;
-
-signals:
-    void workflowChanged();
 
 protected:
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
@@ -46,6 +44,7 @@ private:
 
     EditorNode node_;
     QString workflowId_;
+    std::function<void()> workflowChangedCallback_;
     QGraphicsTextItem *title_ = nullptr;
     QGraphicsTextItem *type_ = nullptr;
     QGraphicsTextItem *details_ = nullptr;
