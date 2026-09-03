@@ -14,6 +14,7 @@ struct EditorNode {
 };
 
 class NodeItem final : public QGraphicsRectItem {
+    Q_OBJECT
 public:
     NodeItem(EditorNode node, QGraphicsItem *parent = nullptr);
 
@@ -25,6 +26,9 @@ public:
 
     void refreshDisplay();
     bool isOnConnectionHandle(const QPointF &scenePos) const;
+
+signals:
+    void workflowChanged();
 
 protected:
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
