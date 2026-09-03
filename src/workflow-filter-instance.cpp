@@ -1,9 +1,9 @@
 #include "workflow-filter-instance.h"
 
 #include "workflow-debug.h"
-#include "workflow-engine-delay.h"
 #include "workflow-filter-settings.h"
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
@@ -16,31 +16,47 @@ workflow_filter_instance *workflow_filter_instance_create(
         (workflow_filter_instance *)calloc(1, sizeof(*result));
     if (!result)
         return nullptr;
+
+    char name[WORKFLOW_MAX_NAME];
+    snprintf(name, sizeof(name), "%s [workflow:%p]",
+             obs_source_get_name(original), (void *)result);
+    result->instance = obs_source_duplicate(original, name, true);
+    if (!result->instance) {
+        free(result);
+        return nullptr;
+    }
     result->original = obs_source_get_ref(original);
     result->parent = obs_source_get_ref(parent);
-    result->instance = obs_source_get_ref(original);
-    workflow_debug_log("Filter instance: using original '%s' for node='%s'",
-                       obs_source_get_name(original), node->id);
+    obs_source_set_enabled(result->instance, false);
+
+    workflow_debug_log("Filter instance: duplicated '%s' -> '%s' node='%s'",
+                       obs_source_get_name(original), obs_source_get_name(result->instance),
+                       node->id);
+    obs_source_filter_add(parent, result->instance);
+    workflow_debug_log("Filter instance: attached '%s' to parent '%s'",
+                       obs_source_get_name(result->instance), obs_source_get_name(parent));
     return result;
 }
 
-static void enable_on_ui(void *data)
+static void enable_source_on_ui(void *data)
 {
-    workflow_filter_instance *instance = (workflow_filter_instance *)data;
-    if (!instance || !instance->instance)
+    obs_source_t *source = (obs_source_t *)data;
+    if (!source)
         return;
-    obs_source_set_enabled(instance->instance, true);
-    workflow_debug_log("Filter instance: enabled native Move filter '%s'",
-                       obs_source_get_name(instance->instance));
+    obs_source_set_enabled(source, true);
+    obs_source_release(source);
 }
 
 bool workflow_filter_instance_execute(workflow_filter_instance *instance)
 {
     if (!instance || !instance->instance)
         return false;
-    obs_source_set_enabled(instance->instance, false);
-    obs_queue_task(OBS_TASK_UI, enable_on_ui, instance, false);
-    workflow_debug_log("Filter instance: queued native Move filter enable");
+    obs_source_t *source = obs_source_get_ref(instance->instance);
+    if (!source)
+        return false;
+    obs_queue_task(OBS_TASK_UI, enable_source_on_ui, source, false);
+    workflow_debug_log("Filter instance: queued enable '%s'",
+                       obs_source_get_name(instance->instance));
     return true;
 }
 
@@ -48,6 +64,8 @@ void workflow_filter_instance_destroy(workflow_filter_instance *instance)
 {
     if (!instance)
         return;
+    if (instance->parent && instance->instance)
+        obs_source_filter_remove(instance->parent, instance->instance);
     if (instance->instance)
         obs_source_release(instance->instance);
     if (instance->parent)
@@ -55,47 +73,6 @@ void workflow_filter_instance_destroy(workflow_filter_instance *instance)
     if (instance->original)
         obs_source_release(instance->original);
     free(instance);
-}
-
-typedef struct destroy_context {
-    workflow_filter_instance *instance;
-    obs_data_t *restore_settings;
-} destroy_context;
-
-static void destroy_on_ui(void *data)
-{
-    destroy_context *ctx = (destroy_context *)data;
-    if (!ctx)
-        return;
-    workflow_debug_log("Filter instance: restoring native Move filter");
-    if (ctx->instance && ctx->instance->instance) {
-        obs_source_set_enabled(ctx->instance->instance, false);
-        if (ctx->restore_settings)
-            obs_source_update(ctx->instance->instance, ctx->restore_settings);
-    }
-    if (ctx->restore_settings)
-        obs_data_release(ctx->restore_settings);
-    workflow_filter_instance_destroy(ctx->instance);
-    free(ctx);
-}
-
-static void schedule_destroy(workflow_filter_instance *instance,
-                             obs_data_t *restore_settings, uint64_t duration_ms)
-{
-    destroy_context *ctx = (destroy_context *)calloc(1, sizeof(*ctx));
-    if (!ctx) {
-        obs_data_release(restore_settings);
-        workflow_filter_instance_destroy(instance);
-        return;
-    }
-    ctx->instance = instance;
-    ctx->restore_settings = restore_settings;
-    const uint64_t delay_ms = duration_ms ? duration_ms + 25 : 25;
-    if (!workflow_engine_delay_start(delay_ms, destroy_on_ui, ctx)) {
-        obs_data_release(ctx->restore_settings);
-        workflow_filter_instance_destroy(ctx->instance);
-        free(ctx);
-    }
 }
 
 bool workflow_filter_instance_execute_node(workflow_t *workflow, workflow_node_t *node)
@@ -117,26 +94,15 @@ bool workflow_filter_instance_execute_node(workflow_t *workflow, workflow_node_t
         obs_source_release(parent);
         return false;
     }
-    obs_data_t *restore_settings = obs_source_get_settings(original);
     workflow_filter_instance *instance =
         workflow_filter_instance_create(original, parent, node);
     obs_source_release(original);
     obs_source_release(parent);
-    if (!instance) {
-        if (restore_settings)
-            obs_data_release(restore_settings);
+    if (!instance)
         return false;
-    }
-    uint64_t workflow_duration_ms = 0;
-    uint64_t restore_delay_ms = 0;
-    workflow_filter_apply_node_settings(instance->instance, node,
-                                        &workflow_duration_ms, &restore_delay_ms);
-    if (!workflow_filter_instance_execute(instance)) {
-        if (restore_settings)
-            obs_data_release(restore_settings);
+    workflow_filter_apply_node_settings(instance->instance, node, nullptr, nullptr);
+    const bool result = workflow_filter_instance_execute(instance);
+    if (!result)
         workflow_filter_instance_destroy(instance);
-        return false;
-    }
-    schedule_destroy(instance, restore_settings, restore_delay_ms);
-    return true;
+    return result;
 }
