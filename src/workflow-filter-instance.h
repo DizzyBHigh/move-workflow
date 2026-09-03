@@ -19,12 +19,8 @@ struct workflow_filter_instance {
 workflow_filter_instance *workflow_filter_instance_create(obs_source_t *original,
 										obs_source_t *parent,
 										const workflow_node_t *node);
-
 bool workflow_filter_instance_execute(workflow_filter_instance *instance);
 void workflow_filter_instance_destroy(workflow_filter_instance *instance);
-
-bool workflow_filter_instance_execute_node(workflow_t *workflow,
-										workflow_node_t *node);
 
 workflow_filter_instance_set *workflow_filter_instance_set_create(workflow_t *workflow);
 void workflow_filter_instance_set_destroy(workflow_filter_instance_set *set);
