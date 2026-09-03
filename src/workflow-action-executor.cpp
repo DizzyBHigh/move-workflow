@@ -1,5 +1,6 @@
 #include "workflow-action-executor.hpp"
 #include "workflow-change-scene.h"
+#include "workflow-debug.h"
 #include "workflow-engine-runs.h"
 #include "workflow-filter-instance.h"
 
