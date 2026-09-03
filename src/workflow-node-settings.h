@@ -50,6 +50,8 @@ private:
     QComboBox *filter_=nullptr;
     QSpinBox *startDelayMs_=nullptr,*durationMs_=nullptr,*endDelayMs_=nullptr;
     QCheckBox *startDelayDefault_=nullptr,*durationDefault_=nullptr,*endDelayDefault_=nullptr;
+    QCheckBox *easingDefault_=nullptr;
+    QComboBox *easingType_=nullptr,*easingFunction_=nullptr;
     uint64_t startDelayOverrideMs_=0,durationOverrideMs_=0,endDelayOverrideMs_=0;
     WorkflowActionList *simultaneous_=nullptr,*nextActions_=nullptr,*shortcutActions_=nullptr,*startActions_=nullptr;
 };
