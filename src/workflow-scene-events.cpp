@@ -63,7 +63,7 @@ void EditorScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
                        nodes_.size(), connections_.size(), event->scenePos().x(), event->scenePos().y());
     QGraphicsScene::mouseMoveEvent(event);
     workflow_debug_log("node move after scene event: nodes=%d connections=%d", nodes_.size(), connections_.size());
-    updateConnections();
+    updateConnections(false);
     workflow_debug_log("node move complete: nodes=%d connections=%d", nodes_.size(), connections_.size());
 }
 
@@ -73,7 +73,7 @@ void EditorScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         finishConnectionDrag(event->scenePos()); event->accept(); return;
     }
     QGraphicsScene::mouseReleaseEvent(event);
-    updateConnections();
+    updateConnections(true);
 }
 
 void EditorScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
