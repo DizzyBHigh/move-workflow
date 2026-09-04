@@ -41,6 +41,7 @@ void NodeItem::setWorkflowChangedCallback(std::function<void()> callback) { work
 void NodeItem::refreshDisplay()
 {
     if (!title_ || !type_ || !details_) return;
+    refreshStyle();
     title_->setPlainText(text(node_.workflow.name));
     type_->setPlainText(node_.workflow.type == WORKFLOW_NODE_TRIGGER ? "TRIGGER" : "ACTION");
     if (node_.workflow.type == WORKFLOW_NODE_TRIGGER) {
