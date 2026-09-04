@@ -42,8 +42,8 @@ workflow_filter_instance_set *workflow_filter_instance_set_create(workflow_t *wo
         if (node->type == WORKFLOW_NODE_ACTION &&
             node->action.kind != WORKFLOW_CHANGE_SCENE &&
             !workflow_filter_instance_set_prepare_node(set, node)) {
-            workflow_filter_instance_set_destroy(set);
-            return nullptr;
+            workflow_debug_log("Filter instance: node='%s' has no valid Move filter; skipping preparation",
+                               node->id);
         }
     }
     workflow_debug_log("Filter instances: prepared %zu runtime Move filters", set->count);
