@@ -20,6 +20,14 @@ static void handle_connection_edit(void *context, const QString &type)
 void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
+        if (missingNode_ &&
+            missingNode_->contains(
+                missingNode_->mapFromScene(event->scenePos()))) {
+            showMissingConnections();
+            event->accept();
+            return;
+        }
+
         if (QGraphicsPathItem *line = connectionAt(event->scenePos())) {
             if (Connection *connection = findConnection(line)) {
                 ConnectionEditContext context{this, line};
