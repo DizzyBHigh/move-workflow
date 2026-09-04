@@ -24,7 +24,7 @@ public:
     void deleteSelectedNodes();
     void refreshConnectionsFor(NodeItem *node);
     void rebuildConnections();
-    void updateConnections();
+    void updateConnections(bool updateBounds = true);
     void updateSceneBounds();
     bool editConnection(QGraphicsPathItem *line, const QString &type);
     void showMissingConnections();
