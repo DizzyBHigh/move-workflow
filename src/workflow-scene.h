@@ -7,6 +7,9 @@
 #include <QList>
 #include <QVector>
 
+class QGraphicsRectItem;
+class QGraphicsTextItem;
+
 class EditorScene final : public QGraphicsScene {
     Q_OBJECT
 
@@ -37,11 +40,13 @@ protected:
 
 private:
     struct Connection { NodeItem *from = nullptr; NodeItem *to = nullptr; QGraphicsPathItem *line = nullptr; QString type; };
+    struct MissingConnection { NodeItem *from = nullptr; QGraphicsPathItem *line = nullptr; QString type; QString targetId; };
     NodeItem *findNodeById(const char *id) const;
     NodeItem *nodeAt(const QPointF &scenePos) const;
     QGraphicsPathItem *connectionAt(const QPointF &scenePos) const;
     Connection *findConnection(QGraphicsPathItem *line);
     void addRelationshipLines(NodeItem *from, size_t count, const char ids[][WORKFLOW_MAX_NAME], const QString &type);
+    void rebuildMissingNode();
     bool addNodeId(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QString &id);
     bool hasNodeId(size_t count, const char ids[][WORKFLOW_MAX_NAME], const QString &id) const;
     void connectNodes(NodeItem *source, NodeItem *target);
@@ -52,6 +57,9 @@ private:
     int nextId_ = 0;
     QVector<NodeItem *> nodes_;
     QVector<Connection> connections_;
+    QVector<MissingConnection> missingConnections_;
+    QGraphicsRectItem *missingNode_ = nullptr;
+    QGraphicsTextItem *missingNodeLabel_ = nullptr;
     NodeItem *dragSource_ = nullptr;
     QGraphicsPathItem *dragPreview_ = nullptr;
     bool draggingConnection_ = false;
