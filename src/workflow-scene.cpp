@@ -105,7 +105,7 @@ void EditorScene::rebuildMissingNode()
     missingNode_->setPos(pos);
 }
 
-void EditorScene::updateConnections()
+void EditorScene::updateConnections(bool updateBounds)
 {
     for (const Connection &connection : std::as_const(connections_)) updateConnection(connection.line, connection.from, connection.to);
     for (const MissingConnection &connection : std::as_const(missingConnections_))
@@ -124,7 +124,7 @@ void EditorScene::updateConnections()
         const qreal dx=end.x()-start.x(), dy=end.y()-start.y(); QPainterPath path(start);
         path.cubicTo(start+QPointF(dx*0.35,dy*0.05),end-QPointF(dx*0.35,dy*0.05),end); dragPreview_->setPath(path);
     }
-    updateSceneBounds();
+    if (updateBounds) updateSceneBounds();
 }
 
 void EditorScene::updateSceneBounds()
