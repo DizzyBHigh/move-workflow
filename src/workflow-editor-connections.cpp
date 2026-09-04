@@ -18,10 +18,22 @@ NodeItem *node_at(EditorScene *scene, const QPointF &scene_pos)
 
     const QList<QGraphicsItem *> items = scene->items(
         scene_pos, Qt::IntersectsItemShape, Qt::DescendingOrder, QTransform());
+    const QList<NodeItem *> live_nodes = scene->nodes();
+
     for (QGraphicsItem *item : items) {
         for (QGraphicsItem *candidate = item; candidate; candidate = candidate->parentItem()) {
-            if (auto *node = dynamic_cast<NodeItem *>(candidate))
-                return node;
+            auto *node = dynamic_cast<NodeItem *>(candidate);
+            if (!node)
+                continue;
+
+            if (!live_nodes.contains(node))
+                continue;
+
+            const QPointF local_pos = node->mapFromScene(scene_pos);
+            if (!node->shape().contains(local_pos))
+                continue;
+
+            return node;
         }
     }
     return nullptr;

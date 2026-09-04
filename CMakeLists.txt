@@ -23,6 +23,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-manager.c src/workflow-manager.h src/workflow-manager-copy.c src/workflow-manager-copy.h
   src/workflow-manager-ui.cpp src/workflow-manager-ui.h src/workflow-workspace.cpp src/workflow-workspace.h
   src/workflow-scene.cpp src/workflow-scene.h src/workflow-scene-connections.cpp src/workflow-scene-events.cpp
+  src/workflow-missing-node-dialog.cpp
   src/workflow-scene-utils.cpp src/workflow-scene-utils.h src/workflow-node.cpp src/workflow-node.h src/workflow-node-copy.c src/workflow-node-copy.h src/workflow-node-identity.cpp src/workflow-node-identity.hpp
   src/workflow-node-duplicate-ui.cpp src/workflow-node-duplicate-ui.h src/workflow-node-settings.cpp src/workflow-node-settings.h
   src/workflow-node-settings-action.cpp src/workflow-node-settings-scene.cpp src/workflow-node-settings-scene.h

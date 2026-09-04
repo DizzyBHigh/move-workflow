@@ -15,6 +15,7 @@
 #include "workflow-workspace.h"
 #include "workflow-hotkeys.h"
 #include <obs-frontend-api.h>
+#include <plugin-support.h>
 #include <QApplication>
 #include <QDialog>
 #include <QFileDialog>
@@ -59,7 +60,7 @@ public:
         sidebar.edit_node=[this]{editSelectedNode();};sidebar.copy_node=[this]{copySelectedNodes();};sidebar.paste_node=[this]{pasteNodes();};sidebar.duplicate_node=[this]{duplicateSelectedNode();};sidebar.delete_node=[this]{deleteSelectedNodes();};
         sidebar_=create_workflow_editor_sidebar(this,std::move(sidebar));properties_=create_workflow_editor_properties(this,[this](NodeItem *node){editNode(node);});
         auto *splitter=new QSplitter(Qt::Horizontal,this);splitter->addWidget(sidebar_);splitter->addWidget(view_);splitter->addWidget(properties_);splitter->setStretchFactor(1,1);splitter->setSizes({250,850,280});root->addWidget(splitter,1);
-        auto *status=new QHBoxLayout;status->setContentsMargins(6,2,6,2);status->addWidget(new QLabel("Workflow canvas",this));status->addStretch();zoomLabel_=new QLabel("100%",this);status->addWidget(new QLabel("Zoom:",this));status->addWidget(zoomLabel_);root->addLayout(status);view_->setZoomLabel(zoomLabel_);
+        auto *status=new QHBoxLayout;status->setContentsMargins(6,2,6,2);status->addWidget(new QLabel("Workflow canvas",this));auto *versionLabel=new QLabel(QString("<a href=\"https://github.com/DizzyBHigh/move-workflow/releases/latest\">Move Workflow %1</a>").arg(QString::fromUtf8(PLUGIN_VERSION)),this);versionLabel->setOpenExternalLinks(true);status->addWidget(versionLabel);status->addStretch();zoomLabel_=new QLabel("100%",this);status->addWidget(new QLabel("Zoom:",this));status->addWidget(zoomLabel_);root->addLayout(status);view_->setZoomLabel(zoomLabel_);
         connect(scene_,&QGraphicsScene::selectionChanged,this,[this]{updateButtonState();});connect(scene_,&EditorScene::nodeDoubleClicked,this,[this](NodeItem *node){editNode(node);});connect(scene_,&EditorScene::workflowChanged,this,[this]{scheduleSync();});
         auto *undoShortcut=new QShortcut(QKeySequence::Undo,this);undoShortcut->setContext(Qt::WidgetWithChildrenShortcut);connect(undoShortcut,&QShortcut::activated,this,&EditorWindow::undoWorkflow);auto *deleteShortcut=new QShortcut(QKeySequence::Delete,this);deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut);connect(deleteShortcut,&QShortcut::activated,this,&EditorWindow::deleteSelectedNodes);updateButtonState();
     }

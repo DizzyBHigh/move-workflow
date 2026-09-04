@@ -7,6 +7,9 @@
 #include <QList>
 #include <QVector>
 
+class QGraphicsRectItem;
+class QGraphicsTextItem;
+
 class EditorScene final : public QGraphicsScene {
     Q_OBJECT
 
@@ -21,9 +24,10 @@ public:
     void deleteSelectedNodes();
     void refreshConnectionsFor(NodeItem *node);
     void rebuildConnections();
-    void updateConnections();
+    void updateConnections(bool updateBounds = true);
     void updateSceneBounds();
     bool editConnection(QGraphicsPathItem *line, const QString &type);
+    void showMissingConnections();
 
 signals:
     void nodeDoubleClicked(NodeItem *node);
@@ -37,13 +41,16 @@ protected:
 
 private:
     struct Connection { NodeItem *from = nullptr; NodeItem *to = nullptr; QGraphicsPathItem *line = nullptr; QString type; };
+    struct MissingConnection { NodeItem *from = nullptr; QGraphicsPathItem *line = nullptr; QString type; QString targetId; };
     NodeItem *findNodeById(const char *id) const;
     NodeItem *nodeAt(const QPointF &scenePos) const;
     QGraphicsPathItem *connectionAt(const QPointF &scenePos) const;
     Connection *findConnection(QGraphicsPathItem *line);
     void addRelationshipLines(NodeItem *from, size_t count, const char ids[][WORKFLOW_MAX_NAME], const QString &type);
+    void rebuildMissingNode();
     bool addNodeId(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QString &id);
     bool hasNodeId(size_t count, const char ids[][WORKFLOW_MAX_NAME], const QString &id) const;
+    bool deleteMissingConnection(NodeItem *from, const QString &targetId, const QString &type);
     void connectNodes(NodeItem *source, NodeItem *target);
     void connectTriggerToAction(NodeItem *trigger, NodeItem *action);
     void connectActionToAction(NodeItem *source, NodeItem *target, const QString &type);
@@ -52,6 +59,9 @@ private:
     int nextId_ = 0;
     QVector<NodeItem *> nodes_;
     QVector<Connection> connections_;
+    QVector<MissingConnection> missingConnections_;
+    QGraphicsRectItem *missingNode_ = nullptr;
+    QGraphicsTextItem *missingNodeLabel_ = nullptr;
     NodeItem *dragSource_ = nullptr;
     QGraphicsPathItem *dragPreview_ = nullptr;
     bool draggingConnection_ = false;

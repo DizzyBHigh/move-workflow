@@ -4,6 +4,8 @@
 #include "workflow-scene-utils.h"
 
 #include <obs.h>
+#include <QGraphicsRectItem>
+#include <QGraphicsTextItem>
 #include <QMessageBox>
 #include <QPainterPath>
 #include <QPen>
@@ -17,8 +19,20 @@ struct ConnectionEditContext { EditorScene *scene = nullptr; QGraphicsPathItem *
 static void handle_connection_edit(void *context, const QString &type)
 {
     auto *edit = static_cast<ConnectionEditContext *>(context);
-    if (edit && edit->scene)
-        edit->scene->editConnection(edit->line, type);
+    if (edit && edit->scene) edit->scene->editConnection(edit->line, type);
+}
+
+static void update_missing_path(QGraphicsPathItem *line, NodeItem *from, QGraphicsRectItem *target)
+{
+    if (!line || !from || !target) return;
+    const QRectF source = from->sceneBoundingRect();
+    const QRectF dest = target->sceneBoundingRect();
+    const QPointF start(source.right(), source.center().y());
+    const QPointF end(dest.left(), dest.center().y());
+    const qreal dx = end.x() - start.x();
+    QPainterPath path(start);
+    path.cubicTo(start + QPointF(dx * 0.35, 0), end - QPointF(dx * 0.35, 0), end);
+    line->setPath(path);
 }
 }
 
@@ -27,6 +41,11 @@ QGraphicsPathItem *EditorScene::connectionAt(const QPointF &scenePos) const
     QPainterPathStroker stroker;
     stroker.setWidth(12.0);
     for (auto it = connections_.crbegin(); it != connections_.crend(); ++it) {
+        if (!it->line) continue;
+        const QPointF local = it->line->mapFromScene(scenePos);
+        if (stroker.createStroke(it->line->path()).contains(local)) return it->line;
+    }
+    for (auto it = missingConnections_.crbegin(); it != missingConnections_.crend(); ++it) {
         if (!it->line) continue;
         const QPointF local = it->line->mapFromScene(scenePos);
         if (stroker.createStroke(it->line->path()).contains(local)) return it->line;
@@ -59,6 +78,32 @@ bool EditorScene::editConnection(QGraphicsPathItem *line, const QString &type)
     connection->type = type == "Next" ? "Next Action" : type;
     connection->from->refreshDisplay(); connection->to->refreshDisplay();
     rebuildConnections(); emit workflowChanged(); return true;
+}
+
+bool EditorScene::deleteMissingConnection(NodeItem *from,
+                                           const QString &targetId,
+                                           const QString &type)
+{
+    if (!from || targetId.isEmpty()) return false;
+    auto *wf = from->workflowNode();
+    if (!wf) return false;
+
+    if (type == "Simultaneous")
+        workflow_scene_utils::remove_id(wf->simultaneous_node_count,
+                                         wf->simultaneous_node_ids, targetId);
+    else if (type == "Next Action")
+        workflow_scene_utils::remove_id(wf->next_node_count,
+                                         wf->next_node_ids, targetId);
+    else if (type == "Shortcut")
+        workflow_scene_utils::remove_id(wf->shortcut_node_count,
+                                         wf->shortcut_node_ids, targetId);
+    else
+        return false;
+
+    from->refreshDisplay();
+    rebuildConnections();
+    emit workflowChanged();
+    return true;
 }
 
 NodeItem *EditorScene::nodeAt(const QPointF &scenePos) const
@@ -137,7 +182,14 @@ void EditorScene::addRelationshipLines(NodeItem *from, size_t count, const char 
 {
     for (size_t i = 0; i < count; ++i) {
         NodeItem *to = findNodeById(ids[i]);
-        if (!to || to == from) continue;
+        if (!to) {
+            auto *line = new QGraphicsPathItem;
+            line->setPen(QPen(QColor(220, 70, 70), 2, Qt::DashLine));
+            line->setZValue(-1); addItem(line);
+            missingConnections_.push_back({from, line, type, QString::fromUtf8(ids[i])});
+            continue;
+        }
+        if (to == from) continue;
         auto *line = new QGraphicsPathItem;
         if (type == "Simultaneous") line->setPen(QPen(QColor(90, 190, 120), 2));
         else if (type == "Next Action") line->setPen(QPen(QColor(230, 170, 70), 2));

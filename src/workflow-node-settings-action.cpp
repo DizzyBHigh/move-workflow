@@ -29,7 +29,7 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent,QVBoxLayout *layout)
     actionType_->setCurrentIndex(wf->action.kind==WORKFLOW_CHANGE_SCENE?1:0); typeLayout->addWidget(actionType_); layout->addWidget(typeBox);
     actionTargetStack_=new QStackedWidget(parent);
     auto *moveTarget=new QGroupBox("Move",parent); auto *moveLayout=new QVBoxLayout(moveTarget);
-    source_=new QComboBox(moveTarget); filter_=new QComboBox(moveTarget); settings_searchable(source_);
+    source_=new QComboBox(moveTarget); filter_=new QComboBox(moveTarget); settings_searchable(source_); settings_searchable(filter_);
     moveLayout->addWidget(new QLabel("Source",moveTarget)); moveLayout->addWidget(source_); moveLayout->addWidget(new QLabel("Filter",moveTarget)); moveLayout->addWidget(filter_);
     populateSources(QString::fromUtf8(wf->action.scene_name)); populateFilters(QString::fromUtf8(wf->action.filter_name));
     auto *sceneTarget=new QGroupBox("Change Scene",parent); auto *sceneLayout=new QVBoxLayout(sceneTarget);
@@ -59,4 +59,4 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent,QVBoxLayout *layout)
 }
 
 void NodeSettingsDialog::populateSources(const QString &wanted){settings_searchable(source_);source_->blockSignals(true);source_->clear();obs_enum_scenes(add_source,source_);obs_enum_sources(add_source,source_);source_->blockSignals(false);int i=source_->findData(wanted);if(i>=0)source_->setCurrentIndex(i);else if(source_->count())source_->setCurrentIndex(0);}
-void NodeSettingsDialog::populateFilters(const QString &wanted){filter_->blockSignals(true);filter_->clear();QString n=source_->currentData().toString().isEmpty()?source_->currentText().trimmed():source_->currentData().toString();obs_source_t *p=n.isEmpty()?nullptr:obs_get_source_by_name(n.toUtf8().constData());if(p){obs_source_enum_filters(p,add_filter,filter_);obs_source_release(p);}filter_->blockSignals(false);int i=filter_->findData(wanted);if(i>=0)filter_->setCurrentIndex(i);else if(filter_->count())filter_->setCurrentIndex(0);}
+void NodeSettingsDialog::populateFilters(const QString &wanted){filter_->blockSignals(true);filter_->clear();QString n=source_->currentData().toString().isEmpty()?source_->currentText().trimmed():source_->currentData().toString();obs_source_t *p=n.isEmpty()?nullptr:obs_get_source_by_name(n.toUtf8().constData());if(p){obs_source_enum_filters(p,add_filter,filter_);obs_source_release(p);}filter_->blockSignals(false);if(wanted.isEmpty()){filter_->setCurrentIndex(-1);filter_->setCurrentText(QString());return;}int i=filter_->findData(wanted);if(i>=0)filter_->setCurrentIndex(i);else filter_->setCurrentText(wanted);}
