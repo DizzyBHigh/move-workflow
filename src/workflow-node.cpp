@@ -9,6 +9,7 @@
 #include <QPen>
 #include <QString>
 #include <QStringList>
+#include <QTimer>
 #include <utility>
 #include <chrono>
 
@@ -104,6 +105,12 @@ void NodeItem::paint(QPainter *p, const QStyleOptionGraphicsItem *o, QWidget *w)
         p->setFont(QFont(QStringLiteral("Segoe UI"), 28, QFont::Normal));
         p->drawText(body.adjusted(14,48,-14,-8), Qt::AlignCenter,
                     QString::number(remaining / 1000.0, 'f', 1) + " s");
+        if (QGraphicsScene *scene = this->scene()) {
+            QGraphicsItem *item = this;
+            QTimer::singleShot(50, scene, [scene, item] {
+                if (scene->items().contains(item)) item->update();
+            });
+        }
     } else {
         type_->setVisible(true); details_->setVisible(true);
     }
