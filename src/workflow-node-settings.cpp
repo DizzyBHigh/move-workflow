@@ -26,13 +26,18 @@ bool NodeSettingsDialog::apply()
     if(!node_)return false; const QString name=name_->text().trimmed(); if(name.isEmpty())return false; auto *wf=node_->workflowNode(); settings_copy_text(wf->name,WORKFLOW_MAX_NAME,name); if(wf->type==WORKFLOW_NODE_TRIGGER)return applyTrigger();
     const bool changeScene=actionType_&&actionType_->currentData().toString()=="scene";
     if(changeScene){
-        const QString sceneName=scene_?scene_->currentData().toString():QString(); if(sceneName.isEmpty())return false;
-        wf->action.kind=WORKFLOW_CHANGE_SCENE; settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,sceneName); wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0';
+        const QString sceneName=scene_?scene_->currentText().trimmed():QString();
+        if(sceneName.isEmpty()){
+            wf->action.scene_name[0]='\0'; wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0';
+        } else {
+            wf->action.kind=WORKFLOW_CHANGE_SCENE; settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,sceneName); wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0';
+        }
     } else {
-        const QString parentName=source_->currentData().toString().isEmpty()?source_->currentText().trimmed():source_->currentData().toString();
-        const QString filterName=filter_->currentData().toString().isEmpty()?filter_->currentText().trimmed():filter_->currentData().toString();
-        if(parentName.isEmpty())return false;
-        if(filterName.isEmpty()){
+        const QString parentName=source_->currentText().trimmed();
+        const QString filterName=filter_->currentText().trimmed();
+        if(parentName.isEmpty()){
+            wf->action.kind=WORKFLOW_MOVE_ACTION; wf->action.scene_name[0]='\0'; wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0';
+        } else if(filterName.isEmpty()){
             wf->action.kind=WORKFLOW_MOVE_ACTION; settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,parentName);
             wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0';
         } else {
