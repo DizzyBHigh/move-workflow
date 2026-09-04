@@ -117,7 +117,13 @@ void NodeItem::updateGeometryForText()
 void NodeItem::refreshStyle()
 {
     QColor fill(23,31,40), border(70,88,105);
-    if(node_.workflow.type==WORKFLOW_NODE_TRIGGER){fill=QColor(20,63,34);border=QColor(48,174,76);}
-    else {fill=QColor(18,58,93);border=QColor(47,122,190);}
+    const workflow_node_t &wf = node_.workflow;
+    const bool unconfigured = wf.type == WORKFLOW_NODE_ACTION &&
+        (wf.action.kind != WORKFLOW_CHANGE_SCENE
+             ? (!wf.action.scene_name[0] || !wf.action.filter_name[0] || !wf.action.filter_id[0])
+             : !wf.action.scene_name[0]);
+    if (wf.type == WORKFLOW_NODE_TRIGGER) { fill=QColor(20,63,34); border=QColor(48,174,76); }
+    else if (unconfigured) { fill=QColor(100,25,25); border=QColor(220,65,65); }
+    else { fill=QColor(18,58,93); border=QColor(47,122,190); }
     setBrush(fill); setPen(QPen(border,2));
 }
