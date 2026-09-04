@@ -80,6 +80,32 @@ bool EditorScene::editConnection(QGraphicsPathItem *line, const QString &type)
     rebuildConnections(); emit workflowChanged(); return true;
 }
 
+bool EditorScene::deleteMissingConnection(NodeItem *from,
+                                           const QString &targetId,
+                                           const QString &type)
+{
+    if (!from || targetId.isEmpty()) return false;
+    auto *wf = from->workflowNode();
+    if (!wf) return false;
+
+    if (type == "Simultaneous")
+        workflow_scene_utils::remove_id(wf->simultaneous_node_count,
+                                         wf->simultaneous_node_ids, targetId);
+    else if (type == "Next Action")
+        workflow_scene_utils::remove_id(wf->next_node_count,
+                                         wf->next_node_ids, targetId);
+    else if (type == "Shortcut")
+        workflow_scene_utils::remove_id(wf->shortcut_node_count,
+                                         wf->shortcut_node_ids, targetId);
+    else
+        return false;
+
+    from->refreshDisplay();
+    rebuildConnections();
+    emit workflowChanged();
+    return true;
+}
+
 NodeItem *EditorScene::nodeAt(const QPointF &scenePos) const
 {
     return workflow_editor_connections::node_at(const_cast<EditorScene *>(this), scenePos);
