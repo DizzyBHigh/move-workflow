@@ -4,6 +4,7 @@
 #include "workflow-trigger-filter-instance.h"
 #include "workflow-persistence.h"
 #include <obs.h>
+#include <QGraphicsScene>
 #include <QGraphicsTextItem>
 #include <QPainter>
 #include <QPen>
@@ -107,7 +108,7 @@ void NodeItem::paint(QPainter *p, const QStyleOptionGraphicsItem *o, QWidget *w)
                     QString::number(remaining / 1000.0, 'f', 1) + " s");
         if (QGraphicsScene *scene = this->scene()) {
             QGraphicsItem *item = this;
-            QTimer::singleShot(50, scene, [scene, item] {
+            QTimer::singleShot(50, [scene, item] {
                 if (scene->items().contains(item)) item->update();
             });
         }
