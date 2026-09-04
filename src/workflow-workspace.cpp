@@ -33,7 +33,7 @@ void load_workflow(EditorScene *scene, const workflow_t *workflow)
         const workflow_node_t &source=workflow->nodes[i]; NodeItem *item=scene->addNode(source.type,QString::fromUtf8(source.name));
         if (!item) continue; *item->workflowNode()=source;
         if (!item->workflowNode()->id[0]) workflow_node_identity_generate(item->workflowNode()->id,sizeof(item->workflowNode()->id));
-        item->setPos(source.position_x,source.position_y); item->refreshDisplay();
+        item->setPos(source.position_x,source.position_y); item->refreshStyle(); item->refreshDisplay();
     }
     scene->rebuildConnections(); scene->updateSceneBounds(); scene->blockSignals(blocked);
 }
