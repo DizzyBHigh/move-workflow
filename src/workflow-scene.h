@@ -27,6 +27,7 @@ public:
     void updateConnections();
     void updateSceneBounds();
     bool editConnection(QGraphicsPathItem *line, const QString &type);
+    void showMissingConnections();
 
 signals:
     void nodeDoubleClicked(NodeItem *node);
@@ -49,6 +50,7 @@ private:
     void rebuildMissingNode();
     bool addNodeId(size_t &count, char ids[][WORKFLOW_MAX_NAME], const QString &id);
     bool hasNodeId(size_t count, const char ids[][WORKFLOW_MAX_NAME], const QString &id) const;
+    bool deleteMissingConnection(NodeItem *from, const QString &targetId, const QString &type);
     void connectNodes(NodeItem *source, NodeItem *target);
     void connectTriggerToAction(NodeItem *trigger, NodeItem *action);
     void connectActionToAction(NodeItem *source, NodeItem *target, const QString &type);
