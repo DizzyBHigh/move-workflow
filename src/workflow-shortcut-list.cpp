@@ -7,12 +7,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
-namespace {
-struct ShortcutRow {
-    QString id;
-    WorkflowShortcutKeyEdit *key = nullptr;
-};
-}
+#include <cstdio>
 
 WorkflowShortcutList::WorkflowShortcutList(const QString &title,
                                            const QString &hint,
@@ -55,7 +50,7 @@ void WorkflowShortcutList::apply(size_t &count,
         if (count >= WORKFLOW_MAX_LINKS)
             break;
         QByteArray id = row.id.toUtf8();
-        snprintf(ids[count], WORKFLOW_MAX_NAME, "%s", id.constData());
+        std::snprintf(ids[count], WORKFLOW_MAX_NAME, "%s", id.constData());
         const obs_key_combination_t combo = row.key->combination();
         keys[count] = static_cast<uint32_t>(combo.key);
         modifiers[count] = combo.modifiers;
@@ -65,11 +60,9 @@ void WorkflowShortcutList::apply(size_t &count,
 
 void WorkflowShortcutList::rebuildAttachedList()
 {
-    while (QLayoutItem *item = attachedLayout_->takeAt(0)) {
-        if (item->widget())
-            item->widget()->deleteLater();
+    while (QLayoutItem *item = attachedLayout_->takeAt(0))
         delete item;
-    }
+
     const QString query = search_->text().trimmed();
     for (const ShortcutRow &row : rows_) {
         NodeItem *target = nullptr;
@@ -90,14 +83,13 @@ void WorkflowShortcutList::rebuildAttachedList()
     }
 }
 
-void WorkflowShortcutList::addAction()
-{
-}
+void WorkflowShortcutList::addAction() {}
 
 void WorkflowShortcutList::removeAction(const QString &id)
 {
     for (int i = 0; i < rows_.size(); ++i) {
         if (rows_[i].id == id) {
+            rows_[i].key->deleteLater();
             rows_.removeAt(i);
             rebuildAttachedList();
             return;
