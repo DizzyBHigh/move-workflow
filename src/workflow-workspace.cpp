@@ -4,6 +4,7 @@
 #include "workflow-persistence.h"
 #include "workflow-scene.h"
 #include "workflow-hotkeys.h"
+#include <obs.h>
 #include <QList>
 #include <cstdio>
 #include <cstring>
