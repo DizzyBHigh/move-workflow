@@ -28,6 +28,15 @@ bool workflow_engine_service_trigger(const char *workflow_id, const char *trigge
     return workflow_engine_start_trigger(service_engine, workflow, node->id);
 }
 
+bool workflow_engine_service_accept_shortcut(const char *workflow_id, const char *source_id,
+                                             const char *target_id)
+{
+    if (!service_engine || !workflow_id || !source_id || !target_id) return false;
+    auto *workflow = find_workflow(workflow_id);
+    if (!workflow || !workflow->enabled) return false;
+    return workflow_engine_accept_shortcut(service_engine, workflow, source_id, target_id);
+}
+
 bool workflow_engine_service_trigger_scene(const char *) { return false; }
 
 bool workflow_engine_service_workflow_running(const char *workflow_id)
