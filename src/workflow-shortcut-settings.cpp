@@ -2,6 +2,7 @@
 #include "workflow-node.h"
 #include "workflow-scene-relationship.h"
 #include <QFormLayout>
+#include <QGroupBox>
 #include <QKeySequenceEdit>
 #include <QLabel>
 #include <QVBoxLayout>
@@ -18,17 +19,28 @@ static const workflow_shortcut_binding_t *find_binding(const workflow_node_t *so
 }
 QWidget *create_editor(const workflow_node_t *source,const QList<NodeItem *> &nodes,QWidget *parent)
 {
-    auto *box=new QWidget(parent);auto *layout=new QVBoxLayout(box);layout->setContentsMargins(0,0,0,0);
-    auto *form=new QFormLayout;layout->addWidget(new QLabel("Shortcut Keys",box));layout->addLayout(form);
+    auto *box=new QGroupBox("Shortcut Keys",parent);
+    auto *layout=new QVBoxLayout(box);
+    layout->setContentsMargins(8,8,8,8);
+    auto *form=new QFormLayout;
+    form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    layout->addLayout(form);
+    int rows=0;
     for(NodeItem *node:nodes){
-        if(!node||!node->workflowNode()||!source||node->workflowNode()->type!=WORKFLOW_NODE_ACTION)continue;
+        if(!node||!node->workflowNode()||node->workflowNode()->type!=WORKFLOW_NODE_ACTION||!source)continue;
         const QByteArray targetId=node->id().toUtf8();
         if(!workflow_scene_relationship::has(source,targetId.constData(),"Shortcut"))continue;
-        auto *edit=new QKeySequenceEdit(box);edit->setObjectName("shortcutKey_"+node->id());
+        auto *edit=new QKeySequenceEdit(box);
+        edit->setObjectName("shortcutKey_"+node->id());
         if(const auto *binding=find_binding(source,targetId.constData()))
             edit->setKeySequence(QKeySequence::fromString(QString::fromUtf8(binding->key),QKeySequence::PortableText));
-        edit->setToolTip(QString("Shortcut for %1").arg(node->nodeName()));form->addRow(node->nodeName(),edit);
+        edit->setToolTip(QString("Shortcut for %1").arg(node->nodeName()));
+        form->addRow(node->nodeName(),edit);
+        ++rows;
     }
+    if(rows==0)
+        layout->addWidget(new QLabel("No shortcut actions configured.",box));
+    box->setMinimumHeight(rows?70:48);
     return box;
 }
 bool read(const QWidget *editor,QList<Binding> &bindings)
