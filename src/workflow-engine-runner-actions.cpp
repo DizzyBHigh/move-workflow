@@ -4,6 +4,9 @@
 #include "workflow-debug.h"
 #include "workflow-engine-node.h"
 #include "workflow-engine-runner-internal.h"
+#include "workflow-shortcuts.h"
+
+#include <cstring>
 
 static bool run_simultaneous(workflow_engine_state_t *state, workflow_node_t *node, size_t depth)
 {
@@ -24,6 +27,7 @@ static bool wait_for_shortcut(workflow_engine_state_t *state, workflow_node_t *n
     state->waiting_for_shortcut = true;
     strncpy(state->shortcut_source_id, node->id, WORKFLOW_MAX_NAME - 1);
     state->shortcut_source_id[WORKFLOW_MAX_NAME - 1] = '\0';
+    workflow_shortcuts_begin(state->workflow, node);
     workflow_debug_log("Action lifecycle: node='%s' waiting for shortcut (%zu target(s))",
                        node->id, node->shortcut_node_count);
     return true;
