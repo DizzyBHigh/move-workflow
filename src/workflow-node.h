@@ -10,7 +10,6 @@
 
 struct EditorNode {
     workflow_node_t workflow{};
-    int numeric_id = 0;
     QPointF position;
 };
 
