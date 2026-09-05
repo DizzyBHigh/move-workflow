@@ -17,7 +17,8 @@ void copy_scene_to_workflow(EditorScene *scene, workflow_t *workflow)
     for (NodeItem *item : nodes) {
         if (!item || workflow->node_count >= WORKFLOW_MAX_NODES) continue;
         workflow_node_t node = *item->workflowNode(); const QPointF pos=item->pos();
-        node.position_x=qRound(pos.x()); node.position_y=qRound(pos.y()); workflow->nodes[workflow->node_count++]=node;
+        node.position_x=qRound(pos.x()); node.position_y=qRound(pos.y());
+        workflow->nodes[workflow->node_count++]=node;
     }
 }
 void clear_scene(EditorScene *scene)
@@ -31,9 +32,15 @@ void load_workflow(EditorScene *scene, const workflow_t *workflow)
     scene->setWorkflowId(QString::fromUtf8(workflow->id));
     const bool blocked=scene->blockSignals(true); clear_scene(scene);
     for (size_t i=0;i<workflow->node_count;++i) {
-        const workflow_node_t &source=workflow->nodes[i]; NodeItem *item=scene->addNode(source.type,QString::fromUtf8(source.name));
-        if (!item) continue; *item->workflowNode()=source;
-        if (!item->workflowNode()->id[0]) workflow_node_identity_generate(item->workflowNode()->id,sizeof(item->workflowNode()->id));
+        const workflow_node_t &source=workflow->nodes[i];
+        NodeItem *item=scene->addNode(source.type,QString::fromUtf8(source.name));
+        if (!item) continue;
+        *item->workflowNode()=source;
+        if (!item->workflowNode()->id[0]) {
+            blog(LOG_WARNING, "[Move Workflow] Loaded node '%s' without an ID; generating one for the scene",
+                 item->workflowNode()->name);
+            workflow_node_identity_generate(item->workflowNode()->id,sizeof(item->workflowNode()->id));
+        }
         item->setPos(source.position_x,source.position_y); item->refreshDisplay();
     }
     scene->rebuildConnections(); scene->updateSceneBounds(); scene->blockSignals(blocked);
@@ -50,8 +57,18 @@ void set_loaded_id(workflow_workspace_t *workspace,const char *id)
 }
 void ensure_scene_node_ids(workflow_workspace_t *workspace)
 {
-    if (!workspace||!workspace->scene)return; QList<NodeItem *> nodes=workspace->scene->nodes();
-    for(NodeItem *item:nodes){if(!item)continue;workflow_node_t *node=item->workflowNode();if(!node->id[0])workflow_manager_generate_node_id(&workspace->manager,node->id,sizeof(node->id));}
+    if (!workspace||!workspace->scene)return;
+    QList<NodeItem *> nodes=workspace->scene->nodes();
+    for(NodeItem *item:nodes){
+        if(!item)continue;
+        workflow_node_t *node=item->workflowNode();
+        if(!node->id[0]){
+            if(!workflow_manager_generate_node_id(&workspace->manager,node->id,sizeof(node->id)))
+                workflow_node_identity_generate(node->id,sizeof(node->id));
+            blog(LOG_WARNING,"[Move Workflow] Repaired blank scene node ID: name='%s' id='%s'",
+                 node->name,node->id);
+        }
+    }
 }
 }
 
