@@ -3,6 +3,7 @@
 #include "workflow-node-settings-common.h"
 #include "workflow-node-timing-defaults.h"
 #include "workflow-change-scene.h"
+#include "workflow-shortcut-settings.h"
 #include <obs.h>
 #include <QCheckBox>
 #include <QComboBox>
@@ -56,6 +57,7 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent,QVBoxLayout *layout)
     connect(filter_,&QComboBox::currentIndexChanged,this,[this,refreshDefaults,setOriginalEasing]{refreshDefaults();if(easingDefault_->isChecked())setOriginalEasing();}); connect(source_,&QComboBox::currentIndexChanged,this,[this,refreshDefaults,setOriginalEasing]{populateFilters();refreshDefaults();if(easingDefault_->isChecked())setOriginalEasing();}); connect(actionType_,&QComboBox::currentIndexChanged,this,[refreshDefaults]{refreshDefaults();});
     refreshDefaults(); startDelayMs_->setEnabled(!startDelayDefault_->isChecked()); durationMs_->setEnabled(!durationDefault_->isChecked()); endDelayMs_->setEnabled(!endDelayDefault_->isChecked());
     simultaneous_=new WorkflowActionList("Simultaneous Actions","These actions start together with this Action.",node_,nodes_,wf->simultaneous_node_ids,wf->simultaneous_node_count,this); nextActions_=new WorkflowActionList("Next Actions","These actions start after this Action's duration and End Delay.",node_,nodes_,wf->next_node_ids,wf->next_node_count,this); shortcutActions_=new WorkflowActionList("Shortcut Actions","These actions wait for their configured OBS shortcut.",node_,nodes_,wf->shortcut_node_ids,wf->shortcut_node_count,this); layout->addWidget(simultaneous_);layout->addWidget(nextActions_);layout->addWidget(shortcutActions_);
+    shortcutEditor_=workflow_shortcut_settings::create_editor(wf,nodes_,parent); layout->addWidget(shortcutEditor_);
 }
 
 void NodeSettingsDialog::populateSources(const QString &wanted){settings_searchable(source_);source_->blockSignals(true);source_->clear();obs_enum_scenes(add_source,source_);obs_enum_sources(add_source,source_);source_->blockSignals(false);int i=source_->findData(wanted);if(i>=0)source_->setCurrentIndex(i);else if(source_->count())source_->setCurrentIndex(0);}
