@@ -2,7 +2,6 @@
 #include "workflow-action-list.h"
 #include "workflow-shortcut-list.h"
 #include "workflow-node-settings-common.h"
-#include "workflow-hotkeys.h"
 #include <obs.h>
 #include <QCheckBox>
 #include <QDialogButtonBox>
@@ -56,7 +55,6 @@ bool NodeSettingsDialog::apply()
     nextActions_->apply(wf->next_node_count,wf->next_node_ids);
     shortcutActions_->apply(wf->shortcut_node_count,wf->shortcut_node_ids,wf->shortcut_key,wf->shortcut_modifiers);
     wf->simultaneous_actions_mode=WORKFLOW_OVERRIDE; wf->next_actions_mode=WORKFLOW_OVERRIDE;
-    workflow_hotkeys_refresh();
     return true;
 }
 
