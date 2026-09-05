@@ -41,7 +41,7 @@ QString combinationText(obs_key_combination_t combo)
 WorkflowShortcutKeyEdit::WorkflowShortcutKeyEdit(QWidget *parent) : QWidget(parent)
 {
     setFocusPolicy(Qt::StrongFocus);
-    setMinimumHeight(28);
+    setMinimumSize(170, 28);
     updateDisplay();
 }
 
