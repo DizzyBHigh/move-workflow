@@ -1,5 +1,6 @@
 #include "workflow-node-settings.h"
 #include "workflow-action-list.h"
+#include "workflow-shortcut-list.h"
 #include "workflow-node-settings-common.h"
 #include "workflow-node-timing-defaults.h"
 #include "workflow-change-scene.h"
@@ -55,7 +56,10 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent,QVBoxLayout *layout)
     connect(startDelayMs_,&QSpinBox::valueChanged,this,[this](int v){if(!startDelayDefault_->isChecked())startDelayOverrideMs_=(uint64_t)v;}); connect(durationMs_,&QSpinBox::valueChanged,this,[this](int v){if(!durationDefault_->isChecked())durationOverrideMs_=(uint64_t)v;}); connect(endDelayMs_,&QSpinBox::valueChanged,this,[this](int v){if(!endDelayDefault_->isChecked())endDelayOverrideMs_=(uint64_t)v;});
     connect(filter_,&QComboBox::currentIndexChanged,this,[this,refreshDefaults,setOriginalEasing]{refreshDefaults();if(easingDefault_->isChecked())setOriginalEasing();}); connect(source_,&QComboBox::currentIndexChanged,this,[this,refreshDefaults,setOriginalEasing]{populateFilters();refreshDefaults();if(easingDefault_->isChecked())setOriginalEasing();}); connect(actionType_,&QComboBox::currentIndexChanged,this,[refreshDefaults]{refreshDefaults();});
     refreshDefaults(); startDelayMs_->setEnabled(!startDelayDefault_->isChecked()); durationMs_->setEnabled(!durationDefault_->isChecked()); endDelayMs_->setEnabled(!endDelayDefault_->isChecked());
-    simultaneous_=new WorkflowActionList("Simultaneous Actions","These actions start together with this Action.",node_,nodes_,wf->simultaneous_node_ids,wf->simultaneous_node_count,this); nextActions_=new WorkflowActionList("Next Actions","These actions start after this Action's duration and End Delay.",node_,nodes_,wf->next_node_ids,wf->next_node_count,this); shortcutActions_=new WorkflowActionList("Shortcut Actions","These actions wait for their configured OBS shortcut.",node_,nodes_,wf->shortcut_node_ids,wf->shortcut_node_count,this); layout->addWidget(simultaneous_);layout->addWidget(nextActions_);layout->addWidget(shortcutActions_);
+    simultaneous_=new WorkflowActionList("Simultaneous Actions","These actions start together with this Action.",node_,nodes_,wf->simultaneous_node_ids,wf->simultaneous_node_count,this);
+    nextActions_=new WorkflowActionList("Next Actions","These actions start after this Action's duration and End Delay.",node_,nodes_,wf->next_node_ids,wf->next_node_count,this);
+    shortcutActions_=new WorkflowShortcutList("Shortcut Actions","These actions wait for their configured OBS shortcut.",node_,nodes_,wf->shortcut_node_ids,wf->shortcut_key,wf->shortcut_modifiers,wf->shortcut_node_count,this);
+    layout->addWidget(simultaneous_);layout->addWidget(nextActions_);layout->addWidget(shortcutActions_);
 }
 
 void NodeSettingsDialog::populateSources(const QString &wanted){settings_searchable(source_);source_->blockSignals(true);source_->clear();obs_enum_scenes(add_source,source_);obs_enum_sources(add_source,source_);source_->blockSignals(false);int i=source_->findData(wanted);if(i>=0)source_->setCurrentIndex(i);else if(source_->count())source_->setCurrentIndex(0);}
