@@ -5,6 +5,7 @@
 #include <QGraphicsTextItem>
 #include <QPainterPath>
 #include <QPen>
+#include <QUuid>
 
 #include <utility>
 
@@ -22,7 +23,7 @@ NodeItem *EditorScene::addNode(workflow_node_type_t type, const QString &name)
     EditorNode node;
     node.numeric_id = ++nextId_;
     workflow_scene_utils::copy_text(node.workflow.id, WORKFLOW_MAX_NAME,
-                                    QString("node-%1").arg(node.numeric_id));
+                                    QUuid::createUuid().toString(QUuid::WithoutBraces));
     workflow_scene_utils::copy_text(node.workflow.name, WORKFLOW_MAX_NAME, name);
     node.workflow.type = type; node.workflow.trigger_count = 0;
     node.workflow.duration.mode = WORKFLOW_OVERRIDE;
