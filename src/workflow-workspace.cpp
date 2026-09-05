@@ -3,6 +3,7 @@
 #include "workflow-node-identity.hpp"
 #include "workflow-persistence.h"
 #include "workflow-scene.h"
+#include "workflow-hotkeys.h"
 #include <QList>
 #include <cstdio>
 #include <cstring>
@@ -61,7 +62,7 @@ void workflow_workspace_init(workflow_workspace_t *workspace,EditorScene *scene)
     workflow_manager_repair_node_ids(&workspace->manager); workspace->scene=scene; workspace->loaded_workflow_id[0]='\0';
     if(!workspace->manager.workflow_count){workflow_t *workflow=workflow_manager_create(&workspace->manager,"workflow_1","New Workflow");if(!workflow)return;workflow_manager_set_selected(&workspace->manager,workflow->id);}
     workflow_t *workflow=workflow_manager_selected(&workspace->manager);
-    if(workflow){load_workflow(scene,workflow);set_loaded_id(workspace,workflow->id);} workflow_persistence_sync(&workspace->manager);
+    if(workflow){load_workflow(scene,workflow);set_loaded_id(workspace,workflow->id);} workflow_persistence_sync(&workspace->manager); workflow_hotkeys_refresh();
 }
 
 void workflow_workspace_sync_scene(workflow_workspace_t *workspace)
@@ -74,15 +75,15 @@ void workflow_workspace_sync_scene(workflow_workspace_t *workspace)
     copy_scene_to_workflow(workspace->scene,workflow);
     workflow_manager_repair_node_ids(&workspace->manager);
     const bool changed=std::memcmp(&before,workflow,sizeof(workflow_t))!=0;
-    if(changed) workflow_persistence_sync(&workspace->manager);
+    if(changed){workflow_persistence_sync(&workspace->manager);workflow_hotkeys_refresh();}
 }
 void workflow_workspace_reload(workflow_workspace_t *workspace)
-{if(!workspace||!workspace->loaded_workflow_id[0])return;const workflow_t *workflow=workflow_manager_find_const(&workspace->manager,workspace->loaded_workflow_id);load_workflow(workspace->scene,workflow);}
+{if(!workspace||!workspace->loaded_workflow_id[0])return;const workflow_t *workflow=workflow_manager_find_const(&workspace->manager,workspace->loaded_workflow_id);load_workflow(workspace->scene,workflow);workflow_hotkeys_refresh();}
 bool workflow_workspace_select(workflow_workspace_t *workspace,const char *id)
-{if(!workspace||!id||!workflow_manager_find_const(&workspace->manager,id))return false;workflow_workspace_sync_scene(workspace);if(!workflow_manager_set_selected(&workspace->manager,id))return false;load_workflow(workspace->scene,workflow_manager_selected_const(&workspace->manager));set_loaded_id(workspace,id);workflow_persistence_sync(&workspace->manager);return true;}
+{if(!workspace||!id||!workflow_manager_find_const(&workspace->manager,id))return false;workflow_workspace_sync_scene(workspace);if(!workflow_manager_set_selected(&workspace->manager,id))return false;load_workflow(workspace->scene,workflow_manager_selected_const(&workspace->manager));set_loaded_id(workspace,id);workflow_persistence_sync(&workspace->manager);workflow_hotkeys_refresh();return true;}
 bool workflow_workspace_create(workflow_workspace_t *workspace,const char *name)
-{if(!workspace)return false;workflow_workspace_sync_scene(workspace);char id[WORKFLOW_MAX_NAME]={};if(!make_id(&workspace->manager,"workflow",id,sizeof(id)))return false;workflow_t *workflow=workflow_manager_create(&workspace->manager,id,name);if(!workflow)return false;workflow_manager_set_selected(&workspace->manager,workflow->id);load_workflow(workspace->scene,workflow);set_loaded_id(workspace,workflow->id);workflow_persistence_sync(&workspace->manager);return true;}
+{if(!workspace)return false;workflow_workspace_sync_scene(workspace);char id[WORKFLOW_MAX_NAME]={};if(!make_id(&workspace->manager,"workflow",id,sizeof(id)))return false;workflow_t *workflow=workflow_manager_create(&workspace->manager,id,name);if(!workflow)return false;workflow_manager_set_selected(&workspace->manager,workflow->id);load_workflow(workspace->scene,workflow);set_loaded_id(workspace,workflow->id);workflow_persistence_sync(&workspace->manager);workflow_hotkeys_refresh();return true;}
 bool workflow_workspace_duplicate(workflow_workspace_t *workspace,const char *name)
-{if(!workspace)return false;workflow_workspace_sync_scene(workspace);const workflow_t *source=workflow_manager_find_const(&workspace->manager,workspace->loaded_workflow_id);if(!source)return false;char id[WORKFLOW_MAX_NAME]={};if(!make_id(&workspace->manager,"workflow_copy",id,sizeof(id)))return false;workflow_t *copy=workflow_manager_duplicate(&workspace->manager,source->id,id,name);if(!copy)return false;load_workflow(workspace->scene,copy);set_loaded_id(workspace,copy->id);workflow_persistence_sync(&workspace->manager);return true;}
+{if(!workspace)return false;workflow_workspace_sync_scene(workspace);const workflow_t *source=workflow_manager_find_const(&workspace->manager,workspace->loaded_workflow_id);if(!source)return false;char id[WORKFLOW_MAX_NAME]={};if(!make_id(&workspace->manager,"workflow_copy",id,sizeof(id)))return false;workflow_t *copy=workflow_manager_duplicate(&workspace->manager,source->id,id,name);if(!copy)return false;load_workflow(workspace->scene,copy);set_loaded_id(workspace,copy->id);workflow_persistence_sync(&workspace->manager);workflow_hotkeys_refresh();return true;}
 workflow_manager_t *workflow_workspace_manager(workflow_workspace_t *workspace){return workspace?&workspace->manager:nullptr;}
 const workflow_manager_t *workflow_workspace_manager_const(const workflow_workspace_t *workspace){return workspace?&workspace->manager:nullptr;}
