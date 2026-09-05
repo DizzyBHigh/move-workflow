@@ -108,7 +108,6 @@ void workflow_action_list_rebuild_rows(
             if (const auto *binding = find_binding(source, node->id()))
                 edit->setKeySequence(QKeySequence::fromString(
                     QString::fromUtf8(binding->key), QKeySequence::PortableText));
-            edit->setPlaceholderText("Press shortcut");
             edit->setToolTip(QString("Shortcut for %1").arg(display_name));
             row_layout->addWidget(edit);
             if (shortcut_editors)
