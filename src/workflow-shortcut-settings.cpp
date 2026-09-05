@@ -1,17 +1,22 @@
 #include "workflow-shortcut-settings.h"
+#include "workflow-node.h"
 
 #include <QComboBox>
-#include <QHBoxLayout>
+#include <QKeySequenceEdit>
 #include <QLabel>
-#include <QLineEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
 
 namespace workflow_shortcut_settings {
 
-static QString node_name(const NodeItem *node)
+static int binding_index(const workflow_node_t *source, const QString &target)
 {
-    return node ? node->name() : QString();
+    if (!source)
+        return -1;
+    for (size_t i = 0; i < source->shortcut_binding_count; ++i)
+        if (QString::fromUtf8(source->shortcut_bindings[i].target_id) == target)
+            return static_cast<int>(i);
+    return -1;
 }
 
 QWidget *create_editor(const workflow_node_t *source,
@@ -27,20 +32,29 @@ QWidget *create_editor(const workflow_node_t *source,
         if (!node || !node->workflowNode() || node->workflowNode() == source ||
             node->workflowNode()->type != WORKFLOW_NODE_ACTION)
             continue;
-        target->addItem(node_name(node), node->id());
+        if (source && binding_index(source, node->id()) < 0)
+            continue;
+        target->addItem(node->nodeName(), node->id());
     }
     layout->addWidget(new QLabel("Shortcut Action", box));
     layout->addWidget(target);
 
-    auto *key = new QLineEdit(box);
-    key->setPlaceholderText("Press a key combination...");
-    key->setReadOnly(true);
+    auto *key = new QKeySequenceEdit(box);
+    key->setToolTip("Press the shortcut key combination.");
     layout->addWidget(new QLabel("Shortcut Key", box));
     layout->addWidget(key);
 
     auto *clear = new QPushButton("Clear", box);
     layout->addWidget(clear);
-    QObject::connect(clear, &QPushButton::clicked, key, &QLineEdit::clear);
+    QObject::connect(clear, &QPushButton::clicked, key, &QKeySequenceEdit::clear);
+    QObject::connect(target, &QComboBox::currentIndexChanged, [source, target, key](int) {
+        if (!source)
+            return;
+        const int index = binding_index(source, target->currentData().toString());
+        key->setKeySequence(index >= 0
+            ? QKeySequence::fromString(QString::fromUtf8(source->shortcut_bindings[index].key))
+            : QKeySequence());
+    });
     return box;
 }
 
@@ -48,6 +62,12 @@ bool apply(const Binding &binding, workflow_node_t *source)
 {
     if (!source || binding.target_id.isEmpty() || binding.key.isEmpty())
         return false;
+    const int index = binding_index(source, binding.target_id);
+    if (index < 0)
+        return false;
+    const QByteArray key = binding.key.toUtf8();
+    std::snprintf(source->shortcut_bindings[index].key,
+                  WORKFLOW_MAX_NAME, "%s", key.constData());
     return true;
 }
 
