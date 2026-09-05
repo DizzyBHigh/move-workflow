@@ -92,25 +92,24 @@ void WorkflowActionList::applyShortcutKeys() const
     if (!shortcutMode_ || !current_ || !current_->workflowNode())
         return;
     workflow_node_t *source = current_->workflowNode();
-    for (size_t i = 0; i < source->shortcut_binding_count; ++i)
-        source->shortcut_bindings[i].key[0] = '\0';
-    for (QKeySequenceEdit *edit : shortcutEditors_) {
-        if (!edit)
-            continue;
-        const QString prefix = "shortcutKey_";
-        const QString id = edit->objectName().startsWith(prefix)
-            ? edit->objectName().mid(prefix.size()) : QString();
-        if (id.isEmpty())
-            continue;
-        const QByteArray target = id.toUtf8();
-        const QString key = edit->keySequence().toString(QKeySequence::PortableText);
-        for (size_t i = 0; i < source->shortcut_binding_count; ++i) {
-            if (std::strcmp(source->shortcut_bindings[i].target_id, target.constData()) != 0)
+    workflow_shortcut_binding_t bindings[WORKFLOW_MAX_LINKS]{};
+    size_t bindingCount = 0;
+    for (const QString &id : attachedIds_) {
+        if (bindingCount >= WORKFLOW_MAX_LINKS)
+            break;
+        auto &binding = bindings[bindingCount++];
+        copy_text(binding.target_id, WORKFLOW_MAX_NAME, id);
+        for (QKeySequenceEdit *edit : shortcutEditors_) {
+            if (!edit || edit->objectName() != "shortcutKey_" + id)
                 continue;
-            copy_text(source->shortcut_bindings[i].key, WORKFLOW_MAX_NAME, key);
+            copy_text(binding.key, WORKFLOW_MAX_NAME,
+                      edit->keySequence().toString(QKeySequence::PortableText));
             break;
         }
     }
+    source->shortcut_binding_count = bindingCount;
+    for (size_t i = 0; i < bindingCount; ++i)
+        source->shortcut_bindings[i] = bindings[i];
 }
 
 void WorkflowActionList::rebuildAttachedList()
