@@ -44,6 +44,34 @@ bool workflow_engine_start_trigger(workflow_engine_t *engine, workflow_t *workfl
     return workflow_engine_runner_run_node(workflow_engine_run_state(run), id);
 }
 
+bool workflow_engine_resume_shortcut(workflow_engine_t *engine,
+                                     const char *workflow_id,
+                                     const char *source_id,
+                                     const char *target_id)
+{
+    if (!engine || !workflow_id || !source_id || !target_id ||
+        !*workflow_id || !*source_id || !*target_id)
+        return false;
+    workflow_engine_run_t *run = workflow_engine_runs_find_shortcut(
+        engine->runs, workflow_id, source_id);
+    if (!run)
+        return false;
+    workflow_engine_state_t *state = workflow_engine_run_state(run);
+    workflow_node_t *source = workflow_engine_find_node(state->workflow, source_id);
+    if (!source)
+        return false;
+    for (size_t i = 0; i < source->shortcut_node_count; ++i) {
+        if (strcmp(source->shortcut_node_ids[i], target_id) == 0) {
+            state->waiting_for_shortcut = false;
+            state->shortcut_source_id[0] = '\0';
+            workflow_debug_log("Shortcut resumed workflow='%s' source='%s' target='%s'",
+                               workflow_id, source_id, target_id);
+            return workflow_engine_runner_run_node(state, target_id);
+        }
+    }
+    return false;
+}
+
 void workflow_engine_stop(workflow_engine_t *engine)
 {
     if (engine) workflow_engine_runs_stop_all(engine->runs);
