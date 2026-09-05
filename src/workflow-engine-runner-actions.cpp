@@ -4,6 +4,7 @@
 #include "workflow-debug.h"
 #include "workflow-engine-node.h"
 #include "workflow-engine-runner-internal.h"
+#include "workflow-engine-runner-shortcuts.h"
 
 static bool run_simultaneous(workflow_engine_state_t *state, workflow_node_t *node, size_t depth)
 {
@@ -20,6 +21,8 @@ static bool run_simultaneous(workflow_engine_state_t *state, workflow_node_t *no
 bool workflow_engine_runner_run_next_links(workflow_engine_state_t *state,
                                            workflow_node_t *node, size_t depth)
 {
+    if (node->shortcut_node_count)
+        return workflow_engine_runner_wait_shortcut(state, node);
     if (node->next_node_count) {
         workflow_debug_log("Workflow graph: node='%s' completed; executing %zu next node(s)",
                            node->id, node->next_node_count);
