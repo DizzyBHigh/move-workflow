@@ -12,11 +12,27 @@ void copy_scene_to_workflow(EditorScene *scene, workflow_t *workflow)
 {
     if (!scene || !workflow) return;
     const QList<NodeItem *> nodes = scene->nodes();
-    workflow->node_count = 0; workflow->entry_node_count = 0;
+    const size_t old_entry_count = workflow->entry_node_count;
+    char old_entries[WORKFLOW_MAX_NODES][WORKFLOW_MAX_NAME] = {};
+    for (size_t i = 0; i < old_entry_count && i < WORKFLOW_MAX_NODES; ++i)
+        std::snprintf(old_entries[i], WORKFLOW_MAX_NAME, "%s", workflow->entry_node_ids[i]);
+
+    workflow->node_count = 0;
     for (NodeItem *item : nodes) {
         if (!item || workflow->node_count >= WORKFLOW_MAX_NODES) continue;
-        workflow_node_t node = *item->workflowNode(); const QPointF pos=item->pos();
-        node.position_x=qRound(pos.x()); node.position_y=qRound(pos.y()); workflow->nodes[workflow->node_count++]=node;
+        workflow_node_t node = *item->workflowNode();
+        const QPointF pos = item->pos();
+        node.position_x = qRound(pos.x());
+        node.position_y = qRound(pos.y());
+        workflow->nodes[workflow->node_count++] = node;
+    }
+
+    workflow->entry_node_count = 0;
+    for (size_t i = 0; i < old_entry_count && i < WORKFLOW_MAX_NODES; ++i) {
+        if (!old_entries[i][0]) continue;
+        if (!workflow_node_belongs_to_workflow(workflow, old_entries[i])) continue;
+        std::snprintf(workflow->entry_node_ids[workflow->entry_node_count++],
+                      WORKFLOW_MAX_NAME, "%s", old_entries[i]);
     }
 }
 void clear_scene(EditorScene *scene)
