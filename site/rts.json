@@ -17,6 +17,10 @@
   "tags": ["OBS Studio", "Workflow", "Automation", "Move Transition"],
   "publish": {"assets": "images"},
   "release": {"assets": "zip"},
+  "home": {
+    "image": "assets/images/move-workflow-product-image.png"
+  },
+  "website": {"footerLabel": "Complete Control of your Move Filters."},
   "hero": {
     "kicker": "OBS STUDIO PLUGIN",
     "title": "Move Workflow",
