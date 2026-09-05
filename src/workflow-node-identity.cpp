@@ -2,24 +2,19 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 
 #ifdef __cplusplus
-#include <QRandomGenerator>
+#include <QUuid>
 #endif
 
 void workflow_node_identity_generate(char *id, size_t size)
 {
     if (!id || !size) return;
 #ifdef __cplusplus
-    const quint64 a = QRandomGenerator::global()->generate64();
-    const quint64 b = QRandomGenerator::global()->generate64();
-    snprintf(id, size, "node_%016llx%016llx", (unsigned long long)a,
-             (unsigned long long)b);
+    const QByteArray uuid = QUuid::createUuid().toString(QUuid::WithoutBraces).toUtf8();
+    snprintf(id, size, "%s", uuid.constData());
 #else
-    static unsigned long counter;
-    ++counter;
-    snprintf(id, size, "node_%lu_%lu", (unsigned long)time(NULL), counter);
+    id[0] = '\0';
 #endif
 }
 
