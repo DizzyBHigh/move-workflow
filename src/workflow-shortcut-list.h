@@ -5,6 +5,7 @@
 #include <QList>
 #include <QString>
 #include <QVector>
+#include <QWidget>
 
 #include <cstddef>
 #include <cstdint>
