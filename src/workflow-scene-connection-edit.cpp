@@ -4,6 +4,7 @@
 
 #include <obs.h>
 #include <QMessageBox>
+#include <QPushButton>
 
 bool EditorScene::editConnection(QGraphicsPathItem *line, const QString &type)
 {
