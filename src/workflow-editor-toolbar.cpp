@@ -20,7 +20,7 @@ public:
         setStyleSheet("QWidget#workflowEditorToolbar{background:#111820;border:1px solid #27313c;} QLabel{color:#aab6c3;} QComboBox{background:#17212b;color:#e6edf3;border:1px solid #2d3946;border-radius:4px;padding:4px 8px;min-height:27px;} QComboBox:hover{border-color:#3d5266;} QComboBox QAbstractItemView{background:#17212b;color:#e6edf3;selection-background-color:#245b8d;} QPushButton{background:#17212b;color:#dbe4ec;border:1px solid #2d3946;border-radius:4px;padding:4px 8px;min-height:27px;} QPushButton:hover{background:#20303d;border-color:#3d5266;} QPushButton:disabled{color:#687583;background:#141b22;} QCheckBox{color:#dbe4ec;spacing:5px;}");
         auto *layout = new QHBoxLayout(this); layout->setContentsMargins(7,5,7,5); layout->setSpacing(4);
         layout->addWidget(new QLabel("Workflow", this)); workflow_ = new QComboBox(this); workflow_->setMinimumWidth(230); layout->addWidget(workflow_);
-        add_ = button("+"); copy_ = button("Copy"); rename_ = button("Rename"); remove_ = button("Delete"); import_ = button("Import"); export_ = button("Export"); enabled_ = new QCheckBox("Enabled", this);
+        add_ = button("+"); copy_ = button("Duplicate"); rename_ = button("Rename"); remove_ = button("Delete"); import_ = button("Import"); export_ = button("Export"); enabled_ = new QCheckBox("Enabled", this);
         layout->addWidget(add_); layout->addWidget(copy_); layout->addWidget(rename_); layout->addWidget(remove_); layout->addWidget(import_); layout->addWidget(export_); layout->addWidget(enabled_);
         layout->addWidget(workflow_debug_create_control(this)); layout->addStretch();
         zoomOut_ = button("−"); zoomReset_ = button("100%"); zoomIn_ = button("+"); fit_ = button("Fit"); close_ = button("Close");
