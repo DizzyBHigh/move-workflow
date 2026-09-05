@@ -17,6 +17,7 @@ class QStackedWidget;
 class QVBoxLayout;
 class QWidget;
 class WorkflowActionList;
+class WorkflowShortcutList;
 
 class NodeSettingsDialog final : public QDialog {
 public:
@@ -53,7 +54,8 @@ private:
     QCheckBox *easingDefault_=nullptr;
     QComboBox *easingType_=nullptr,*easingFunction_=nullptr;
     uint64_t startDelayOverrideMs_=0,durationOverrideMs_=0,endDelayOverrideMs_=0;
-    WorkflowActionList *simultaneous_=nullptr,*nextActions_=nullptr,*shortcutActions_=nullptr,*startActions_=nullptr;
+    WorkflowActionList *simultaneous_=nullptr,*nextActions_=nullptr,*startActions_=nullptr;
+    WorkflowShortcutList *shortcutActions_=nullptr;
 };
 
 bool edit_node_settings(NodeItem *node, const QList<NodeItem *> &nodes, QWidget *parent=nullptr);
