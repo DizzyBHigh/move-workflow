@@ -8,6 +8,8 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
+#include <cstring>
+
 namespace {
 NodeItem *find_id(const QList<NodeItem *> &nodes, const QString &id)
 {
