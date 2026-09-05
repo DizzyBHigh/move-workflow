@@ -1,7 +1,6 @@
 #pragma once
 
 #include "workflow-model.h"
-
 #include <QList>
 #include <QString>
 
@@ -20,6 +19,7 @@ QWidget *create_editor(const workflow_node_t *source,
                        const QList<NodeItem *> &nodes,
                        QWidget *parent = nullptr);
 
+bool read(const QWidget *editor, Binding &binding);
 bool apply(const Binding &binding, workflow_node_t *source);
 
 } // namespace workflow_shortcut_settings
