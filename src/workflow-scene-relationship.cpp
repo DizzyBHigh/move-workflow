@@ -1,5 +1,6 @@
 #include "workflow-scene-relationship.h"
 
+#include <cstdio>
 #include <cstring>
 
 namespace workflow_scene_relationship {
