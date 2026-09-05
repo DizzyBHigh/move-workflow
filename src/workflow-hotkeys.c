@@ -154,3 +154,9 @@ void workflow_hotkeys_unregister(void)
     binding_count = 0;
     workflow_shortcuts_cancel();
 }
+
+void workflow_hotkeys_refresh(void)
+{
+    workflow_hotkeys_unregister();
+    workflow_hotkeys_register();
+}
