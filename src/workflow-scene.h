@@ -56,7 +56,6 @@ private:
     void connectActionToAction(NodeItem *source, NodeItem *target, const QString &type);
     void finishConnectionDrag(const QPointF &scenePos);
     static void updateConnection(QGraphicsPathItem *line, NodeItem *from, NodeItem *to);
-    int nextId_ = 0;
     QVector<NodeItem *> nodes_;
     QVector<Connection> connections_;
     QVector<MissingConnection> missingConnections_;
