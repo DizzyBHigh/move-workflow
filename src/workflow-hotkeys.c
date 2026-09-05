@@ -39,21 +39,40 @@ static void redo_cb(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pre
         workflow_editor_redo_from_hotkey();
 }
 
-static void register_shortcut(workflow_t *workflow, const char *source_id, const char *target_id)
+static void clear_shortcuts(void)
 {
-    if (!workflow || !source_id || !target_id || binding_count >= MAX_SHORTCUT_BINDINGS)
+    for (size_t i = 0; i < binding_count; ++i) {
+        if (bindings[i].id != OBS_INVALID_HOTKEY_ID)
+            obs_hotkey_unregister(bindings[i].id);
+    }
+    binding_count = 0;
+    workflow_shortcuts_cancel();
+}
+
+static void register_shortcut(workflow_t *workflow, const workflow_node_t *node, size_t index)
+{
+    if (!workflow || !node || index >= node->shortcut_node_count || binding_count >= MAX_SHORTCUT_BINDINGS)
         return;
 
-    shortcut_binding_t *binding = &bindings[binding_count++];
+    shortcut_binding_t *binding = &bindings[binding_count];
     binding->workflow = workflow;
-    snprintf(binding->source_id, WORKFLOW_MAX_NAME, "%s", source_id);
-    snprintf(binding->target_id, WORKFLOW_MAX_NAME, "%s", target_id);
+    snprintf(binding->source_id, WORKFLOW_MAX_NAME, "%s", node->id);
+    snprintf(binding->target_id, WORKFLOW_MAX_NAME, "%s", node->shortcut_node_ids[index]);
 
     char name[WORKFLOW_MAX_VALUE];
     char description[WORKFLOW_MAX_VALUE];
-    snprintf(name, sizeof(name), "move_workflow.shortcut.%s.%s", source_id, target_id);
-    snprintf(description, sizeof(description), "Move Workflow: %s -> %s", source_id, target_id);
+    snprintf(name, sizeof(name), "move_workflow.shortcut.%s.%s", node->id, binding->target_id);
+    snprintf(description, sizeof(description), "Move Workflow: %s -> %s", node->id, binding->target_id);
     binding->id = obs_hotkey_register_frontend(name, description, shortcut_cb, binding);
+    if (binding->id == OBS_INVALID_HOTKEY_ID)
+        return;
+
+    obs_key_combination_t combo = {0};
+    combo.modifiers = node->shortcut_modifiers[index];
+    combo.key = (obs_key_t)node->shortcut_key[index];
+    if (combo.key != OBS_KEY_NONE)
+        obs_hotkey_load_bindings(binding->id, &combo, 1);
+    ++binding_count;
 }
 
 void workflow_hotkeys_set_redo_callback(workflow_redo_callback_t callback)
@@ -63,35 +82,38 @@ void workflow_hotkeys_set_redo_callback(workflow_redo_callback_t callback)
 
 void workflow_hotkeys_register(void)
 {
-    redo_hotkey_id = obs_hotkey_register_frontend("move_workflow.redo", "Move Workflow: Redo", redo_cb, NULL);
+    if (redo_hotkey_id == OBS_INVALID_HOTKEY_ID)
+        redo_hotkey_id = obs_hotkey_register_frontend("move_workflow.redo", "Move Workflow: Redo", redo_cb, NULL);
     obs_key_combination_t combo = {0};
     combo.modifiers = INTERACT_CONTROL_KEY;
     combo.key = OBS_KEY_Y;
     obs_hotkey_load_bindings(redo_hotkey_id, &combo, 1);
+    workflow_hotkeys_refresh();
+}
 
-    binding_count = 0;
+void workflow_hotkeys_refresh(void)
+{
+    clear_shortcuts();
     workflow_manager_t *manager = workflow_persistence_manager();
-    workflow_t *workflow = workflow_manager_selected(manager);
-    if (!workflow)
+    if (!manager)
         return;
-
-    for (size_t i = 0; i < workflow->node_count; ++i) {
-        workflow_node_t *node = &workflow->nodes[i];
-        for (size_t j = 0; j < node->shortcut_node_count; ++j)
-            register_shortcut(workflow, node->id, node->shortcut_node_ids[j]);
+    for (size_t w = 0; w < manager->workflow_count; ++w) {
+        workflow_t *workflow = &manager->workflows[w];
+        if (!workflow->enabled)
+            continue;
+        for (size_t i = 0; i < workflow->node_count; ++i) {
+            const workflow_node_t *node = &workflow->nodes[i];
+            for (size_t j = 0; j < node->shortcut_node_count; ++j)
+                register_shortcut(workflow, node, j);
+        }
     }
 }
 
 void workflow_hotkeys_unregister(void)
 {
-    for (size_t i = 0; i < binding_count; ++i) {
-        if (bindings[i].id)
-            obs_hotkey_unregister(bindings[i].id);
-    }
+    clear_shortcuts();
     if (redo_hotkey_id != OBS_INVALID_HOTKEY_ID) {
         obs_hotkey_unregister(redo_hotkey_id);
         redo_hotkey_id = OBS_INVALID_HOTKEY_ID;
     }
-    binding_count = 0;
-    workflow_shortcuts_cancel();
 }
