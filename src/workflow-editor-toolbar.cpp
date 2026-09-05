@@ -34,7 +34,7 @@ public:
 private:
     QPushButton *button(const char *text){auto *b=new QPushButton(text,this);b->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);return b;}
     void createWorkflow(){bool ok=false;const QString name=QInputDialog::getText(this,"New Workflow","Workflow name:",QLineEdit::Normal,"New Workflow",&ok);if(ok&&!name.trimmed().isEmpty()&&callbacks_.create_workflow){callbacks_.create_workflow(name.trimmed().toUtf8().constData());refresh();}}
-    void duplicateWorkflow(){const auto *s=workflow_manager_selected_const(manager_);const QString base=s?QString::fromUtf8(s->name)+" Copy":"Workflow Copy";bool ok=false;const QString name=QInputDialog::getText(this,"Duplicate Workflow","Workflow name:",QLineEdit::Normal,base,&ok);if(ok&&!name.trimmed().isEmpty()&&callbacks_.duplicate_workflow){callbacks_.duplicate_workflow(name.trimmed().toUtf8().constData());refresh();}}
+    void duplicateWorkflow(){const auto *s=workflow_manager_selected_const(manager_);const QString base=s?QString::fromUtf8(s->name)+" Duplicate":"Workflow Duplicate";bool ok=false;const QString name=QInputDialog::getText(this,"Duplicate Workflow","Workflow name:",QLineEdit::Normal,base,&ok);if(ok&&!name.trimmed().isEmpty()&&callbacks_.duplicate_workflow){callbacks_.duplicate_workflow(name.trimmed().toUtf8().constData());refresh();}}
     workflow_manager_t *manager_;workflow_editor_toolbar_callbacks callbacks_;QComboBox *workflow_=nullptr;QCheckBox *enabled_=nullptr;QPushButton *add_=nullptr,*copy_=nullptr,*rename_=nullptr,*remove_=nullptr,*import_=nullptr,*export_=nullptr,*zoomOut_=nullptr,*zoomReset_=nullptr,*zoomIn_=nullptr,*fit_=nullptr,*close_=nullptr;
 };
 }
