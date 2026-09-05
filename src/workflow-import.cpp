@@ -72,8 +72,9 @@ bool workflow_import_file(workflow_manager_t *manager, const char *path)
     const QJsonDocument doc = QJsonDocument::fromJson(input.readAll(), &error);
     if (error.error != QJsonParseError::NoError || !doc.isObject()) return false;
     const QJsonObject root = doc.object();
+    const int version = root["format_version"].toInt();
     if (root["format"].toString() != "obs-move-workflow" ||
-        root["format_version"].toInt() != 1) return false;
+        (version != 1 && version != 2)) return false;
 
     const std::unique_ptr<workflow_manager_t> imported(new workflow_manager_t{});
     if (!workflow_manager_from_json(imported.get(), root) || imported->workflow_count != 1)
