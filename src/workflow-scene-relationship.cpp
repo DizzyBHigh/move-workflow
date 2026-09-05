@@ -37,53 +37,58 @@ static void erase(size_t &count, char ids[][WORKFLOW_MAX_NAME], const char *id)
     }
 }
 
-static bool *unused(void) { return nullptr; }
-
-bool add(workflow_node_t *source, const char *target_id, relationship_type type)
+bool add(workflow_node_t *source, workflow_node_t *target, const QString &type)
 {
-    if (!source || !target_id || !*target_id)
+    if (!source || !target || source == target)
         return false;
-    switch (type) {
-    case relationship_type::shortcut:
-        return append(source->shortcut_node_count, source->shortcut_node_ids, target_id);
-    case relationship_type::simultaneous:
-        return append(source->simultaneous_node_count, source->simultaneous_node_ids, target_id);
-    case relationship_type::next:
-        return append(source->next_node_count, source->next_node_ids, target_id);
-    }
+    if (type == "Shortcut")
+        return append(source->shortcut_node_count, source->shortcut_node_ids, target->id);
+    if (type == "Simultaneous")
+        return append(source->simultaneous_node_count, source->simultaneous_node_ids, target->id);
+    if (type == "Next" || type == "Next Action")
+        return append(source->next_node_count, source->next_node_ids, target->id);
     return false;
 }
 
-void remove(workflow_node_t *source, const char *target_id, relationship_type type)
+bool remove(workflow_node_t *source, workflow_node_t *target, const QString &type)
 {
-    if (!source)
-        return;
-    switch (type) {
-    case relationship_type::shortcut:
-        erase(source->shortcut_node_count, source->shortcut_node_ids, target_id);
-        break;
-    case relationship_type::simultaneous:
-        erase(source->simultaneous_node_count, source->simultaneous_node_ids, target_id);
-        break;
-    case relationship_type::next:
-        erase(source->next_node_count, source->next_node_ids, target_id);
-        break;
-    }
+    if (!source || !target)
+        return false;
+    if (type == "Shortcut")
+        erase(source->shortcut_node_count, source->shortcut_node_ids, target->id);
+    else if (type == "Simultaneous")
+        erase(source->simultaneous_node_count, source->simultaneous_node_ids, target->id);
+    else if (type == "Next" || type == "Next Action")
+        erase(source->next_node_count, source->next_node_ids, target->id);
+    else
+        return false;
+    return true;
 }
 
-bool has(const workflow_node_t *source, const char *target_id, relationship_type type)
+bool has(const workflow_node_t *source, const char *target_id, const QString &type)
 {
     if (!source)
         return false;
-    switch (type) {
-    case relationship_type::shortcut:
+    if (type == "Shortcut")
         return contains(source->shortcut_node_count, source->shortcut_node_ids, target_id);
-    case relationship_type::simultaneous:
+    if (type == "Simultaneous")
         return contains(source->simultaneous_node_count, source->simultaneous_node_ids, target_id);
-    case relationship_type::next:
+    if (type == "Next" || type == "Next Action")
         return contains(source->next_node_count, source->next_node_ids, target_id);
-    }
     return false;
+}
+
+QString type_between(const workflow_node_t *source, const workflow_node_t *target)
+{
+    if (!source || !target)
+        return QString();
+    if (contains(source->shortcut_node_count, source->shortcut_node_ids, target->id))
+        return "Shortcut";
+    if (contains(source->simultaneous_node_count, source->simultaneous_node_ids, target->id))
+        return "Simultaneous";
+    if (contains(source->next_node_count, source->next_node_ids, target->id))
+        return "Next Action";
+    return QString();
 }
 
 } // namespace workflow_scene_relationship
