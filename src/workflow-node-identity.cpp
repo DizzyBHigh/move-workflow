@@ -93,6 +93,33 @@ static void remap_links(workflow_t *w, const char *old_id, const char *new_id)
         remap_id(w->entry_node_ids[i], old_id, new_id);
 }
 
+static void remove_empty_links(workflow_t *w)
+{
+    for (size_t i = 0; i < w->node_count; ++i) {
+        workflow_node_t *node = &w->nodes[i];
+        char (*groups[])[WORKFLOW_MAX_NAME] = {node->end_node_ids,
+            node->simultaneous_node_ids, node->next_node_ids, node->shortcut_node_ids};
+        size_t *counts[] = {&node->end_node_count, &node->simultaneous_node_count,
+                            &node->next_node_count, &node->shortcut_node_count};
+        for (size_t g = 0; g < 4; ++g) {
+            size_t write = 0;
+            for (size_t j = 0; j < *counts[g]; ++j) {
+                if (!groups[g][j][0]) continue;
+                if (write != j) memcpy(groups[g][write], groups[g][j], WORKFLOW_MAX_NAME);
+                ++write;
+            }
+            *counts[g] = write;
+        }
+    }
+    size_t write = 0;
+    for (size_t i = 0; i < w->entry_node_count; ++i)
+        if (w->entry_node_ids[i][0]) {
+            if (write != i) memcpy(w->entry_node_ids[write], w->entry_node_ids[i], WORKFLOW_MAX_NAME);
+            ++write;
+        }
+    w->entry_node_count = write;
+}
+
 void workflow_manager_repair_node_ids(workflow_manager_t *manager)
 {
     if (!manager) return;
@@ -113,9 +140,9 @@ void workflow_manager_repair_node_ids(workflow_manager_t *manager)
             if (!duplicate) continue;
             char old_id[WORKFLOW_MAX_NAME];
             snprintf(old_id, sizeof(old_id), "%s", node->id);
-            if (workflow_manager_generate_node_id(manager, node->id,
-                                                   sizeof(node->id)))
+            if (workflow_manager_generate_node_id(manager, node->id, sizeof(node->id)))
                 remap_links(w, old_id, node->id);
         }
+        remove_empty_links(w);
     }
 }

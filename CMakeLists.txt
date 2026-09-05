@@ -18,15 +18,16 @@ if(ENABLE_QT)
   target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
   set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
 endif()
+
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/plugin-main.c src/workflow-model.h
   src/workflow-manager.c src/workflow-manager.h src/workflow-manager-copy.c src/workflow-manager-copy.h
   src/workflow-manager-ui.cpp src/workflow-manager-ui.h src/workflow-workspace.cpp src/workflow-workspace.h
-  src/workflow-scene.cpp src/workflow-scene.h src/workflow-scene-connections.cpp src/workflow-scene-connection-edit.cpp src/workflow-scene-relationship.cpp src/workflow-scene-events.cpp
+  src/workflow-scene.cpp src/workflow-scene.h src/workflow-scene-connections.cpp src/workflow-scene-events.cpp
   src/workflow-missing-node-dialog.cpp
   src/workflow-scene-utils.cpp src/workflow-scene-utils.h src/workflow-node.cpp src/workflow-node.h src/workflow-node-copy.c src/workflow-node-copy.h src/workflow-node-identity.cpp src/workflow-node-identity.hpp
   src/workflow-node-duplicate-ui.cpp src/workflow-node-duplicate-ui.h src/workflow-node-settings.cpp src/workflow-node-settings.h
-  src/workflow-node-settings-action.cpp src/workflow-shortcut-settings.cpp src/workflow-node-settings-scene.cpp src/workflow-node-settings-scene.h
+  src/workflow-node-settings-action.cpp src/workflow-node-settings-scene.cpp src/workflow-node-settings-scene.h
   src/workflow-node-settings-trigger.cpp src/workflow-node-settings-trigger-data.cpp src/workflow-node-settings-common.h
   src/workflow-node-dialog.h src/workflow-node-timing-defaults.cpp src/workflow-node-timing-defaults.h src/workflow-clipboard.cpp src/workflow-clipboard.h
   src/workflow-persistence.cpp src/workflow-persistence.h src/workflow-persistence-json.cpp src/workflow-persistence-json.h src/workflow-export.cpp src/workflow-export.h src/workflow-import.cpp src/workflow-import.h
@@ -35,6 +36,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-debug.h src/workflow-debug.cpp src/workflow-debug-ui.h src/workflow-debug-ui.cpp src/workflow-engine.h src/workflow-engine.cpp
   src/workflow-engine-state.h src/workflow-engine-state.cpp src/workflow-engine-node.h src/workflow-engine-node.cpp src/workflow-engine-node-runtime.h src/workflow-engine-node-runtime.cpp src/workflow-engine-delay.h src/workflow-engine-delay.cpp
   src/workflow-engine-runner.h src/workflow-engine-runner.cpp src/workflow-engine-runner-internal.h src/workflow-engine-runner-actions.h src/workflow-engine-runner-actions.cpp
+  src/workflow-engine-runner-shortcuts.h src/workflow-engine-runner-shortcuts.cpp
   src/workflow-engine-runs.h src/workflow-engine-runs.cpp
   src/workflow-engine-service.h src/workflow-engine-service.cpp src/workflow-action-executor.hpp src/workflow-action-executor.cpp src/workflow-action-runtime.h src/workflow-action-runtime.cpp
   src/workflow-filter-instance.h src/workflow-filter-instance.cpp src/workflow-filter-instance-set.cpp src/workflow-filter-settings.h src/workflow-filter-settings.cpp
@@ -45,6 +47,9 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-editor-view.cpp src/workflow-editor-view.h src/workflow-action-list.cpp src/workflow-action-list.h src/workflow-action-list-ui.cpp src/workflow-action-list-ui.h
   src/workflow-editor-toolbar.cpp src/workflow-editor-toolbar.h src/workflow-editor-sidebar.cpp src/workflow-editor-sidebar.h src/workflow-editor-sidebar-icons.cpp src/workflow-editor-sidebar-icons.h
   src/workflow-editor-properties.cpp src/workflow-editor-properties.h src/workflow-editor-connections.cpp src/workflow-editor-connections.hpp
-  src/workflow-connection-editor.cpp src/workflow-connection-editor.h src/workflow-scene-relationship.h
+  src/workflow-connection-editor.cpp src/workflow-connection-editor.h
+  src/workflow-scene-relationship.h
+  src/workflow-shortcut-key-edit.hpp src/workflow-shortcut-key-edit.cpp
+  src/workflow-shortcut-list.h src/workflow-shortcut-list.cpp
 )
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})

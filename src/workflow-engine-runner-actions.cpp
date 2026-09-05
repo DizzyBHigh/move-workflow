@@ -4,9 +4,7 @@
 #include "workflow-debug.h"
 #include "workflow-engine-node.h"
 #include "workflow-engine-runner-internal.h"
-#include "workflow-shortcuts.h"
-
-#include <cstring>
+#include "workflow-engine-runner-shortcuts.h"
 
 static bool run_simultaneous(workflow_engine_state_t *state, workflow_node_t *node, size_t depth)
 {
@@ -20,22 +18,11 @@ static bool run_simultaneous(workflow_engine_state_t *state, workflow_node_t *no
     return result;
 }
 
-static bool wait_for_shortcut(workflow_engine_state_t *state, workflow_node_t *node)
-{
-    if (!state || !node || node->shortcut_node_count == 0)
-        return false;
-    state->waiting_for_shortcut = true;
-    strncpy(state->shortcut_source_id, node->id, WORKFLOW_MAX_NAME - 1);
-    state->shortcut_source_id[WORKFLOW_MAX_NAME - 1] = '\0';
-    workflow_shortcuts_begin(state->workflow, node);
-    workflow_debug_log("Action lifecycle: node='%s' waiting for shortcut (%zu target(s))",
-                       node->id, node->shortcut_node_count);
-    return true;
-}
-
 bool workflow_engine_runner_run_next_links(workflow_engine_state_t *state,
                                            workflow_node_t *node, size_t depth)
 {
+    if (node->shortcut_node_count)
+        return workflow_engine_runner_wait_shortcut(state, node);
     if (node->next_node_count) {
         workflow_debug_log("Workflow graph: node='%s' completed; executing %zu next node(s)",
                            node->id, node->next_node_count);
@@ -62,7 +49,6 @@ static bool run_action(workflow_engine_state_t *state, workflow_node_t *node, si
             workflow_engine_state_stop(state);
             return false;
         }
-        if (wait_for_shortcut(state, node)) return true;
         return workflow_engine_runner_run_next_links(state, node, depth);
     }
 
@@ -82,7 +68,6 @@ static bool run_action(workflow_engine_state_t *state, workflow_node_t *node, si
         if (workflow_engine_runner_schedule_phase(state, node, end_delay, PHASE_END_DELAY)) return simultaneous_ok;
         return false;
     }
-    if (wait_for_shortcut(state, node)) return simultaneous_ok;
     return simultaneous_ok && workflow_engine_runner_run_next_links(state, node, depth);
 }
 

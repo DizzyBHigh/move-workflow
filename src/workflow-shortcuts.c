@@ -2,6 +2,7 @@
 
 #include "workflow-engine-service.h"
 
+#include <obs-module.h>
 #include <string.h>
 
 static workflow_t *pending_workflow;
@@ -13,9 +14,12 @@ void workflow_shortcuts_begin(workflow_t *workflow, const workflow_node_t *node)
     pending_source[0] = '\0';
     if (!workflow || !node || node->shortcut_node_count == 0)
         return;
+
     pending_workflow = workflow;
     strncpy(pending_source, node->id, WORKFLOW_MAX_NAME - 1);
     pending_source[WORKFLOW_MAX_NAME - 1] = '\0';
+    blog(LOG_INFO, "[Move Workflow] Shortcut waiting: workflow='%s' source='%s' targets=%zu",
+         workflow->id, node->id, node->shortcut_node_count);
 }
 
 bool workflow_shortcuts_accept(workflow_t *workflow, const char *source_id,
@@ -36,19 +40,25 @@ bool workflow_shortcuts_accept(workflow_t *workflow, const char *source_id,
     if (!source)
         return false;
 
-    bool linked = false;
     for (size_t i = 0; i < source->shortcut_node_count; ++i) {
-        if (strcmp(source->shortcut_node_ids[i], target_id) == 0) {
-            linked = true;
-            break;
-        }
-    }
-    if (!linked)
-        return false;
+        if (strcmp(source->shortcut_node_ids[i], target_id) != 0)
+            continue;
 
-    pending_workflow = NULL;
-    pending_source[0] = '\0';
-    return workflow_engine_service_resume_shortcut(workflow->id, source_id, target_id);
+        blog(LOG_INFO, "[Move Workflow] Shortcut accepted: workflow='%s' source='%s' target='%s'",
+             workflow->id, source_id, target_id);
+	const bool resumed = workflow_engine_service_accept_shortcut(workflow->id, source_id, target_id);
+	if (resumed) {
+            pending_workflow = NULL;
+            pending_source[0] = '\0';
+        } else {
+            blog(LOG_WARNING,
+                 "[Move Workflow] Shortcut resume failed: workflow='%s' source='%s' target='%s'",
+                 workflow->id, source_id, target_id);
+        }
+        return resumed;
+    }
+
+    return false;
 }
 
 void workflow_shortcuts_cancel(void)

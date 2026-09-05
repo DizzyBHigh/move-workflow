@@ -56,22 +56,43 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
     if (!set || !node || node->type != WORKFLOW_NODE_ACTION ||
         node->action.kind == WORKFLOW_CHANGE_SCENE)
         return false;
-    if (find_index(set, node->id, nullptr))
+
+    workflow_debug_log("Filter prepare: node='%s' scene='%s' filter='%s' filter_id='%s' kind=%d",
+                       node->id, node->action.scene_name, node->action.filter_name,
+                       node->action.filter_id, (int)node->action.kind);
+
+    size_t existing = 0;
+    if (find_index(set, node->id, &existing)) {
+        workflow_debug_log("Filter prepare: node='%s' already maps to runtime index=%zu; possible duplicate node ID",
+                           node->id, existing);
         return true;
+    }
     if (set->count >= WORKFLOW_MAX_NODES)
         return false;
 
     obs_source_t *parent = obs_get_source_by_name(node->action.scene_name);
-    if (!parent)
+    if (!parent) {
+        workflow_debug_log("Filter prepare: node='%s' scene='%s' NOT FOUND",
+                           node->id, node->action.scene_name);
         return false;
+    }
+
     obs_source_t *original = obs_source_get_filter_by_name(parent, node->action.filter_name);
     if (!original) {
+        workflow_debug_log("Filter prepare: node='%s' filter='%s' NOT FOUND on scene='%s'",
+                           node->id, node->action.filter_name, node->action.scene_name);
         obs_source_release(parent);
         return false;
     }
+
     const char *expected = workflow_expected_filter_id(node->action.kind);
     const char *actual = obs_source_get_id(original);
+    workflow_debug_log("Filter prepare: node='%s' resolved filter='%s' actual_id='%s' expected_id='%s'",
+                       node->id, obs_source_get_name(original), actual ? actual : "",
+                       expected ? expected : "");
     if (!expected || !actual || strcmp(expected, actual)) {
+        workflow_debug_log("Filter prepare: node='%s' REJECTED filter='%s' due to filter ID mismatch",
+                           node->id, obs_source_get_name(original));
         obs_source_release(original);
         obs_source_release(parent);
         return false;
@@ -90,9 +111,11 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
     set->instances[set->count] = instance;
     strncpy(set->node_ids[set->count], node->id, WORKFLOW_MAX_NAME - 1);
     ++set->count;
-    workflow_debug_log("Filter instance: node='%s' prepared runtime='%s' duration=%llu",
+    workflow_debug_log("Filter prepare: node='%s' -> runtime='%s' runtime_id='%s' duration=%llu restore_delay=%llu",
                        node->id, obs_source_get_name(instance->instance),
-                       (unsigned long long)duration);
+                       obs_source_get_id(instance->instance),
+                       (unsigned long long)duration,
+                       (unsigned long long)restore_delay);
     return true;
 }
 
@@ -100,7 +123,12 @@ workflow_filter_instance *workflow_filter_instance_set_get(
     workflow_filter_instance_set *set, const workflow_node_t *node)
 {
     size_t index = 0;
-    return node && find_index(set, node->id, &index) ? set->instances[index] : nullptr;
+    if (!node)
+        return nullptr;
+    const bool found = find_index(set, node->id, &index);
+    workflow_debug_log("Filter lookup: node='%s' found=%s index=%zu",
+                       node->id, found ? "true" : "false", index);
+    return found ? set->instances[index] : nullptr;
 }
 
 void workflow_filter_instance_set_destroy(workflow_filter_instance_set *set)
