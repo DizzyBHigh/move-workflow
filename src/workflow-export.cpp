@@ -27,7 +27,7 @@ bool workflow_export_selected(const workflow_manager_t *manager, const char *pat
 
     QJsonObject root{{"version", manager_json["version"]},
                      {"format", "obs-move-workflow"},
-                     {"format_version", 1},
+                     {"format_version", 2},
                      {"workflows", QJsonArray{selected_json}}};
 
     QFile output(QString::fromUtf8(path));
