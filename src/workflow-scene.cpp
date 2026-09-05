@@ -21,7 +21,6 @@ void EditorScene::setWorkflowId(const QString &workflowId)
 NodeItem *EditorScene::addNode(workflow_node_type_t type, const QString &name)
 {
     EditorNode node;
-    node.numeric_id = ++nextId_;
     workflow_scene_utils::copy_text(node.workflow.id, WORKFLOW_MAX_NAME,
                                     QUuid::createUuid().toString(QUuid::WithoutBraces));
     workflow_scene_utils::copy_text(node.workflow.name, WORKFLOW_MAX_NAME, name);
