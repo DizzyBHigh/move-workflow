@@ -48,7 +48,7 @@ bool workflow_shortcuts_accept(workflow_t *workflow, const char *source_id,
 
     pending_workflow = NULL;
     pending_source[0] = '\0';
-    return workflow_engine_service_test_node(workflow->id, target_id);
+    return workflow_engine_service_resume_shortcut(workflow->id, source_id, target_id);
 }
 
 void workflow_shortcuts_cancel(void)
