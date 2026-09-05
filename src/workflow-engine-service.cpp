@@ -43,6 +43,19 @@ bool workflow_engine_service_test_node(const char *workflow_id, const char *node
     return workflow_engine_test_node(service_engine, workflow, node_id);
 }
 
+bool workflow_engine_service_resume_shortcut(const char *workflow_id,
+                                             const char *source_id,
+                                             const char *target_id)
+{
+    if (!service_engine || !workflow_id || !source_id || !target_id)
+        return false;
+    auto *workflow = find_workflow(workflow_id);
+    if (!workflow || !workflow->enabled)
+        return false;
+    return workflow_engine_resume_shortcut(service_engine, workflow_id,
+                                           source_id, target_id);
+}
+
 bool workflow_engine_service_node_runtime(const char *workflow_id, const char *node_id,
                                           workflow_engine_node_runtime_t *out)
 {
