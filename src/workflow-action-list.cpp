@@ -3,6 +3,7 @@
 
 #include <QCompleter>
 #include <QHBoxLayout>
+#include <QKeySequenceEdit>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
@@ -32,8 +33,8 @@ static bool contains_id(const QStringList &ids, const QString &id)
 WorkflowActionList::WorkflowActionList(const QString &title, const QString &hint,
                                        NodeItem *current, const QList<NodeItem *> &nodes,
                                        const char ids[][WORKFLOW_MAX_NAME], size_t count,
-                                       QWidget *parent)
-    : QWidget(parent), current_(current), nodes_(nodes)
+                                       QWidget *parent, bool shortcut_mode)
+    : QWidget(parent), current_(current), nodes_(nodes), shortcutMode_(shortcut_mode)
 {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
@@ -76,6 +77,7 @@ WorkflowActionList::WorkflowActionList(const QString &title, const QString &hint
 
 void WorkflowActionList::apply(size_t &count, char ids[][WORKFLOW_MAX_NAME]) const
 {
+    applyShortcutKeys();
     count = 0;
     for (const QString &id : attachedIds_) {
         if (count >= WORKFLOW_MAX_LINKS)
@@ -85,11 +87,39 @@ void WorkflowActionList::apply(size_t &count, char ids[][WORKFLOW_MAX_NAME]) con
     }
 }
 
+void WorkflowActionList::applyShortcutKeys() const
+{
+    if (!shortcutMode_ || !current_ || !current_->workflowNode())
+        return;
+    workflow_node_t *source = current_->workflowNode();
+    for (size_t i = 0; i < source->shortcut_binding_count; ++i)
+        source->shortcut_bindings[i].key[0] = '\0';
+    for (QKeySequenceEdit *edit : shortcutEditors_) {
+        if (!edit)
+            continue;
+        const QString prefix = "shortcutKey_";
+        const QString id = edit->objectName().startsWith(prefix)
+            ? edit->objectName().mid(prefix.size()) : QString();
+        if (id.isEmpty())
+            continue;
+        const QByteArray target = id.toUtf8();
+        const QString key = edit->keySequence().toString(QKeySequence::PortableText);
+        for (size_t i = 0; i < source->shortcut_binding_count; ++i) {
+            if (std::strcmp(source->shortcut_bindings[i].target_id, target.constData()) != 0)
+                continue;
+            copy_text(source->shortcut_bindings[i].key, WORKFLOW_MAX_NAME, key);
+            break;
+        }
+    }
+}
+
 void WorkflowActionList::rebuildAttachedList()
 {
     workflow_action_list_rebuild_rows(
         attachedLayout_, nodes_, attachedIds_,
-        [this](const QString &id) { removeAction(id); });
+        [this](const QString &id) { removeAction(id); },
+        shortcutMode_, &shortcutEditors_,
+        current_ ? current_->workflowNode() : nullptr);
 }
 
 void WorkflowActionList::addAction()
