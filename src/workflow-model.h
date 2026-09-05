@@ -15,21 +15,11 @@ typedef enum workflow_move_kind { WORKFLOW_MOVE_ACTION = 0, WORKFLOW_MOVE_SOURCE
 typedef enum workflow_value_mode { WORKFLOW_USE_EXISTING = 0, WORKFLOW_OVERRIDE } workflow_value_mode_t;
 typedef enum workflow_scene_completion { WORKFLOW_SCENE_COMPLETE_IMMEDIATE = 0, WORKFLOW_SCENE_COMPLETE_TRANSITION = 1 } workflow_scene_completion_t;
 typedef enum workflow_easing { WORKFLOW_EASE_NONE = 0, WORKFLOW_EASE_IN = 1, WORKFLOW_EASE_OUT = 2, WORKFLOW_EASE_IN_OUT = 3 } workflow_easing_t;
-typedef enum workflow_easing_function {
-    WORKFLOW_EASING_QUADRATIC = 1,
-    WORKFLOW_EASING_CUBIC = 2,
-    WORKFLOW_EASING_QUARTIC = 3,
-    WORKFLOW_EASING_QUINTIC = 4,
-    WORKFLOW_EASING_SINE = 5,
-    WORKFLOW_EASING_CIRCULAR = 6,
-    WORKFLOW_EASING_EXPONENTIAL = 7,
-    WORKFLOW_EASING_ELASTIC = 8,
-    WORKFLOW_EASING_BOUNCE = 9,
-    WORKFLOW_EASING_BACK = 10
-} workflow_easing_function_t;
+typedef enum workflow_easing_function { WORKFLOW_EASING_QUADRATIC = 1, WORKFLOW_EASING_CUBIC = 2, WORKFLOW_EASING_QUARTIC = 3, WORKFLOW_EASING_QUINTIC = 4, WORKFLOW_EASING_SINE = 5, WORKFLOW_EASING_CIRCULAR = 6, WORKFLOW_EASING_EXPONENTIAL = 7, WORKFLOW_EASING_ELASTIC = 8, WORKFLOW_EASING_BOUNCE = 9, WORKFLOW_EASING_BACK = 10 } workflow_easing_function_t;
 
 typedef struct workflow_trigger_filter_ref { char source_uuid[WORKFLOW_MAX_NAME]; char filter_uuid[WORKFLOW_MAX_NAME]; } workflow_trigger_filter_ref_t;
 typedef struct workflow_action_ref { char scene_name[WORKFLOW_MAX_NAME]; char source_name[WORKFLOW_MAX_NAME]; char filter_name[WORKFLOW_MAX_NAME]; char filter_id[WORKFLOW_MAX_NAME]; workflow_move_kind_t kind; workflow_scene_completion_t scene_completion; } workflow_action_ref_t;
+typedef struct workflow_shortcut_binding { char target_id[WORKFLOW_MAX_NAME]; char key[WORKFLOW_MAX_NAME]; } workflow_shortcut_binding_t;
 typedef struct workflow_duration_override { workflow_value_mode_t mode; uint64_t duration_ms; } workflow_duration_override_t;
 typedef struct workflow_delay_override { workflow_value_mode_t mode; uint64_t delay_ms; } workflow_delay_override_t;
 typedef struct workflow_easing_override { workflow_value_mode_t mode; workflow_easing_t easing; workflow_easing_function_t function; } workflow_easing_override_t;
@@ -46,6 +36,7 @@ typedef struct workflow_node {
     size_t simultaneous_node_count; char simultaneous_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
     size_t next_node_count; char next_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
     size_t shortcut_node_count; char shortcut_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME];
+    size_t shortcut_binding_count; workflow_shortcut_binding_t shortcut_bindings[WORKFLOW_MAX_LINKS];
 } workflow_node_t;
 
 typedef struct workflow { char id[WORKFLOW_MAX_NAME]; char name[WORKFLOW_MAX_NAME]; bool enabled; size_t entry_node_count; char entry_node_ids[WORKFLOW_MAX_LINKS][WORKFLOW_MAX_NAME]; size_t node_count; workflow_node_t nodes[WORKFLOW_MAX_NODES]; } workflow_t;
