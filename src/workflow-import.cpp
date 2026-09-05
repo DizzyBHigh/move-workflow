@@ -31,6 +31,37 @@ static void make_copy_name(workflow_manager_t *manager, workflow_t *workflow)
     workflow->id[0] = '\0';
 }
 
+static void remap_imported_node(workflow_t *workflow, const char *old_id, const char *new_id)
+{
+    for (size_t i = 0; i < workflow->node_count; ++i) {
+        workflow_node_t *node = &workflow->nodes[i];
+        char (*groups[])[WORKFLOW_MAX_NAME] = {node->end_node_ids,
+            node->simultaneous_node_ids, node->next_node_ids, node->shortcut_node_ids};
+        const size_t counts[] = {node->end_node_count, node->simultaneous_node_count,
+                                 node->next_node_count, node->shortcut_node_count};
+        for (size_t g = 0; g < 4; ++g)
+            for (size_t j = 0; j < counts[g]; ++j)
+                if (strcmp(groups[g][j], old_id) == 0)
+                    snprintf(groups[g][j], WORKFLOW_MAX_NAME, "%s", new_id);
+    }
+    for (size_t i = 0; i < workflow->entry_node_count; ++i)
+        if (strcmp(workflow->entry_node_ids[i], old_id) == 0)
+            snprintf(workflow->entry_node_ids[i], WORKFLOW_MAX_NAME, "%s", new_id);
+}
+
+static bool normalize_imported_node_ids(workflow_manager_t *manager, workflow_t *workflow)
+{
+    for (size_t i = 0; i < workflow->node_count; ++i) {
+        char old_id[WORKFLOW_MAX_NAME];
+        snprintf(old_id, sizeof(old_id), "%s", workflow->nodes[i].id);
+        if (!workflow_manager_generate_node_id(manager, workflow->nodes[i].id,
+                                                sizeof(workflow->nodes[i].id)))
+            return false;
+        remap_imported_node(workflow, old_id, workflow->nodes[i].id);
+    }
+    return true;
+}
+
 bool workflow_import_file(workflow_manager_t *manager, const char *path)
 {
     if (!manager || !path || !path[0] || manager->workflow_count >= WORKFLOW_MANAGER_MAX_WORKFLOWS)
@@ -48,7 +79,7 @@ bool workflow_import_file(workflow_manager_t *manager, const char *path)
     if (!workflow_manager_from_json(imported.get(), root) || imported->workflow_count != 1)
         return false;
     workflow_t *workflow = &imported->workflows[0];
-    workflow_manager_repair_node_ids(imported.get());
+    if (!normalize_imported_node_ids(imported.get(), workflow)) return false;
     make_copy_name(manager, workflow);
     if (!workflow->id[0] || !workflow->name[0] || !workflow_manager_node_ids_unique(imported.get()))
         return false;
