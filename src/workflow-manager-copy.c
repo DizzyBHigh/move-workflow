@@ -1,6 +1,6 @@
 #include "workflow-manager-copy.h"
+#include "workflow-node-identity.hpp"
 
-#include <stdio.h>
 #include <string.h>
 
 static void copy_text(char *dst, const char *src)
@@ -59,7 +59,11 @@ workflow_t *workflow_manager_duplicate(workflow_manager_t *manager,
 
     for (size_t i = 0; i < copy->node_count; ++i) {
         copy_text(old_ids[i], source->nodes[i].id);
-        snprintf(new_ids[i], WORKFLOW_MAX_NAME, "%s_node_%zu", new_id, i + 1);
+        if (!workflow_manager_generate_node_id(manager, new_ids[i],
+                                                WORKFLOW_MAX_NAME)) {
+            --manager->workflow_count;
+            return NULL;
+        }
         copy_text(copy->nodes[i].id, new_ids[i]);
     }
     remap_links(copy, old_ids, new_ids, copy->node_count);
