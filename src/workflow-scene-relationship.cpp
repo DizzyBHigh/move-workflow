@@ -22,7 +22,6 @@ static void erase(size_t &count,char ids[][WORKFLOW_MAX_NAME],const char *id)
 static bool add_binding(workflow_node_t *source,const char *target)
 {
     if(!source||!target||source->shortcut_binding_count>=WORKFLOW_MAX_LINKS)return false;
-    if(contains(source->shortcut_binding_count,source->shortcut_bindings[0].target_id?nullptr:nullptr,target)){}
     for(size_t i=0;i<source->shortcut_binding_count;++i)
         if(std::strcmp(source->shortcut_bindings[i].target_id,target)==0)return true;
     auto &binding=source->shortcut_bindings[source->shortcut_binding_count++];
@@ -37,10 +36,9 @@ bool add(workflow_node_t *source,workflow_node_t *target,const QString &type)
 {
     if(!source||!target||source==target)return false;
     if(type=="Shortcut"){
-        if(contains(source->shortcut_node_count,source->shortcut_node_ids,target->id))return false;
-        if(source->shortcut_binding_count>=WORKFLOW_MAX_LINKS)return false;
-        if(!append(source->shortcut_node_count,source->shortcut_node_ids,target->id))return false;
-        add_binding(source,target->id);return true;
+        if(contains(source->shortcut_node_count,source->shortcut_node_ids,target->id)||source->shortcut_binding_count>=WORKFLOW_MAX_LINKS)return false;
+        if(!append(source->shortcut_node_count,source->shortcut_node_ids,target->id)||!add_binding(source,target->id))return false;
+        return true;
     }
     if(type=="Simultaneous")return append(source->simultaneous_node_count,source->simultaneous_node_ids,target->id);
     if(type=="Next"||type=="Next Action")return append(source->next_node_count,source->next_node_ids,target->id);
