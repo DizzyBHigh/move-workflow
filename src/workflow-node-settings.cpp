@@ -1,6 +1,8 @@
 #include "workflow-node-settings.h"
 #include "workflow-action-list.h"
+#include "workflow-shortcut-list.h"
 #include "workflow-node-settings-common.h"
+#include "workflow-hotkeys.h"
 #include <obs.h>
 #include <QCheckBox>
 #include <QDialogButtonBox>
@@ -43,14 +45,19 @@ bool NodeSettingsDialog::apply()
         } else {
             obs_source_t *parent=obs_get_source_by_name(parentName.toUtf8().constData()); if(!parent)return false; obs_source_t *filter=obs_source_get_filter_by_name(parent,filterName.toUtf8().constData()); if(!filter){obs_source_release(parent);return false;}
             const char *filterId=obs_source_get_id(filter); if(!settings_supported_filter(filterId)){obs_source_release(filter);obs_source_release(parent);return false;}
-            wf->action.kind=settings_kind(filterId); settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,parentName); wf->action.source_name[0]='\0'; settings_copy_text(wf->action.filter_name,WORKFLOW_MAX_NAME,filterName); settings_copy_text(wf->action.filter_id,WORKFLOW_MAX_NAME,QString::fromUtf8(filterId)); obs_source_release(filter); obs_source_release(parent);
+            wf->action.kind=settings_kind(filterId); settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,parentName); wf->action.source_name[0]='\0'; settings_copy_text(wf->action.filter_name,WORKFLOW_MAX_NAME,filterName); settings_copy_text(wf->action.filter_id,WORKFLOW_MAX_NAME,QString::fromUtf8(filterId)); obs_source_release(filter);obs_source_release(parent);
         }
     }
     wf->start_delay.mode=startDelayDefault_->isChecked()?WORKFLOW_USE_EXISTING:WORKFLOW_OVERRIDE; wf->start_delay.delay_ms=startDelayDefault_->isChecked()?startDelayOverrideMs_:(uint64_t)startDelayMs_->value();
     wf->duration.mode=durationDefault_->isChecked()?WORKFLOW_USE_EXISTING:WORKFLOW_OVERRIDE; wf->duration.duration_ms=durationDefault_->isChecked()?durationOverrideMs_:(uint64_t)durationMs_->value();
     wf->end_delay.mode=endDelayDefault_->isChecked()?WORKFLOW_USE_EXISTING:WORKFLOW_OVERRIDE; wf->end_delay.delay_ms=endDelayDefault_->isChecked()?endDelayOverrideMs_:(uint64_t)endDelayMs_->value();
     wf->easing.mode=easingDefault_->isChecked()?WORKFLOW_USE_EXISTING:WORKFLOW_OVERRIDE; wf->easing.easing=(workflow_easing_t)easingType_->currentData().toInt(); wf->easing.function=(workflow_easing_function_t)easingFunction_->currentData().toInt();
-    simultaneous_->apply(wf->simultaneous_node_count,wf->simultaneous_node_ids); nextActions_->apply(wf->next_node_count,wf->next_node_ids); shortcutActions_->apply(wf->shortcut_node_count,wf->shortcut_node_ids); wf->simultaneous_actions_mode=WORKFLOW_OVERRIDE; wf->next_actions_mode=WORKFLOW_OVERRIDE; return true;
+    simultaneous_->apply(wf->simultaneous_node_count,wf->simultaneous_node_ids);
+    nextActions_->apply(wf->next_node_count,wf->next_node_ids);
+    shortcutActions_->apply(wf->shortcut_node_count,wf->shortcut_node_ids,wf->shortcut_key,wf->shortcut_modifiers);
+    wf->simultaneous_actions_mode=WORKFLOW_OVERRIDE; wf->next_actions_mode=WORKFLOW_OVERRIDE;
+    workflow_hotkeys_refresh();
+    return true;
 }
 
 bool edit_node_settings(NodeItem *node,const QList<NodeItem *> &nodes,QWidget *parent){NodeSettingsDialog dialog(node,nodes,parent);return dialog.exec()==QDialog::Accepted;}
