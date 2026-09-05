@@ -3,6 +3,7 @@
 #include "workflow-engine-delay.h"
 #include "workflow-engine-node.h"
 #include "workflow-engine-runner.h"
+#include "workflow-engine-runner-shortcuts.h"
 #include "workflow-engine-runs.h"
 #include <cstdlib>
 #include <cstring>
@@ -42,6 +43,22 @@ bool workflow_engine_start_trigger(workflow_engine_t *engine, workflow_t *workfl
     if (!run) return false;
     workflow_debug_log("External trigger started workflow='%s' node='%s'", workflow->name, id);
     return workflow_engine_runner_run_node(workflow_engine_run_state(run), id);
+}
+
+bool workflow_engine_accept_shortcut(workflow_engine_t *engine, workflow_t *workflow,
+                                     const char *source_id, const char *target_id)
+{
+    if (!engine || !workflow || !source_id || !target_id) return false;
+    bool accepted = false;
+    for (workflow_engine_run_t *run = workflow_engine_runs_head(engine->runs); run;
+         run = workflow_engine_run_next(run)) {
+        workflow_engine_state_t *state = workflow_engine_run_state(run);
+        if (!workflow_engine_state_is_active(state) || state->workflow != workflow)
+            continue;
+        if (workflow_engine_runner_activate_shortcut(state, source_id, target_id))
+            accepted = true;
+    }
+    return accepted;
 }
 
 void workflow_engine_stop(workflow_engine_t *engine)
