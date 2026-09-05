@@ -2,10 +2,11 @@
 
 #include "workflow-model.h"
 
+#include <QList>
 #include <QString>
 
+class NodeItem;
 class QWidget;
-class QVBoxLayout;
 
 namespace workflow_shortcut_settings {
 
@@ -16,7 +17,7 @@ struct Binding {
 };
 
 QWidget *create_editor(const workflow_node_t *source,
-                       const QList<class NodeItem *> &nodes,
+                       const QList<NodeItem *> &nodes,
                        QWidget *parent = nullptr);
 
 bool apply(const Binding &binding, workflow_node_t *source);
