@@ -54,9 +54,16 @@ static bool normalize_imported_node_ids(workflow_manager_t *manager, workflow_t 
     for (size_t i = 0; i < workflow->node_count; ++i) {
         char old_id[WORKFLOW_MAX_NAME];
         snprintf(old_id, sizeof(old_id), "%s", workflow->nodes[i].id);
+        blog(LOG_INFO, "[Move Workflow] Import node %zu/%zu: old id='%s'.",
+             i + 1, workflow->node_count, old_id);
         if (!workflow_manager_generate_node_id(manager, workflow->nodes[i].id,
-                                                sizeof(workflow->nodes[i].id)))
+                                                sizeof(workflow->nodes[i].id))) {
+            blog(LOG_WARNING, "[Move Workflow] Import node %zu: UUID generation failed (current id='%s').",
+                 i + 1, workflow->nodes[i].id);
             return false;
+        }
+        blog(LOG_INFO, "[Move Workflow] Import node %zu: new id='%s'.",
+             i + 1, workflow->nodes[i].id);
         remap_imported_node(workflow, old_id, workflow->nodes[i].id);
     }
     return true;
