@@ -44,7 +44,6 @@
       "autoplay": true,
       "interval": 5000,
       "media": [
-        {"type": "video", "src": "assets/video/ban-timeout-demo-video-one.mp4", "title": "Ban/Timeout Widget Demo", "caption": "See the Ban/Timeout Widget in action."},
         {"type": "image", "src": "assets/images/workflow-main-window.png", "title": "Workflow Canvas", "caption": "The canvas is where you manage and connect your filters, set what filters run sumultaneously and what filters run next.", "alt": "The Workflow Canvas"},
         {"type": "image", "src": "assets/images/workflow-action-node-configuration.png", "title": "Configure and override filter settings independently of the original move filter settings.", "caption": "Configure the filter using the node settings", "alt": "RTS timeout cell screenshot"},
         {"type": "image", "src": "assets/images/workflow-connection-type-changer.png", "title": "Node Connection types", "caption": "Simultaneous - Run all connected nodes at the same time.\\nNext - Run the next connected node after the current node completes.\\nShortcut - Run the next connected node when the configured hotkey is pressed.", "alt": "Workflow node connection types"}
