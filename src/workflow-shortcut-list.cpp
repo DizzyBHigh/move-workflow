@@ -2,10 +2,12 @@
 #include "workflow-shortcut-key-edit.hpp"
 #include "workflow-action-list-ui.h"
 
+#include <QCompleter>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QStringListModel>
 #include <QVBoxLayout>
 
 #include <cstdio>
@@ -31,6 +33,13 @@ WorkflowShortcutList::WorkflowShortcutList(const QString &title,
     auto *addButton = new QPushButton("Add", this);
     searchRow->addWidget(addButton);
     layout->addLayout(searchRow);
+    auto *model = new QStringListModel(this);
+    model->setStringList(workflow_action_list_names(nodes_, current_));
+    auto *completer = new QCompleter(model, search_);
+    completer->setCaseSensitivity(Qt::CaseInsensitive);
+    completer->setFilterMode(Qt::MatchContains);
+    completer->setCompletionMode(QCompleter::PopupCompletion);
+    search_->setCompleter(completer);
     attachedLayout_ = new QVBoxLayout;
     layout->addLayout(attachedLayout_);
 
@@ -44,7 +53,6 @@ WorkflowShortcutList::WorkflowShortcutList(const QString &title,
     rebuildAttachedList();
     connect(addButton, &QPushButton::clicked, this, [this] { addAction(); });
     connect(search_, &QLineEdit::returnPressed, this, [this] { addAction(); });
-    connect(search_, &QLineEdit::textChanged, this, [this] { rebuildAttachedList(); });
 }
 
 void WorkflowShortcutList::apply(size_t &count,
@@ -70,7 +78,6 @@ void WorkflowShortcutList::rebuildAttachedList()
     while (QLayoutItem *item = attachedLayout_->takeAt(0))
         delete item;
 
-    const QString query = search_->text().trimmed();
     for (const ShortcutRow &row : rows_) {
         NodeItem *target = nullptr;
         for (NodeItem *node : nodes_) {
@@ -78,8 +85,6 @@ void WorkflowShortcutList::rebuildAttachedList()
                 target = node;
         }
         const QString name = target ? target->nodeName() : row.id;
-        if (!query.isEmpty() && !name.contains(query, Qt::CaseInsensitive))
-            continue;
         auto *line = new QHBoxLayout;
         line->addWidget(new QLabel(name, this), 1);
         line->addWidget(row.key);
