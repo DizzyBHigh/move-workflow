@@ -31,9 +31,14 @@ bool workflow_manager_generate_node_id(const workflow_manager_t *manager,
                                        char *id, size_t size)
 {
     if (!manager || !id || !size) return false;
+    char candidate[WORKFLOW_MAX_NAME];
     for (unsigned int attempt = 0; attempt < 32; ++attempt) {
-        workflow_node_identity_generate(id, size);
-        if (id[0] && !id_used(manager, id)) return true;
+        candidate[0] = '\0';
+        workflow_node_identity_generate(candidate, sizeof(candidate));
+        if (candidate[0] && !id_used(manager, candidate)) {
+            snprintf(id, size, "%s", candidate);
+            return true;
+        }
     }
     id[0] = '\0';
     return false;
