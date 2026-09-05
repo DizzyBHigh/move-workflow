@@ -47,5 +47,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-editor-toolbar.cpp src/workflow-editor-toolbar.h src/workflow-editor-sidebar.cpp src/workflow-editor-sidebar.h src/workflow-editor-sidebar-icons.cpp src/workflow-editor-sidebar-icons.h
   src/workflow-editor-properties.cpp src/workflow-editor-properties.h src/workflow-editor-connections.cpp src/workflow-editor-connections.hpp
   src/workflow-connection-editor.cpp src/workflow-connection-editor.h
+  src/workflow-shortcut-key-edit.hpp src/workflow-shortcut-key-edit.cpp
+  src/workflow-shortcut-list.h src/workflow-shortcut-list.cpp
 )
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
