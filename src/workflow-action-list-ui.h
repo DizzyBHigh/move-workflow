@@ -1,5 +1,7 @@
 #pragma once
 
+#include "workflow-model.h"
+
 #include <QList>
 #include <QStringList>
 #include <functional>
@@ -7,7 +9,6 @@
 class NodeItem;
 class QKeySequenceEdit;
 class QVBoxLayout;
-struct workflow_node_t;
 
 QStringList workflow_action_list_names(const QList<NodeItem *> &nodes,
                                        NodeItem *current);
