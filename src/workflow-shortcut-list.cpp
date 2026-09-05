@@ -1,5 +1,6 @@
 #include "workflow-shortcut-list.h"
 #include "workflow-shortcut-key-edit.hpp"
+#include "workflow-action-list-ui.h"
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -23,9 +24,13 @@ WorkflowShortcutList::WorkflowShortcutList(const QString &title,
     auto *layout = new QVBoxLayout(this);
     layout->addWidget(new QLabel(QString("<b>%1</b>").arg(title), this));
     layout->addWidget(new QLabel(hint, this));
+    auto *searchRow = new QHBoxLayout;
     search_ = new QLineEdit(this);
     search_->setPlaceholderText("Search actions...");
-    layout->addWidget(search_);
+    searchRow->addWidget(search_, 1);
+    auto *addButton = new QPushButton("Add", this);
+    searchRow->addWidget(addButton);
+    layout->addLayout(searchRow);
     attachedLayout_ = new QVBoxLayout;
     layout->addLayout(attachedLayout_);
 
@@ -37,6 +42,8 @@ WorkflowShortcutList::WorkflowShortcutList(const QString &title,
         rows_.append(row);
     }
     rebuildAttachedList();
+    connect(addButton, &QPushButton::clicked, this, [this] { addAction(); });
+    connect(search_, &QLineEdit::returnPressed, this, [this] { addAction(); });
     connect(search_, &QLineEdit::textChanged, this, [this] { rebuildAttachedList(); });
 }
 
@@ -67,8 +74,8 @@ void WorkflowShortcutList::rebuildAttachedList()
     for (const ShortcutRow &row : rows_) {
         NodeItem *target = nullptr;
         for (NodeItem *node : nodes_) {
-		if (QString::fromUtf8(node->workflowNode()->id) == row.id)
-			target = node;
+            if (QString::fromUtf8(node->workflowNode()->id) == row.id)
+                target = node;
         }
         const QString name = target ? target->nodeName() : row.id;
         if (!query.isEmpty() && !name.contains(query, Qt::CaseInsensitive))
@@ -83,7 +90,29 @@ void WorkflowShortcutList::rebuildAttachedList()
     }
 }
 
-void WorkflowShortcutList::addAction() {}
+void WorkflowShortcutList::addAction()
+{
+    if (!search_)
+        return;
+    const QString query = search_->text().trimmed();
+    if (query.isEmpty() || rows_.size() >= (int)WORKFLOW_MAX_LINKS)
+        return;
+    NodeItem *match = workflow_action_list_find_match(nodes_, current_, query);
+    if (!match)
+        return;
+    const QString id = match->id();
+    for (const ShortcutRow &row : rows_) {
+        if (row.id.compare(id, Qt::CaseInsensitive) == 0)
+            return;
+    }
+    ShortcutRow row;
+    row.id = id;
+    row.key = new WorkflowShortcutKeyEdit(this);
+    rows_.append(row);
+    search_->clear();
+    rebuildAttachedList();
+    row.key->setFocus();
+}
 
 void WorkflowShortcutList::removeAction(const QString &id)
 {
