@@ -64,31 +64,56 @@ static bool normalize_imported_node_ids(workflow_manager_t *manager, workflow_t 
 
 bool workflow_import_file(workflow_manager_t *manager, const char *path)
 {
-    if (!manager || !path || !path[0] || manager->workflow_count >= WORKFLOW_MANAGER_MAX_WORKFLOWS)
+    if (!manager || !path || !path[0] || manager->workflow_count >= WORKFLOW_MANAGER_MAX_WORKFLOWS) {
+        blog(LOG_WARNING, "[Move Workflow] Import rejected: invalid manager/path or workflow capacity.");
         return false;
+    }
     QFile input(QString::fromUtf8(path));
-    if (!input.open(QIODevice::ReadOnly)) return false;
+    if (!input.open(QIODevice::ReadOnly)) {
+        blog(LOG_WARNING, "[Move Workflow] Import failed: could not open '%s'.", path);
+        return false;
+    }
     QJsonParseError error{};
     const QJsonDocument doc = QJsonDocument::fromJson(input.readAll(), &error);
-    if (error.error != QJsonParseError::NoError || !doc.isObject()) return false;
+    if (error.error != QJsonParseError::NoError || !doc.isObject()) {
+        blog(LOG_WARNING, "[Move Workflow] Import failed: invalid JSON (%s).", error.errorString().toUtf8().constData());
+        return false;
+    }
     const QJsonObject root = doc.object();
     const int version = root["format_version"].toInt();
-    if (root["format"].toString() != "obs-move-workflow" ||
-        (version != 1 && version != 2)) return false;
+    if (root["format"].toString() != "obs-move-workflow" || (version != 1 && version != 2)) {
+        blog(LOG_WARNING, "[Move Workflow] Import rejected: format='%s', version=%d.",
+             root["format"].toString().toUtf8().constData(), version);
+        return false;
+    }
 
     const std::unique_ptr<workflow_manager_t> imported(new workflow_manager_t{});
-    if (!workflow_manager_from_json(imported.get(), root) || imported->workflow_count != 1)
+    if (!workflow_manager_from_json(imported.get(), root) || imported->workflow_count != 1) {
+        blog(LOG_WARNING, "[Move Workflow] Import failed: JSON contained %zu workflows after parsing.",
+             imported->workflow_count);
         return false;
+    }
     workflow_t *workflow = &imported->workflows[0];
-    if (!normalize_imported_node_ids(imported.get(), workflow)) return false;
-    make_copy_name(manager, workflow);
-    if (!workflow->id[0] || !workflow->name[0] || !workflow_manager_node_ids_unique(imported.get()))
+    blog(LOG_INFO, "[Move Workflow] Import parsed workflow '%s' with %zu nodes.",
+         workflow->name, workflow->node_count);
+    if (!normalize_imported_node_ids(imported.get(), workflow)) {
+        blog(LOG_WARNING, "[Move Workflow] Import failed: could not normalize node IDs.");
         return false;
+    }
+    make_copy_name(manager, workflow);
+    if (!workflow->id[0] || !workflow->name[0] || !workflow_manager_node_ids_unique(imported.get())) {
+        blog(LOG_WARNING, "[Move Workflow] Import failed: invalid workflow identity after normalization.");
+        return false;
+    }
 
     manager->workflows[manager->workflow_count++] = *workflow;
     workflow_manager_repair_node_ids(manager);
-    if (!workflow_manager_node_ids_unique(manager)) return false;
+    if (!workflow_manager_node_ids_unique(manager)) {
+        blog(LOG_WARNING, "[Move Workflow] Import failed: duplicate node IDs after insertion.");
+        return false;
+    }
     workflow_manager_set_selected(manager, workflow->id);
-    blog(LOG_INFO, "[Move Workflow] Imported workflow '%s'", workflow->name);
+    blog(LOG_INFO, "[Move Workflow] Imported workflow '%s' (manager now has %zu workflows).",
+         workflow->name, manager->workflow_count);
     return true;
 }
