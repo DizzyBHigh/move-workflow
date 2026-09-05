@@ -67,8 +67,8 @@ void WorkflowShortcutList::rebuildAttachedList()
     for (const ShortcutRow &row : rows_) {
         NodeItem *target = nullptr;
         for (NodeItem *node : nodes_) {
-            if (node->workflowNode()->uuid == row.id)
-                target = node;
+		if (QString::fromUtf8(node->workflowNode()->id) == row.id)
+			target = node;
         }
         const QString name = target ? target->nodeName() : row.id;
         if (!query.isEmpty() && !name.contains(query, Qt::CaseInsensitive))
