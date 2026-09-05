@@ -14,6 +14,7 @@ bool workflow_engine_runner_wait_shortcut(workflow_engine_state_t *state,
     state->waiting_for_shortcut = true;
     std::strncpy(state->shortcut_source_id, node->id, WORKFLOW_MAX_NAME - 1);
     state->shortcut_source_id[WORKFLOW_MAX_NAME - 1] = '\0';
+    workflow_engine_state_delay_begin(state);
     workflow_debug_log("Shortcut: workflow='%s' waiting at node='%s' for a shortcut",
                        state->workflow ? state->workflow->name : "", node->id);
     return true;
@@ -46,5 +47,7 @@ bool workflow_engine_runner_activate_shortcut(workflow_engine_state_t *state,
     state->shortcut_source_id[0] = '\0';
     workflow_debug_log("Shortcut: workflow='%s' selected '%s' -> '%s'",
                        state->workflow ? state->workflow->name : "", source_id, target_id);
-    return workflow_engine_runner_run_internal(state, target_id, 0);
+    const bool result = workflow_engine_runner_run_internal(state, target_id, 0);
+    workflow_engine_state_delay_end(state);
+    return result;
 }
