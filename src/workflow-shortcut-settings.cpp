@@ -1,6 +1,5 @@
 #include "workflow-shortcut-settings.h"
 #include "workflow-node.h"
-#include "workflow-scene-relationship.h"
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QKeySequenceEdit>
@@ -26,17 +25,22 @@ QWidget *create_editor(const workflow_node_t *source,const QList<NodeItem *> &no
     form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     layout->addLayout(form);
     int rows=0;
-    for(NodeItem *node:nodes){
-        if(!node||!node->workflowNode()||node->workflowNode()->type!=WORKFLOW_NODE_ACTION||!source)continue;
-        const QByteArray targetId=node->id().toUtf8();
-        if(!workflow_scene_relationship::has(source,targetId.constData(),"Shortcut"))continue;
-        auto *edit=new QKeySequenceEdit(box);
-        edit->setObjectName("shortcutKey_"+node->id());
-        if(const auto *binding=find_binding(source,targetId.constData()))
-            edit->setKeySequence(QKeySequence::fromString(QString::fromUtf8(binding->key),QKeySequence::PortableText));
-        edit->setToolTip(QString("Shortcut for %1").arg(node->nodeName()));
-        form->addRow(node->nodeName(),edit);
-        ++rows;
+    if(source){
+        for(size_t i=0;i<source->shortcut_node_count;++i){
+            const char *target=source->shortcut_node_ids[i];
+            NodeItem *node=nullptr;
+            for(NodeItem *candidate:nodes){
+                if(candidate&&candidate->id().compare(QString::fromUtf8(target),Qt::CaseInsensitive)==0){node=candidate;break;}
+            }
+            if(!node)continue;
+            auto *edit=new QKeySequenceEdit(box);
+            edit->setObjectName("shortcutKey_"+node->id());
+            if(const auto *binding=find_binding(source,target))
+                edit->setKeySequence(QKeySequence::fromString(QString::fromUtf8(binding->key),QKeySequence::PortableText));
+            edit->setToolTip(QString("Shortcut for %1").arg(node->nodeName()));
+            form->addRow(node->nodeName(),edit);
+            ++rows;
+        }
     }
     if(rows==0)
         layout->addWidget(new QLabel("No shortcut actions configured.",box));
