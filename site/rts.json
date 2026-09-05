@@ -16,58 +16,40 @@
   "keywords": ["OBS", "Move Transition"],
   "publish": {"assets": "assets"},
   "release": {"assets": "zip"},
-  "home": {
-    "image": "assets/images/move-workflow-product-image.png"
-  },
+  "home": {"image": "assets/images/move-workflow-product-image.png"},
   "website": {"footerLabel": "Complete Control of your Move Filters."},
-  "hero": {
-    "kicker": "OBS STUDIO PLUGIN",
-    "title": "Move Workflow",
-    "intro": "Move Workflow adds a layer to [[link:https://github.com/exeldro/obs-move-transition|[[yellow:Exeldro's Move Transition Plugin]]]] for OBS Studio.\n\nMove Transition defines the action, Move Workflow decides when it happens, what happens simultaneously, and what happens next."
-  },
-  "features": [
-    {"title": "Visual workflow editor", "description": "Build workflows by adding Trigger and Action nodes and connecting them together."},
-    {"title": "Move filter actions", "description": "Run existing Move Action, Move Source, Move Source Swap and Move Value filters."},
-    {"title": "Scene changes", "description": "Change the active OBS scene as part of a workflow."},
-    {"title": "Parallel actions", "description": "Start several actions together or continue to the next action after timing completes."},
-    {"title": "Precise timing", "description": "Use the existing filters timings or override the Start Delay, Duration and End Delay."},
-    {"title": "Persistent workflows", "description": "Workflows are saved and restored when OBS starts."},
-    {"title": "Import and export", "description": "Move workflows between installations using .obsworkflow.json files."}
-  ],
-  "demo": {
-    "kicker": "Workflow DEMO",
-    "title": "See it in action.",
-    "autoplay": true,
-    "interval": 5000,
-    "media": [
-      {
-        "type": "video",
-        "src": "assets/video/ban-timeout-demo-video-one.mp4",
-        "title": "Ban/Timeout Widget Demo",
-        "caption": "See the Ban/Timeout Widget in action."
-      },
-      {
-        "type": "image",
-        "src": "assets/images/workflow-main-window.png",
-        "title": "Workflow Canvas",
-        "caption": "The canvas is where you manage and connect your filters, set what filters run sumultaneously and what filters run next.",
-        "alt": "The Workflow Canvas"
-      },
-      {
-        "type": "image",
-        "src": "assets/images/workflow-action-node-configuration.png",
-        "title": "Configure and override filter settings independently of the original move filter settings.",
-        "caption": "Configure the filter using the node settings",
-        "alt": "RTS timeout cell screenshot"
-      },
-      {
-        "type": "image",
-        "src": "assets/images/workflow-connection-type-changer.png",
-        "title": "Node Connection types",
-        "caption": "Simultaneous - Run all connected nodes at the same time.\\nNext - Run the next connected node after the current node completes.\\nShortcut - Run the next connected node when the configured hotkey is pressed.",
-        "alt": "Workflow node connection types"
-      }
-    ]
+  "content": {
+    "hero": {
+      "kicker": "OBS STUDIO PLUGIN",
+      "title": "Move Workflow",
+      "intro": "Move Workflow adds a layer to [[link:https://github.com/exeldro/obs-move-transition|[[yellow:Exeldro's Move Transition Plugin]]]] for OBS Studio.\n\nMove Transition defines the action, Move Workflow decides when it happens, what happens simultaneously, and what happens next."
+    },
+    "experience": {
+      "kicker": "THE EXPERIENCE",
+      "title": "Orchestrate your Move filters.",
+      "text": "Build complex OBS workflows that control when Move Transition filters run, what happens together, and what happens next.",
+      "features": [
+        {"title": "Visual workflow editor", "text": "Build workflows by adding Trigger and Action nodes and connecting them together."},
+        {"title": "Move filter actions", "text": "Run existing Move Action, Move Source, Move Source Swap and Move Value filters."},
+        {"title": "Scene changes", "text": "Change the active OBS scene as part of a workflow."},
+        {"title": "Parallel actions", "text": "Start several actions together or continue to the next action after timing completes."},
+        {"title": "Precise timing", "text": "Use the existing filters timings or override the Start Delay, Duration and End Delay."},
+        {"title": "Persistent workflows", "text": "Workflows are saved and restored when OBS starts."},
+        {"title": "Import and export", "text": "Move workflows between installations using .obsworkflow.json files."}
+      ]
+    },
+    "demo": {
+      "kicker": "WORKFLOW DEMO",
+      "title": "See it in action.",
+      "autoplay": true,
+      "interval": 5000,
+      "media": [
+        {"type": "video", "src": "assets/video/ban-timeout-demo-video-one.mp4", "title": "Ban/Timeout Widget Demo", "caption": "See the Ban/Timeout Widget in action."},
+        {"type": "image", "src": "assets/images/workflow-main-window.png", "title": "Workflow Canvas", "caption": "The canvas is where you manage and connect your filters, set what filters run sumultaneously and what filters run next.", "alt": "The Workflow Canvas"},
+        {"type": "image", "src": "assets/images/workflow-action-node-configuration.png", "title": "Configure and override filter settings independently of the original move filter settings.", "caption": "Configure the filter using the node settings", "alt": "RTS timeout cell screenshot"},
+        {"type": "image", "src": "assets/images/workflow-connection-type-changer.png", "title": "Node Connection types", "caption": "Simultaneous - Run all connected nodes at the same time.\\nNext - Run the next connected node after the current node completes.\\nShortcut - Run the next connected node when the configured hotkey is pressed.", "alt": "Workflow node connection types"}
+      ]
+    }
   },
   "requirements": [
     "OBS Studio 31.x or a compatible version supported by the build.",
