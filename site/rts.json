@@ -7,14 +7,13 @@
   "page": {"url": "/other-tools/move-workflow/"},
   "featured": true,
   "description": "Orchestrate and Direct your Move Transition filters in OBS Studio. Using the Workflow canvas you can create complex workflows that control the movement of your scenes and filters in real-time.",
-  "tags": ["OBS", "Plugin", "Move Transition", "Productivity"],
+  "tags": ["OBS Studio", "Plugin", "Move Transition", "Automation", "Productivity"],
   "status": "released",
   "author": "DuhBuhHuh",
   "email": "dizzybhigh@gmail.com",
   "license": "MIT",
   "dependencies": ["obs-studio"],
   "keywords": ["OBS", "Move Transition"],
-  "tags": ["OBS Studio", "Workflow", "Automation", "Move Transition"],
   "publish": {"assets": "images"},
   "release": {"assets": "zip"},
   "home": {
@@ -35,6 +34,41 @@
     {"title": "Persistent workflows", "description": "Workflows are saved and restored when OBS starts."},
     {"title": "Import and export", "description": "Move workflows between installations using .obsworkflow.json files."}
   ],
+  "demo": {
+    "kicker": "Workflow DEMO",
+    "title": "See it in action.",
+    "autoplay": true,
+    "interval": 5000,
+    "media": [
+      {
+        "type": "video",
+        "src": "assets/video/ban-timeout-demo-video-one.mp4",
+        "title": "Ban/Timeout Widget Demo",
+        "caption": "See the Ban/Timeout Widget in action."
+      },
+      {
+        "type": "image",
+        "src": "assets/images/workflow-main-window.png",
+        "title": "Workflow Canvas",
+        "caption": "The canvas is where you manage and connect your filters, set what filters run sumultaneously and what filters run next.",
+        "alt": "The Workflow Canvas"
+      },
+      {
+        "type": "image",
+        "src": "assets/images/workflow-action-node-configuration.png",
+        "title": "Configure and override filter settings independently of the original move filter settings.",
+        "caption": "Configure the filter using the node settings",
+        "alt": "RTS timeout cell screenshot"
+      },
+      {
+        "type": "image",
+        "src": "assets/images/workflow-connection-type-changer.png",
+        "title": "Node Connection types",
+        "caption": "Simultaneous - Run all connected nodes at the same time.\\nNext - Run the next connected node after the current node completes.\\nShortcut - Run the next connected node when the configured hotkey is pressed.",
+        "alt": "Workflow node connection types"
+      }
+    ]
+  },
   "requirements": [
     "OBS Studio 31.x or a compatible version supported by the build.",
     "[[link:https://github.com/exeldro/obs-move-transition|Exeldro's Move Transition plugin for Move actions]]."
@@ -44,11 +78,11 @@
     "intro": "Install the plugin, restart OBS, then open the workflow editor and create your first workflow.",
     "number": "01",
     "steps": [
-      {"number": "01.1", "title": "Download the plugin", "description": "Download the Windows x64 package from the current release below."},
-      {"number": "01.2", "title": "Install the plugin", "description": "Extract the downloaded ZIP and copy the plugin files into your OBS plugins directory.", "images": [{"src": "assets/Installation copy the bin folder to obs root.png", "alt": "Copy the bin folder to your obs root directory."}]},
+      {"number": "01.1", "title": "Download the plugin", "description": "Download current release of the Windows x64 package above."},
+      {"number": "01.2", "title": "Install the plugin", "description": "Extract the downloaded ZIP and copy the plugin files into your OBS root directory.", "images": [{"src": "assets/images/installation-copy-bin-folder-to-obs-root.png", "alt": "Copy the bin folder to your obs root directory."}]},
       {"number": "01.3", "title": "Install Move Transition", "description": "Install Exeldro's [[link:https://github.com/exeldro/obs-move-transition|Move Transition plugin]]. This is a required plugin for Move actions to work properly."},
       {"number": "01.4", "title": "Restart OBS", "description": "Close and restart OBS Studio so the plugin is loaded."},
-      {"number": "01.5", "title": "Open Move Workflow", "description": "In OBS, open Tools > Move Workflow."}
+      {"number": "01.5", "title": "Open Move Workflow", "description": "In OBS, from the top menu bar open Tools > Move Workflow."}
     ]
   },
   "gettingStarted": {
@@ -58,7 +92,7 @@
     "steps": [
       {"number": "01", "title": "Create a workflow", "description": "Open the workflow manager and create a workflow with a useful name."},
       {"number": "02", "title": "Add a Trigger node", "description": "Add a Trigger node and give it a name that describes what it starts, such as Start Intro or Show Camera."},
-      {"number": "03", "title": "Add Action nodes", "description": "Add the Move or Change Scene actions you need. Configure the target and timing for each action."},
+      {"number": "03", "title": "Add Action nodes", "description": "Add the Move or Change Scene nodes you need to your workflow. Configure the source, filter, timing and Easing for your nodes."},
       {"number": "04", "title": "Connect the nodes", "description": "Connect nodes to decide which actions run together and which action runs next."},
       {"number": "05", "title": "Add a Trigger Workflow filter", "description": "Add a Trigger Workflow filter to an OBS source and select the workflow and Trigger node that should start it."},
       {"number": "06", "title": "Test the workflow", "description": "Activate the trigger and check the OBS log or enable Debug in the workflow editor if you need more information."}
@@ -68,6 +102,5 @@
     "Move Workflow does not replace Move Transition. Move Transition performs the actual Move operation; Move Workflow controls sequencing.",
     "Easing and Easing Function are shown in workflow data for future use but are not implemented in 1.1.0."
   ],
-  "links": {"moveTransition": "https://github.com/exeldro/obs-move-transition"},
-  "website": {"footerLabel": "Keep the workflow moving."}
+  "links": {"moveTransition": "https://github.com/exeldro/obs-move-transition"}
 }
