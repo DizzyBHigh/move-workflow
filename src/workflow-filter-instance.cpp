@@ -7,6 +7,29 @@
 #include <cstdlib>
 #include <obs.h>
 
+namespace {
+struct deferred_enable {
+    obs_source_t *filter;
+};
+
+static void enable_filter_task(void *param)
+{
+    auto *task = static_cast<deferred_enable *>(param);
+    if (!task)
+        return;
+
+    if (task->filter && !obs_source_removed(task->filter)) {
+        workflow_debug_log("Filter instance: deferred enable '%s'",
+                           obs_source_get_name(task->filter));
+        obs_source_set_enabled(task->filter, true);
+    }
+
+    if (task->filter)
+        obs_source_release(task->filter);
+    free(task);
+}
+}
+
 static void log_move_settings(obs_source_t *source, const char *stage)
 {
     if (!source)
@@ -76,14 +99,19 @@ bool workflow_filter_instance_execute(workflow_filter_instance *instance)
     workflow_filter_diagnostics_log_target(instance->instance, "before execute");
     workflow_filter_diagnostics_begin(instance->instance, 1000);
 
-    // Force a fresh enabled transition. Move filters using StartTrigger.Enable
-    // consume this transition from their video-tick path.
     obs_source_set_enabled(instance->instance, false);
-    obs_source_set_enabled(instance->instance, true);
 
-    workflow_filter_diagnostics_log_runtime(instance->instance, "after execute");
-    workflow_filter_diagnostics_log_target(instance->instance, "after execute");
-    workflow_debug_log("Filter instance: executing temporary '%s'",
+    deferred_enable *task =
+        (deferred_enable *)calloc(1, sizeof(*task));
+    if (!task)
+        return false;
+
+    task->filter = obs_source_get_ref(instance->instance);
+    obs_queue_task(OBS_TASK_UI, enable_filter_task, task, false);
+
+    workflow_filter_diagnostics_log_runtime(instance->instance, "after scheduling enable");
+    workflow_filter_diagnostics_log_target(instance->instance, "after scheduling enable");
+    workflow_debug_log("Filter instance: scheduled enable for temporary '%s'",
                        obs_source_get_name(instance->instance));
     return true;
 }
