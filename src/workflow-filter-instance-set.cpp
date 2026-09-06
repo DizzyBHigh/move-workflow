@@ -58,9 +58,10 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
         node->action.kind == WORKFLOW_CHANGE_SCENE)
         return false;
 
-    workflow_debug_log("Filter prepare: node='%s' scene='%s' filter='%s' filter_id='%s' kind=%d",
+    workflow_debug_log("Filter prepare: node='%s' scene='%s' filter='%s' filter_id='%s' filter_uuid='%s' kind=%d",
                        node->id, node->action.scene_name, node->action.filter_name,
-                       node->action.filter_id, (int)node->action.kind);
+                       node->action.filter_id, node->action.filter_uuid,
+                       (int)node->action.kind);
 
     size_t existing = 0;
     if (find_index(set, node->id, &existing)) {
@@ -78,18 +79,18 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
         return false;
     }
 
-    struct filter_lookup { const char *id; obs_source_t *filter; } lookup =
-        {node->action.filter_id, nullptr};
+    struct filter_lookup { const char *uuid; obs_source_t *filter; } lookup =
+        {node->action.filter_uuid, nullptr};
     obs_source_enum_filters(parent, [](obs_source_t *, obs_source_t *candidate, void *data) {
         auto *ctx = static_cast<filter_lookup *>(data);
-        if (!ctx || ctx->filter || !candidate || !ctx->id) return;
-        const char *id = obs_source_get_id(candidate);
-        if (id && !strcmp(id, ctx->id)) ctx->filter = obs_source_get_ref(candidate);
+        if (!ctx || ctx->filter || !candidate || !ctx->uuid || !*ctx->uuid) return;
+        const char *uuid = obs_source_get_uuid(candidate);
+        if (uuid && !strcmp(uuid, ctx->uuid)) ctx->filter = obs_source_get_ref(candidate);
     }, &lookup);
     obs_source_t *original = lookup.filter;
     if (!original) {
-        workflow_debug_log("Filter prepare: node='%s' filter_id='%s' NOT FOUND on scene='%s'",
-                           node->id, node->action.filter_id, node->action.scene_name);
+        workflow_debug_log("Filter prepare: node='%s' filter_uuid='%s' NOT FOUND on scene='%s'",
+                           node->id, node->action.filter_uuid, node->action.scene_name);
         obs_source_release(parent);
         return false;
     }
@@ -118,6 +119,7 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
     uint64_t restore_delay = 0;
     workflow_filter_apply_node_settings(instance->instance, node, &duration, &restore_delay);
     set->instances[set->count] = instance;
+    set->node_ids[set->count] = {};
     strncpy(set->node_ids[set->count], node->id, WORKFLOW_MAX_NAME - 1);
     ++set->count;
     workflow_debug_log("Filter prepare: node='%s' -> runtime='%s' runtime_id='%s' duration=%llu restore_delay=%llu",
