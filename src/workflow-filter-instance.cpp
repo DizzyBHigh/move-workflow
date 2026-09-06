@@ -71,7 +71,7 @@ workflow_filter_instance *workflow_filter_instance_create(
     char name[WORKFLOW_MAX_NAME];
     snprintf(name, sizeof(name), "%s [workflow:%p]",
              obs_source_get_name(original), (void *)result);
-    result->instance = obs_source_duplicate(original, name, true);
+    result->instance = obs_source_duplicate(original, name, false);
     if (!result->instance) {
         free(result);
         return nullptr;
