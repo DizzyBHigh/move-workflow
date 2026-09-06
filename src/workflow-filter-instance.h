@@ -14,6 +14,8 @@ struct workflow_filter_instance {
 	obs_source_t *original;
 	obs_source_t *instance;
 	obs_source_t *parent;
+	obs_data_t *restore_settings;
+	uint64_t restore_delay_ms;
 };
 
 workflow_filter_instance *workflow_filter_instance_create(obs_source_t *original,
