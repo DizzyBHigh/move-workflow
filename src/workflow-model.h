@@ -29,7 +29,7 @@ typedef enum workflow_easing_function {
 } workflow_easing_function_t;
 
 typedef struct workflow_trigger_filter_ref { char source_uuid[WORKFLOW_MAX_NAME]; char filter_uuid[WORKFLOW_MAX_NAME]; } workflow_trigger_filter_ref_t;
-typedef struct workflow_action_ref { char scene_name[WORKFLOW_MAX_NAME]; char source_name[WORKFLOW_MAX_NAME]; char filter_name[WORKFLOW_MAX_NAME]; char filter_id[WORKFLOW_MAX_NAME]; workflow_move_kind_t kind; workflow_scene_completion_t scene_completion; } workflow_action_ref_t;
+typedef struct workflow_action_ref { char scene_name[WORKFLOW_MAX_NAME]; char source_name[WORKFLOW_MAX_NAME]; char filter_name[WORKFLOW_MAX_NAME]; char filter_id[WORKFLOW_MAX_NAME]; char filter_uuid[WORKFLOW_MAX_NAME]; workflow_move_kind_t kind; workflow_scene_completion_t scene_completion; } workflow_action_ref_t;
 typedef struct workflow_duration_override { workflow_value_mode_t mode; uint64_t duration_ms; } workflow_duration_override_t;
 typedef struct workflow_delay_override { workflow_value_mode_t mode; uint64_t delay_ms; } workflow_delay_override_t;
 typedef struct workflow_easing_override { workflow_value_mode_t mode; workflow_easing_t easing; workflow_easing_function_t function; } workflow_easing_override_t;
