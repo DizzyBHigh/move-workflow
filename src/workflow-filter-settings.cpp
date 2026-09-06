@@ -12,8 +12,8 @@ static void log_source_name(obs_source_t *filter, const char *stage)
         return;
 
     obs_data_t *settings = obs_source_get_settings(filter);
-    const char *source_name = settings ? obs_data_get_string(settings, "source_name") : "";
-    workflow_debug_log("Move dispatch: %s filter='%s' source_name='%s'",
+    const char *source_name = settings ? obs_data_get_string(settings, "source") : "";
+    workflow_debug_log("Move dispatch: %s filter='%s' source='%s'",
                        stage,
                        obs_source_get_name(filter),
                        source_name ? source_name : "");
@@ -30,8 +30,8 @@ void workflow_filter_apply_node_settings(obs_source_t *filter,
     if (!settings)
         return;
 
-    const char *source_name = obs_data_get_string(settings, "source_name");
-    workflow_debug_log("Move dispatch: before overrides filter='%s' source_name='%s'",
+    const char *source_name = obs_data_get_string(settings, "source");
+    workflow_debug_log("Move dispatch: before overrides filter='%s' source='%s'",
                        obs_source_get_name(filter),
                        source_name ? source_name : "");
 
@@ -68,9 +68,9 @@ void workflow_filter_apply_node_settings(obs_source_t *filter,
     obs_data_set_string(settings, "next_move_on", "move_end");
     obs_data_set_int(settings, "start_trigger", 5);
 
-    workflow_debug_log("Move dispatch: before obs_source_update filter='%s' source_name='%s'",
+    workflow_debug_log("Move dispatch: before obs_source_update filter='%s' source='%s'",
                        obs_source_get_name(filter),
-                       obs_data_get_string(settings, "source_name"));
+                       obs_data_get_string(settings, "source"));
     obs_source_update(filter, settings);
     obs_data_release(settings);
 
