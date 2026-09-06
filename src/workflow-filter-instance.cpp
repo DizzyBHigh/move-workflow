@@ -23,14 +23,23 @@ static void log_move_source_state(const char *label, obs_source_t *source)
     if (!settings) return;
     const char *target = obs_data_get_string(settings, "source");
     const char *transform = obs_data_get_string(settings, "transform_text");
+    const char *simultaneous = obs_data_get_string(settings, "simultaneous_move");
+    const char *next = obs_data_get_string(settings, "next_move");
+    const char *next_on = obs_data_get_string(settings, "next_move_on");
     const int trigger = (int)obs_data_get_int(settings, "start_trigger");
     const int duration = (int)obs_data_get_int(settings, "duration");
+    const int duration_type = (int)obs_data_get_int(settings, "duration_type");
+    const int custom_duration = obs_data_get_bool(settings, "custom_duration");
+    const int easing = (int)obs_data_get_int(settings, "easing_match");
+    const int easing_function = (int)obs_data_get_int(settings, "easing_function_match");
     obs_data_t *pos = obs_data_get_obj(settings, "pos");
     const double x = pos ? obs_data_get_double(pos, "x") : 0.0;
     const double y = pos ? obs_data_get_double(pos, "y") : 0.0;
     if (pos) obs_data_release(pos);
-    workflow_debug_log("Move Source diagnostic: %s name='%s' target='%s' transform='%s' pos=(%.2f,%.2f) trigger=%d duration=%d",
-                       label, obs_source_get_name(source), target ? target : "", transform ? transform : "", x, y, trigger, duration);
+    workflow_debug_log("Move Source diagnostic: %s name='%s' target='%s' transform='%s' pos=(%.2f,%.2f) trigger=%d duration=%d duration_type=%d custom_duration=%d easing=%d easing_function=%d simultaneous='%s' next='%s' next_on='%s'",
+                       label, obs_source_get_name(source), target ? target : "", transform ? transform : "", x, y,
+                       trigger, duration, duration_type, custom_duration, easing, easing_function,
+                       simultaneous ? simultaneous : "", next ? next : "", next_on ? next_on : "");
     obs_data_release(settings);
 }
 
