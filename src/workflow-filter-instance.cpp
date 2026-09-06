@@ -23,7 +23,7 @@ static void start_filter_task(void *param)
         workflow_debug_log("Filter instance: invoking native Start '%s'",
                            obs_source_get_name(task->filter));
         if (!workflow_filter_instance_start_native(task->filter))
-            workflow_debug_log("Filter instance: native Start unavailable for '%s'",
+            workflow_debug_log("Filter instance: native Start could not be dispatched for '%s'",
                                obs_source_get_name(task->filter));
     }
 
