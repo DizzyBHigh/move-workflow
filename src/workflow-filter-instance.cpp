@@ -5,7 +5,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <obs.h>
-#include <obs-scene.h>
 
 static void log_move_settings(obs_source_t *source, const char *stage)
 {
