@@ -4,6 +4,7 @@
 #include "workflow-node-settings-common.h"
 #include "workflow-node-timing-defaults.h"
 #include "workflow-change-scene.h"
+#include "workflow-debug.h"
 #include <obs.h>
 #include <QCheckBox>
 #include <QComboBox>
@@ -18,7 +19,7 @@ namespace {
 static QSpinBox *milliseconds(QWidget *parent) { auto *s=new QSpinBox(parent); s->setRange(0,3600000); s->setSuffix(" ms"); return s; }
 static void spin_row(QVBoxLayout *l,const QString &label,QSpinBox *s,QCheckBox *c){auto *r=new QHBoxLayout;r->addWidget(new QLabel(label));r->addWidget(s,1);r->addWidget(c);l->addLayout(r);}
 static bool add_source(void *data,obs_source_t *source){auto *c=static_cast<QComboBox*>(data);if(!c||!source)return true;QString n=QString::fromUtf8(obs_source_get_name(source));if(c->findData(n)<0)c->addItem(n,n);return true;}
-static void add_filter(obs_source_t *,obs_source_t *filter,void *data){auto *c=static_cast<QComboBox*>(data);if(!c||!filter||!settings_supported_filter(obs_source_get_id(filter)))return;c->addItem(QString::fromUtf8(obs_source_get_name(filter)),QString::fromUtf8(obs_source_get_uuid(filter)));}
+static void add_filter(obs_source_t *,obs_source_t *filter,void *data){auto *c=static_cast<QComboBox*>(data);if(!c||!filter||!settings_supported_filter(obs_source_get_id(filter)))return;const char *uuid=obs_source_get_uuid(filter);if(!uuid||!*uuid)return;c->addItem(QString::fromUtf8(obs_source_get_name(filter)),QString::fromUtf8(uuid));}
 static bool add_scene(void *data,obs_source_t *source){auto *c=static_cast<QComboBox*>(data);if(!c||!source)return true;QString n=QString::fromUtf8(obs_source_get_name(source));if(c->findData(n)<0)c->addItem(n,n);return true;}
 }
 
@@ -33,6 +34,7 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent,QVBoxLayout *layout)
     source_=new QComboBox(moveTarget); filter_=new QComboBox(moveTarget); settings_searchable(source_); settings_searchable(filter_);
     moveLayout->addWidget(new QLabel("Source",moveTarget)); moveLayout->addWidget(source_); moveLayout->addWidget(new QLabel("Filter",moveTarget)); moveLayout->addWidget(filter_);
     populateSources(QString::fromUtf8(wf->action.scene_name)); populateFilters(QString::fromUtf8(wf->action.filter_uuid));
+    workflow_debug_log("Node settings: restore filter name='%s' uuid='%s' source='%s'", wf->action.filter_name, wf->action.filter_uuid, wf->action.scene_name);
     auto *sceneTarget=new QGroupBox("Change Scene",parent); auto *sceneLayout=new QVBoxLayout(sceneTarget);
     scene_=new QComboBox(sceneTarget); obs_enum_scenes(add_scene,scene_); QString wanted=QString::fromUtf8(wf->action.scene_name); int si=scene_->findData(wanted); if(si>=0)scene_->setCurrentIndex(si); else if(scene_->count())scene_->setCurrentIndex(0);
     sceneLayout->addWidget(new QLabel("Target Scene",sceneTarget)); sceneLayout->addWidget(scene_); sceneLayout->addWidget(new QLabel(QString("Default duration: %1 ms (current OBS transition)").arg(workflow_change_scene_transition_duration()),sceneTarget));
@@ -63,4 +65,4 @@ void NodeSettingsDialog::buildActionEditor(QWidget *parent,QVBoxLayout *layout)
 }
 
 void NodeSettingsDialog::populateSources(const QString &wanted){settings_searchable(source_);source_->blockSignals(true);source_->clear();obs_enum_scenes(add_source,source_);obs_enum_sources(add_source,source_);source_->blockSignals(false);int i=source_->findData(wanted);if(i>=0)source_->setCurrentIndex(i);else if(source_->count())source_->setCurrentIndex(0);}
-void NodeSettingsDialog::populateFilters(const QString &wanted){filter_->blockSignals(true);filter_->clear();QString n=source_->currentData().toString().isEmpty()?source_->currentText().trimmed():source_->currentData().toString();obs_source_t *p=n.isEmpty()?nullptr:obs_get_source_by_name(n.toUtf8().constData());if(p){obs_source_enum_filters(p,add_filter,filter_);obs_source_release(p);}filter_->blockSignals(false);if(wanted.isEmpty()){filter_->setCurrentIndex(-1);filter_->setCurrentText(QString());return;}int i=filter_->findData(wanted);if(i>=0)filter_->setCurrentIndex(i);else filter_->setCurrentText(QString());}
+void NodeSettingsDialog::populateFilters(const QString &wanted){filter_->blockSignals(true);filter_->clear();QString n=source_->currentData().toString().isEmpty()?source_->currentText().trimmed():source_->currentData().toString();obs_source_t *p=n.isEmpty()?nullptr:obs_get_source_by_name(n.toUtf8().constData());if(p){obs_source_enum_filters(p,add_filter,filter_);obs_source_release(p);}filter_->blockSignals(false);if(wanted.isEmpty()){filter_->setCurrentIndex(-1);filter_->setCurrentText(QString());return;}int i=filter_->findData(wanted);if(i>=0)filter_->setCurrentIndex(i);else filter_->setCurrentText(QString());workflow_debug_log("Node settings: filter restore wanted_uuid='%s' match_index=%d count=%d current='%s' current_uuid='%s'",wanted.toUtf8().constData(),i,filter_->count(),filter_->currentText().toUtf8().constData(),filter_->currentData().toString().toUtf8().constData());}
