@@ -88,29 +88,18 @@ static void log_runtime_state(obs_source_t *source, const char *stage)
         showing ? 1 : 0, parent_name ? parent_name : "",
         parent_active ? 1 : 0, parent_showing ? 1 : 0, trigger,
         target ? target : "", target_exists ? 1 : 0);
-}
-
-static void enable_source_on_ui(void *data)
-{
-    obs_source_t *source = (obs_source_t *)data;
-    if (!source)
-        return;
-    log_runtime_state(source, "before enable");
-    obs_source_set_enabled(source, true);
-    log_runtime_state(source, "after enable");
-    obs_source_release(source);
+    if (settings)
+        obs_data_release(settings);
 }
 
 bool workflow_filter_instance_execute(workflow_filter_instance *instance)
 {
     if (!instance || !instance->instance)
         return false;
-    log_runtime_state(instance->instance, "queued execution");
-    obs_source_t *source = obs_source_get_ref(instance->instance);
-    if (!source)
-        return false;
-    obs_queue_task(OBS_TASK_UI, enable_source_on_ui, source, false);
-    workflow_debug_log("Filter instance: queued enable '%s'",
+    log_runtime_state(instance->instance, "before execute");
+    obs_source_set_enabled(instance->instance, true);
+    log_runtime_state(instance->instance, "after execute");
+    workflow_debug_log("Filter instance: executing temporary '%s'",
                        obs_source_get_name(instance->instance));
     return true;
 }
