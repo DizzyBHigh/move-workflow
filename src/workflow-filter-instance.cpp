@@ -109,7 +109,7 @@ static void log_target_transform(obs_source_t *filter, const char *stage)
         ? obs_scene_find_source(scene, target_name) : nullptr;
     if (item) {
         struct obs_transform_info info = {};
-        obs_sceneitem_get_info(item, &info);
+        obs_sceneitem_get_info2(item, &info);
         workflow_debug_log(
             "Filter target: %s filter='%s' target='%s' pos=(%.3f,%.3f) "
             "scale=(%.3f,%.3f) rot=%.3f",
