@@ -5,6 +5,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <obs.h>
 
 namespace {
@@ -66,12 +67,14 @@ static void rebind_move_source(obs_source_t *filter)
     if (!settings)
         return;
 
-    const char *source_name = obs_data_get_string(settings, "source");
-    if (!source_name || !*source_name) {
+    const char *source = obs_data_get_string(settings, "source");
+    if (!source || !*source) {
         obs_data_release(settings);
         return;
     }
 
+    char source_name[WORKFLOW_MAX_NAME];
+    snprintf(source_name, sizeof(source_name), "%s", source);
     obs_data_set_string(settings, "source", "");
     obs_source_update(filter, settings);
     obs_data_set_string(settings, "source", source_name);
