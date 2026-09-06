@@ -3,6 +3,7 @@
 #include "workflow-debug.h"
 
 #include <obs.h>
+#include <obs-scene.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -45,6 +46,38 @@ static void log_move_source_state(const char *label, obs_source_t *source)
     obs_data_release(settings);
 }
 
+static void log_scene_item_state(const char *label, obs_source_t *parent,
+                                 obs_source_t *filter)
+{
+    if (!parent || !filter)
+        return;
+
+    obs_data_t *settings = obs_source_get_settings(filter);
+    if (!settings)
+        return;
+
+    const char *target = obs_data_get_string(settings, "source");
+    obs_scene_t *scene = obs_scene_from_source(parent);
+    obs_sceneitem_t *item = scene && target ? obs_scene_find_source(scene, target) : nullptr;
+    if (!item) {
+        workflow_debug_log(
+            "Scene item diagnostic: %s scene='%s' target='%s' item=NOT_FOUND",
+            label, obs_source_get_name(parent), target ? target : "");
+        obs_data_release(settings);
+        return;
+    }
+
+    struct vec2 pos;
+    struct vec2 scale;
+    obs_sceneitem_get_pos(item, &pos);
+    obs_sceneitem_get_scale(item, &scale);
+    workflow_debug_log(
+        "Scene item diagnostic: %s scene='%s' target='%s' pos=(%.2f,%.2f) scale=(%.4f,%.4f) rot=%.2f",
+        label, obs_source_get_name(parent), target, pos.x, pos.y,
+        scale.x, scale.y, obs_sceneitem_get_rot(item));
+    obs_data_release(settings);
+}
+
 workflow_filter_instance *workflow_filter_instance_create(
     obs_source_t *original, obs_source_t *parent, const workflow_node_t *node)
 {
@@ -79,6 +112,7 @@ workflow_filter_instance *workflow_filter_instance_create(
                        node->id, obs_source_get_name(parent));
     log_filter_state("runtime after attach", result->instance);
     log_move_source_state("runtime after attach", result->instance);
+    log_scene_item_state("runtime after attach", parent, result->instance);
     return result;
 }
 
@@ -90,9 +124,12 @@ static void enable_source_on_ui(void *data)
 
     log_filter_state("runtime UI enable before", source);
     log_move_source_state("runtime UI enable before", source);
+    obs_source_t *parent = obs_filter_get_parent(source);
+    log_scene_item_state("runtime UI enable before", parent, source);
     obs_source_set_enabled(source, true);
     log_filter_state("runtime UI enable after", source);
     log_move_source_state("runtime UI enable after", source);
+    log_scene_item_state("runtime UI enable after", parent, source);
     obs_source_release(source);
 }
 
@@ -106,6 +143,7 @@ bool workflow_filter_instance_execute(workflow_filter_instance *instance)
 
     log_filter_state("runtime execute", source);
     log_move_source_state("runtime execute", source);
+    log_scene_item_state("runtime execute", instance->parent, source);
     if (instance->original) {
         log_filter_state("original at execute", instance->original);
         log_move_source_state("original at execute", instance->original);
