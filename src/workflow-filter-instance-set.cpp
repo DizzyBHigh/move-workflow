@@ -3,6 +3,7 @@
 #include "workflow-debug.h"
 #include "workflow-filter-settings.h"
 
+#include <obs.h>
 #include <cstdlib>
 #include <cstring>
 
@@ -26,6 +27,27 @@ static bool find_index(const workflow_filter_instance_set *set,
         }
     }
     return false;
+}
+
+static void log_scene_filters(obs_source_t *parent, const char *node_id,
+                              const char *requested_name, obs_source_t *resolved)
+{
+    if (!parent)
+        return;
+    const size_t count = obs_source_filter_count(parent);
+    workflow_debug_log("Filter resolution: node='%s' requested='%s' scene='%s' filter_count=%zu resolved_ptr=%p",
+                       node_id ? node_id : "", requested_name ? requested_name : "",
+                       obs_source_get_name(parent), count, (void *)resolved);
+    for (size_t i = 0; i < count; ++i) {
+        obs_source_t *filter = obs_source_get_filter(parent, i);
+        if (!filter)
+            continue;
+        workflow_debug_log("Filter resolution: scene_filter[%zu] name='%s' id='%s' ptr=%p%s",
+                           i, obs_source_get_name(filter),
+                           obs_source_get_id(filter), (void *)filter,
+                           filter == resolved ? " <-- RESOLVED" : "");
+        obs_source_release(filter);
+    }
 }
 
 workflow_filter_instance_set *workflow_filter_instance_set_create(workflow_t *workflow)
@@ -78,6 +100,7 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
     }
 
     obs_source_t *original = obs_source_get_filter_by_name(parent, node->action.filter_name);
+    log_scene_filters(parent, node->id, node->action.filter_name, original);
     if (!original) {
         workflow_debug_log("Filter prepare: node='%s' filter='%s' NOT FOUND on scene='%s'",
                            node->id, node->action.filter_name, node->action.scene_name);
@@ -87,9 +110,9 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
 
     const char *expected = workflow_expected_filter_id(node->action.kind);
     const char *actual = obs_source_get_id(original);
-    workflow_debug_log("Filter prepare: node='%s' resolved filter='%s' actual_id='%s' expected_id='%s'",
+    workflow_debug_log("Filter prepare: node='%s' resolved filter='%s' actual_id='%s' expected_id='%s' resolved_ptr=%p",
                        node->id, obs_source_get_name(original), actual ? actual : "",
-                       expected ? expected : "");
+                       expected ? expected : "", (void *)original);
     if (!expected || !actual || strcmp(expected, actual)) {
         workflow_debug_log("Filter prepare: node='%s' REJECTED filter='%s' due to filter ID mismatch",
                            node->id, obs_source_get_name(original));
