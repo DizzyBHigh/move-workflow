@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <obs.h>
+#include <obs-scene.h>
 
 static void log_move_settings(obs_source_t *source, const char *stage)
 {
@@ -16,13 +17,15 @@ static void log_move_settings(obs_source_t *source, const char *stage)
     workflow_debug_log(
         "Filter instance: %s name='%s' trigger=%lld source='%s' "
         "duration=%lld duration_type=%lld custom_duration=%d "
-        "easing=%lld easing_function=%lld simultaneous='%s' next='%s' next_on='%s'",
+        "enabled_match_moving=%d easing=%lld easing_function=%lld "
+        "simultaneous='%s' next='%s' next_on='%s'",
         stage, obs_source_get_name(source),
         obs_data_get_int(settings, "start_trigger"),
         obs_data_get_string(settings, "source"),
         obs_data_get_int(settings, "duration"),
         obs_data_get_int(settings, "duration_type"),
         obs_data_get_bool(settings, "custom_duration") ? 1 : 0,
+        obs_data_get_bool(settings, "enabled_match_moving") ? 1 : 0,
         obs_data_get_int(settings, "easing_match"),
         obs_data_get_int(settings, "easing_function_match"),
         obs_data_get_string(settings, "simultaneous_move"),
@@ -92,12 +95,44 @@ static void log_runtime_state(obs_source_t *source, const char *stage)
         obs_data_release(settings);
 }
 
+static void log_target_transform(obs_source_t *filter, const char *stage)
+{
+    if (!filter)
+        return;
+    obs_source_t *parent = obs_filter_get_parent(filter);
+    if (!parent)
+        return;
+
+    obs_data_t *settings = obs_source_get_settings(filter);
+    const char *target_name = settings ? obs_data_get_string(settings, "source") : "";
+    obs_scene_t *scene = obs_scene_from_source(parent);
+    obs_sceneitem_t *item = scene && target_name && *target_name
+        ? obs_scene_find_source(scene, target_name) : nullptr;
+    if (item) {
+        struct obs_transform_info info = {};
+        obs_sceneitem_get_info(item, &info);
+        workflow_debug_log(
+            "Filter target: %s filter='%s' target='%s' pos=(%.3f,%.3f) "
+            "scale=(%.3f,%.3f) rot=%.3f crop=(%d,%d,%d,%d)",
+            stage, obs_source_get_name(filter), target_name,
+            info.pos.x, info.pos.y, info.scale.x, info.scale.y, info.rot,
+            info.crop.left, info.crop.top, info.crop.right, info.crop.bottom);
+    } else {
+        workflow_debug_log("Filter target: %s filter='%s' target='%s' scene_item=missing",
+                           stage, obs_source_get_name(filter),
+                           target_name ? target_name : "");
+    }
+    if (settings)
+        obs_data_release(settings);
+}
+
 bool workflow_filter_instance_execute(workflow_filter_instance *instance)
 {
     if (!instance || !instance->instance)
         return false;
 
     log_runtime_state(instance->instance, "before execute");
+    log_target_transform(instance->instance, "before execute");
 
     // Force a fresh enabled transition. Move filters using StartTrigger.Enable
     // consume this transition from their video-tick path.
@@ -105,6 +140,7 @@ bool workflow_filter_instance_execute(workflow_filter_instance *instance)
     obs_source_set_enabled(instance->instance, true);
 
     log_runtime_state(instance->instance, "after execute");
+    log_target_transform(instance->instance, "after execute");
     workflow_debug_log("Filter instance: executing temporary '%s'",
                        obs_source_get_name(instance->instance));
     return true;
