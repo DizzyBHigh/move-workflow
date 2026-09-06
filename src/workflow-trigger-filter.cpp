@@ -10,9 +10,24 @@ struct trigger_filter {
     bool enabled = false;
 };
 
+struct trigger_request {
+    std::string workflow;
+    std::string trigger;
+};
+
 static const char *name(void *)
 {
     return "Trigger Workflow";
+}
+
+static void run_trigger(void *param)
+{
+    auto *request = static_cast<trigger_request *>(param);
+    if (!request)
+        return;
+
+    workflow_engine_service_trigger(request->workflow.c_str(), request->trigger.c_str());
+    delete request;
 }
 
 static void video_tick(void *param, float)
@@ -38,8 +53,10 @@ static void video_tick(void *param, float)
     const bool valid_target = !workflow.empty() && !trigger.empty();
     obs_data_release(settings);
 
-    if (valid_target)
-        workflow_engine_service_trigger(workflow.c_str(), trigger.c_str());
+    if (valid_target) {
+        auto *request = new trigger_request{workflow, trigger};
+        obs_queue_task(OBS_TASK_UI, run_trigger, request, false);
+    }
 
     obs_source_set_enabled(data->source, false);
 }
