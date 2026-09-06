@@ -28,6 +28,30 @@ static bool find_index(const workflow_filter_instance_set *set,
     return false;
 }
 
+struct source_lookup_context {
+    const char *uuid;
+    obs_source_t *source;
+};
+
+static void find_source_by_uuid(obs_source_t *source, void *data)
+{
+    auto *context = (source_lookup_context *)data;
+    if (!context || context->source || !source || !context->uuid)
+        return;
+    const char *uuid = obs_source_get_uuid(source);
+    if (uuid && !strcmp(uuid, context->uuid))
+        context->source = obs_source_get_ref(source);
+}
+
+static obs_source_t *find_source_uuid(const char *uuid)
+{
+    if (!uuid || !*uuid)
+        return nullptr;
+    source_lookup_context context{uuid, nullptr};
+    obs_enum_sources(find_source_by_uuid, &context);
+    return context.source;
+}
+
 struct filter_lookup_context {
     const char *uuid;
     obs_source_t *filter;
@@ -46,17 +70,11 @@ static void find_filter_by_uuid(obs_source_t *, obs_source_t *filter, void *data
 static obs_source_t *find_action_filter(obs_source_t *parent,
                                         const workflow_action_ref_t *action)
 {
-    if (!parent || !action)
+    if (!parent || !action || !action->filter_uuid[0])
         return nullptr;
-    if (action->filter_uuid[0]) {
-        filter_lookup_context context{action->filter_uuid, nullptr};
-        obs_source_enum_filters(parent, find_filter_by_uuid, &context);
-        return context.filter;
-    }
-    /* Legacy workflows did not persist filter UUIDs. */
-    return action->filter_name[0]
-               ? obs_source_get_filter_by_name(parent, action->filter_name)
-               : nullptr;
+    filter_lookup_context context{action->filter_uuid, nullptr};
+    obs_source_enum_filters(parent, find_filter_by_uuid, &context);
+    return context.filter;
 }
 
 workflow_filter_instance_set *workflow_filter_instance_set_create(workflow_t *workflow)
@@ -92,9 +110,12 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
     if (set->count >= WORKFLOW_MAX_NODES)
         return false;
 
-    obs_source_t *parent = obs_get_source_by_name(node->action.scene_name);
-    if (!parent)
+    obs_source_t *parent = find_source_uuid(node->action.source_uuid);
+    if (!parent) {
+        workflow_debug_log("Filter instance: node='%s' parent UUID='%s' not found",
+                           node->id, node->action.source_uuid);
         return false;
+    }
     obs_source_t *original = find_action_filter(parent, &node->action);
     if (!original) {
         obs_source_release(parent);
