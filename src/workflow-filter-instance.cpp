@@ -1,6 +1,7 @@
 #include "workflow-filter-instance.h"
 
 #include "workflow-debug.h"
+#include "workflow-filter-diagnostics.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -66,79 +67,22 @@ workflow_filter_instance *workflow_filter_instance_create(
     return result;
 }
 
-static void log_runtime_state(obs_source_t *source, const char *stage)
-{
-    if (!source)
-        return;
-    obs_data_t *settings = obs_source_get_settings(source);
-    const long long trigger = settings ? obs_data_get_int(settings, "start_trigger") : -1;
-    const char *target = settings ? obs_data_get_string(settings, "source") : "";
-    const bool enabled = obs_source_enabled(source);
-    const bool active = obs_source_active(source);
-    const bool showing = obs_source_showing(source);
-    const char *id = obs_source_get_id(source);
-    obs_source_t *parent = obs_filter_get_parent(source);
-    const bool parent_active = parent ? obs_source_active(parent) : false;
-    const bool parent_showing = parent ? obs_source_showing(parent) : false;
-    const char *parent_name = parent ? obs_source_get_name(parent) : "";
-    const bool target_exists = target && *target && obs_get_source_by_name(target) != nullptr;
-    workflow_debug_log(
-        "Filter instance: %s id='%s' enabled=%d active=%d showing=%d "
-        "parent='%s' parent_active=%d parent_showing=%d start_trigger=%lld "
-        "source='%s' target_exists=%d",
-        stage, id ? id : "", enabled ? 1 : 0, active ? 1 : 0,
-        showing ? 1 : 0, parent_name ? parent_name : "",
-        parent_active ? 1 : 0, parent_showing ? 1 : 0, trigger,
-        target ? target : "", target_exists ? 1 : 0);
-    if (settings)
-        obs_data_release(settings);
-}
-
-static void log_target_transform(obs_source_t *filter, const char *stage)
-{
-    if (!filter)
-        return;
-    obs_source_t *parent = obs_filter_get_parent(filter);
-    if (!parent)
-        return;
-
-    obs_data_t *settings = obs_source_get_settings(filter);
-    const char *target_name = settings ? obs_data_get_string(settings, "source") : "";
-    obs_scene_t *scene = obs_scene_from_source(parent);
-    obs_sceneitem_t *item = scene && target_name && *target_name
-        ? obs_scene_find_source(scene, target_name) : nullptr;
-    if (item) {
-        struct obs_transform_info info = {};
-        obs_sceneitem_get_info2(item, &info);
-        workflow_debug_log(
-            "Filter target: %s filter='%s' target='%s' pos=(%.3f,%.3f) "
-            "scale=(%.3f,%.3f) rot=%.3f",
-            stage, obs_source_get_name(filter), target_name,
-            info.pos.x, info.pos.y, info.scale.x, info.scale.y, info.rot);
-    } else {
-        workflow_debug_log("Filter target: %s filter='%s' target='%s' scene_item=missing",
-                           stage, obs_source_get_name(filter),
-                           target_name ? target_name : "");
-    }
-    if (settings)
-        obs_data_release(settings);
-}
-
 bool workflow_filter_instance_execute(workflow_filter_instance *instance)
 {
     if (!instance || !instance->instance)
         return false;
 
-    log_runtime_state(instance->instance, "before execute");
-    log_target_transform(instance->instance, "before execute");
+    workflow_filter_diagnostics_log_runtime(instance->instance, "before execute");
+    workflow_filter_diagnostics_log_target(instance->instance, "before execute");
+    workflow_filter_diagnostics_begin(instance->instance, 1000);
 
     // Force a fresh enabled transition. Move filters using StartTrigger.Enable
     // consume this transition from their video-tick path.
     obs_source_set_enabled(instance->instance, false);
     obs_source_set_enabled(instance->instance, true);
 
-    log_runtime_state(instance->instance, "after execute");
-    log_target_transform(instance->instance, "after execute");
+    workflow_filter_diagnostics_log_runtime(instance->instance, "after execute");
+    workflow_filter_diagnostics_log_target(instance->instance, "after execute");
     workflow_debug_log("Filter instance: executing temporary '%s'",
                        obs_source_get_name(instance->instance));
     return true;
