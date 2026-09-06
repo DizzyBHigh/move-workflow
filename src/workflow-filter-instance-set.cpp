@@ -29,25 +29,20 @@ static bool find_index(const workflow_filter_instance_set *set,
     return false;
 }
 
-static void log_scene_filters(obs_source_t *parent, const char *node_id,
-                              const char *requested_name, obs_source_t *resolved)
+static void log_resolved_filter(obs_source_t *parent, const char *node_id,
+                                const char *requested_name, obs_source_t *resolved)
 {
     if (!parent)
         return;
-    const size_t count = obs_source_filter_count(parent);
     workflow_debug_log("Filter resolution: node='%s' requested='%s' scene='%s' filter_count=%zu resolved_ptr=%p",
                        node_id ? node_id : "", requested_name ? requested_name : "",
-                       obs_source_get_name(parent), count, (void *)resolved);
-    for (size_t i = 0; i < count; ++i) {
-        obs_source_t *filter = obs_source_get_filter(parent, i);
-        if (!filter)
-            continue;
-        workflow_debug_log("Filter resolution: scene_filter[%zu] name='%s' id='%s' ptr=%p%s",
-                           i, obs_source_get_name(filter),
-                           obs_source_get_id(filter), (void *)filter,
-                           filter == resolved ? " <-- RESOLVED" : "");
-        obs_source_release(filter);
-    }
+                       obs_source_get_name(parent), obs_source_filter_count(parent),
+                       (void *)resolved);
+    if (!resolved)
+        return;
+    workflow_debug_log("Filter resolution: resolved name='%s' id='%s' ptr=%p",
+                       obs_source_get_name(resolved), obs_source_get_id(resolved),
+                       (void *)resolved);
 }
 
 workflow_filter_instance_set *workflow_filter_instance_set_create(workflow_t *workflow)
@@ -100,7 +95,7 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
     }
 
     obs_source_t *original = obs_source_get_filter_by_name(parent, node->action.filter_name);
-    log_scene_filters(parent, node->id, node->action.filter_name, original);
+    log_resolved_filter(parent, node->id, node->action.filter_name, original);
     if (!original) {
         workflow_debug_log("Filter prepare: node='%s' filter='%s' NOT FOUND on scene='%s'",
                            node->id, node->action.filter_name, node->action.scene_name);
