@@ -33,14 +33,17 @@ struct source_lookup_context {
     obs_source_t *source;
 };
 
-static void find_source_by_uuid(obs_source_t *source, void *data)
+static bool find_source_by_uuid(void *data, obs_source_t *source)
 {
     auto *context = (source_lookup_context *)data;
     if (!context || context->source || !source || !context->uuid)
-        return;
+        return true;
     const char *uuid = obs_source_get_uuid(source);
-    if (uuid && !strcmp(uuid, context->uuid))
+    if (uuid && !strcmp(uuid, context->uuid)) {
         context->source = obs_source_get_ref(source);
+        return false;
+    }
+    return true;
 }
 
 static obs_source_t *find_source_uuid(const char *uuid)
