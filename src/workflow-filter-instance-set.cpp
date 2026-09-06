@@ -42,7 +42,7 @@ static obs_source_t *find_action_filter(obs_source_t *parent,const workflow_acti
 
 workflow_filter_instance_set *workflow_filter_instance_set_create(workflow_t *workflow){
     if(!workflow||!workflow->enabled)return nullptr;
-    auto *set=(workflow_filter_instance_set *)calloc(1,sizeof(*set));
+    auto *set=(workflow_filter_instance_set *)calloc(1,sizeof(workflow_filter_instance_set));
     if(!set)return nullptr;
     set->workflow=workflow;
     for(size_t i=0;i<workflow->node_count;++i){
