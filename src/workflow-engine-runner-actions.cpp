@@ -21,19 +21,33 @@ static bool run_simultaneous(workflow_engine_state_t *state, workflow_node_t *no
 bool workflow_engine_runner_run_next_links(workflow_engine_state_t *state,
                                            workflow_node_t *node, size_t depth)
 {
-    if (node->shortcut_node_count)
+    workflow_debug_log("Workflow graph: completed node='%s' next_count=%zu simultaneous_count=%zu shortcut_count=%zu end_count=%zu",
+                       node->id, node->next_node_count, node->simultaneous_node_count,
+                       node->shortcut_node_count, node->end_node_count);
+
+    if (node->shortcut_node_count) {
+        for (size_t i = 0; i < node->shortcut_node_count; ++i)
+            workflow_debug_log("Workflow graph: node='%s' shortcut[%zu]='%s'",
+                               node->id, i, node->shortcut_node_ids[i]);
         return workflow_engine_runner_wait_shortcut(state, node);
+    }
     if (node->next_node_count) {
         workflow_debug_log("Workflow graph: node='%s' completed; executing %zu next node(s)",
                            node->id, node->next_node_count);
         bool result = true;
-        for (size_t i = 0; i < node->next_node_count; ++i)
+        for (size_t i = 0; i < node->next_node_count; ++i) {
+            workflow_debug_log("Workflow graph: node='%s' next[%zu]='%s'",
+                               node->id, i, node->next_node_ids[i]);
             if (!workflow_engine_runner_run_internal(state, node->next_node_ids[i], depth + 1)) result = false;
+        }
         return result;
     }
     bool result = true;
-    for (size_t i = 0; i < node->end_node_count; ++i)
+    for (size_t i = 0; i < node->end_node_count; ++i) {
+        workflow_debug_log("Workflow graph: node='%s' end[%zu]='%s'",
+                           node->id, i, node->end_node_ids[i]);
         if (!workflow_engine_runner_run_internal(state, node->end_node_ids[i], depth + 1)) result = false;
+    }
     return result;
 }
 
