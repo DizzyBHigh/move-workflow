@@ -3,6 +3,7 @@
 #include "workflow-debug.h"
 #include "workflow-filter-settings.h"
 
+#include <obs.h>
 #include <cstdlib>
 #include <cstring>
 
@@ -77,10 +78,18 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
         return false;
     }
 
-    obs_source_t *original = obs_source_get_filter_by_name(parent, node->action.filter_name);
+    struct filter_lookup { const char *id; obs_source_t *filter; } lookup =
+        {node->action.filter_id, nullptr};
+    obs_source_enum_filters(parent, [](obs_source_t *, obs_source_t *candidate, void *data) {
+        auto *ctx = static_cast<filter_lookup *>(data);
+        if (!ctx || ctx->filter || !candidate || !ctx->id) return;
+        const char *id = obs_source_get_id(candidate);
+        if (id && !strcmp(id, ctx->id)) ctx->filter = obs_source_get_ref(candidate);
+    }, &lookup);
+    obs_source_t *original = lookup.filter;
     if (!original) {
-        workflow_debug_log("Filter prepare: node='%s' filter='%s' NOT FOUND on scene='%s'",
-                           node->id, node->action.filter_name, node->action.scene_name);
+        workflow_debug_log("Filter prepare: node='%s' filter_id='%s' NOT FOUND on scene='%s'",
+                           node->id, node->action.filter_id, node->action.scene_name);
         obs_source_release(parent);
         return false;
     }
