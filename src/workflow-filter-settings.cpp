@@ -67,6 +67,7 @@ void workflow_filter_apply_node_settings(obs_source_t *filter,
     obs_data_set_string(settings, "next_move", "");
     obs_data_set_string(settings, "next_move_on", "move_end");
     obs_data_set_int(settings, "start_trigger", 5);
+    obs_data_set_int(settings, "stop_trigger", 0);
 
     workflow_debug_log("Move dispatch: before obs_source_update filter='%s' source='%s'",
                        obs_source_get_name(filter),
