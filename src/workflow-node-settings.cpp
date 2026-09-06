@@ -36,15 +36,26 @@ bool NodeSettingsDialog::apply()
     } else {
         const QString parentName=source_->currentText().trimmed();
         const QString filterName=filter_->currentText().trimmed();
+        const QString parentUuid=source_->currentData().toString();
+        const QString filterUuid=filter_->currentData().toString();
+        obs_source_t *parent=!parentUuid.isEmpty()?obs_get_source_by_uuid(parentUuid.toUtf8().constData()):obs_get_source_by_name(parentName.toUtf8().constData());
         if(parentName.isEmpty()){
             wf->action.kind=WORKFLOW_MOVE_ACTION; wf->action.scene_name[0]='\0'; wf->action.source_uuid[0]='\0'; wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0'; wf->action.filter_uuid[0]='\0';
         } else if(filterName.isEmpty()){
-            obs_source_t *parent=obs_get_source_by_name(parentName.toUtf8().constData()); if(!parent)return false; const char *uuid=obs_source_get_uuid(parent); if(!uuid||!*uuid){obs_source_release(parent);return false;}
+            if(!parent)return false; const char *uuid=obs_source_get_uuid(parent); if(!uuid||!*uuid){obs_source_release(parent);return false;}
             wf->action.kind=WORKFLOW_MOVE_ACTION; settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,parentName); settings_copy_text(wf->action.source_uuid,WORKFLOW_MAX_NAME,QString::fromUtf8(uuid)); settings_copy_text(wf->action.source_name,WORKFLOW_MAX_NAME,parentName); wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0'; wf->action.filter_uuid[0]='\0'; obs_source_release(parent);
         } else {
-            obs_source_t *parent=obs_get_source_by_name(parentName.toUtf8().constData()); if(!parent)return false; obs_source_t *filter=obs_source_get_filter_by_name(parent,filterName.toUtf8().constData()); if(!filter){obs_source_release(parent);return false;}
-            const char *filterId=obs_source_get_id(filter); const char *filterUuid=obs_source_get_uuid(filter); const char *parentUuid=obs_source_get_uuid(parent); if(!settings_supported_filter(filterId)||!filterUuid||!*filterUuid||!parentUuid||!*parentUuid){obs_source_release(filter);obs_source_release(parent);return false;}
-            wf->action.kind=settings_kind(filterId); settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,parentName); settings_copy_text(wf->action.source_uuid,WORKFLOW_MAX_NAME,QString::fromUtf8(parentUuid)); settings_copy_text(wf->action.source_name,WORKFLOW_MAX_NAME,parentName); settings_copy_text(wf->action.filter_name,WORKFLOW_MAX_NAME,filterName); settings_copy_text(wf->action.filter_id,WORKFLOW_MAX_NAME,QString::fromUtf8(filterId)); settings_copy_text(wf->action.filter_uuid,WORKFLOW_MAX_NAME,QString::fromUtf8(filterUuid)); obs_source_release(filter); obs_source_release(parent);
+            if(!parent)return false;
+            obs_source_t *filter=nullptr;
+            if(!filterUuid.isEmpty()){
+                struct Context{QString uuid;obs_source_t *filter;}; Context ctx{filterUuid,nullptr};
+                obs_source_enum_filters(parent,[](obs_source_t *,obs_source_t *candidate,void *data){auto *c=static_cast<Context*>(data);if(!c->filter&&QString::fromUtf8(obs_source_get_uuid(candidate))==c->uuid)c->filter=obs_source_get_ref(candidate);},&ctx);
+                filter=ctx.filter;
+            }
+            if(!filter)filter=obs_source_get_filter_by_name(parent,filterName.toUtf8().constData());
+            if(!filter){obs_source_release(parent);return false;}
+            const char *filterId=obs_source_get_id(filter); const char *resolvedFilterUuid=obs_source_get_uuid(filter); const char *resolvedParentUuid=obs_source_get_uuid(parent); if(!settings_supported_filter(filterId)||!resolvedFilterUuid||!*resolvedFilterUuid||!resolvedParentUuid||!*resolvedParentUuid){obs_source_release(filter);obs_source_release(parent);return false;}
+            wf->action.kind=settings_kind(filterId); settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,parentName); settings_copy_text(wf->action.source_uuid,WORKFLOW_MAX_NAME,QString::fromUtf8(resolvedParentUuid)); settings_copy_text(wf->action.source_name,WORKFLOW_MAX_NAME,parentName); settings_copy_text(wf->action.filter_name,WORKFLOW_MAX_NAME,QString::fromUtf8(obs_source_get_name(filter))); settings_copy_text(wf->action.filter_id,WORKFLOW_MAX_NAME,QString::fromUtf8(filterId)); settings_copy_text(wf->action.filter_uuid,WORKFLOW_MAX_NAME,QString::fromUtf8(resolvedFilterUuid)); obs_source_release(filter); obs_source_release(parent);
         }
     }
     wf->start_delay.mode=startDelayDefault_->isChecked()?WORKFLOW_USE_EXISTING:WORKFLOW_OVERRIDE; wf->start_delay.delay_ms=startDelayDefault_->isChecked()?startDelayOverrideMs_:(uint64_t)startDelayMs_->value();
