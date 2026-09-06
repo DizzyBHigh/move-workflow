@@ -5,21 +5,8 @@
 #include <obs.h>
 #include <QGraphicsPathItem>
 #include <QMessageBox>
-#include <QPainterPath>
-#include <QPen>
 
 namespace {
-struct ConnectionEditContext {
-    EditorScene *scene = nullptr;
-    QGraphicsPathItem *line = nullptr;
-};
-
-static void handle_connection_edit(void *context, const QString &type)
-{
-    auto *edit = static_cast<ConnectionEditContext *>(context);
-    if (edit && edit->scene) edit->scene->editConnection(edit->line, type);
-}
-
 static bool valid_connection_nodes(NodeItem *source, NodeItem *target)
 {
     return source && target && source != target && !source->id().isEmpty() &&
@@ -37,8 +24,8 @@ bool EditorScene::editConnection(QGraphicsPathItem *line, const QString &type)
 
     const QString oldType = connection->type;
     const QString targetId = target->id();
-    if (!workflow_scene_relationship::remove(source, target, oldType))
-        return false;
+    if (type == oldType) return true;
+    if (!workflow_scene_relationship::remove(source, target, oldType)) return false;
     if (type == "__delete__") {
         rebuildConnections();
         emit workflowChanged();
@@ -121,9 +108,8 @@ void EditorScene::connectActionToAction(NodeItem *source, NodeItem *target,
 {
     if (!valid_connection_nodes(source, target)) return;
     auto *wf = source->workflowNode();
-    if (!wf) return;
     auto *targetWf = target->workflowNode();
-    if (!targetWf) return;
+    if (!wf || !targetWf) return;
     const QString id = target->id();
     const QString oldType = workflow_scene_relationship::type_between(wf, targetWf);
     if (!oldType.isEmpty() && oldType != type)
