@@ -2,6 +2,7 @@
 
 #include "workflow-debug.h"
 #include "workflow-filter-settings.h"
+#include "workflow-source-lookup.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -26,33 +27,6 @@ static bool find_index(const workflow_filter_instance_set *set,
         }
     }
     return false;
-}
-
-struct source_lookup_context {
-    const char *uuid;
-    obs_source_t *source;
-};
-
-static bool find_source_by_uuid(void *data, obs_source_t *source)
-{
-    auto *context = (source_lookup_context *)data;
-    if (!context || context->source || !source || !context->uuid)
-        return true;
-    const char *uuid = obs_source_get_uuid(source);
-    if (uuid && !strcmp(uuid, context->uuid)) {
-        context->source = obs_source_get_ref(source);
-        return false;
-    }
-    return true;
-}
-
-static obs_source_t *find_source_uuid(const char *uuid)
-{
-    if (!uuid || !*uuid)
-        return nullptr;
-    source_lookup_context context{uuid, nullptr};
-    obs_enum_sources(find_source_by_uuid, &context);
-    return context.source;
 }
 
 struct filter_lookup_context {
@@ -113,10 +87,12 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
     if (set->count >= WORKFLOW_MAX_NODES)
         return false;
 
-    obs_source_t *parent = find_source_uuid(node->action.source_uuid);
+    obs_source_t *parent = workflow_find_source_by_uuid(node->action.source_uuid);
     if (!parent) {
-        workflow_debug_log("Filter instance: node='%s' parent UUID='%s' not found",
-                           node->id, node->action.source_uuid);
+        workflow_debug_log("Filter instance: node='%s' parent UUID='%s' name='%s' not found",
+                           node->id, node->action.source_uuid, node->action.source_name);
+        workflow_log_source_uuid_diagnostics(node->action.source_uuid,
+                                             node->action.source_name);
         return false;
     }
     obs_source_t *original = find_action_filter(parent, &node->action);
