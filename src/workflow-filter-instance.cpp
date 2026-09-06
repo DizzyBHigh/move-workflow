@@ -96,8 +96,14 @@ bool workflow_filter_instance_execute(workflow_filter_instance *instance)
 {
     if (!instance || !instance->instance)
         return false;
+
     log_runtime_state(instance->instance, "before execute");
+
+    // Force a fresh enabled transition. Move filters using StartTrigger.Enable
+    // consume this transition from their video-tick path.
+    obs_source_set_enabled(instance->instance, false);
     obs_source_set_enabled(instance->instance, true);
+
     log_runtime_state(instance->instance, "after execute");
     workflow_debug_log("Filter instance: executing temporary '%s'",
                        obs_source_get_name(instance->instance));
