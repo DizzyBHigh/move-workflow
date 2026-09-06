@@ -28,6 +28,31 @@ static bool find_index(const workflow_filter_instance_set *set,
     return false;
 }
 
+struct filter_lookup_context {
+    const char *uuid;
+    obs_source_t *filter;
+};
+
+static void find_filter_by_uuid(obs_source_t *, obs_source_t *filter, void *data)
+{
+    auto *context = (filter_lookup_context *)data;
+    if (!context || context->filter || !filter || !context->uuid)
+        return;
+    const char *uuid = obs_source_get_uuid(filter);
+    if (uuid && !strcmp(uuid, context->uuid))
+        context->filter = obs_source_get_ref(filter);
+}
+
+static obs_source_t *find_action_filter(obs_source_t *parent,
+                                        const workflow_action_ref_t *action)
+{
+    if (!parent || !action || !action->filter_uuid[0])
+        return nullptr;
+    filter_lookup_context context{action->filter_uuid, nullptr};
+    obs_source_enum_filters(parent, find_filter_by_uuid, &context);
+    return context.filter;
+}
+
 workflow_filter_instance_set *workflow_filter_instance_set_create(workflow_t *workflow)
 {
     if (!workflow || !workflow->enabled)
@@ -64,7 +89,7 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
     obs_source_t *parent = obs_get_source_by_name(node->action.scene_name);
     if (!parent)
         return false;
-    obs_source_t *original = obs_source_get_filter_by_name(parent, node->action.filter_name);
+    obs_source_t *original = find_action_filter(parent, &node->action);
     if (!original) {
         obs_source_release(parent);
         return false;
@@ -90,9 +115,9 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
     set->instances[set->count] = instance;
     strncpy(set->node_ids[set->count], node->id, WORKFLOW_MAX_NAME - 1);
     ++set->count;
-    workflow_debug_log("Filter instance: node='%s' prepared runtime='%s' duration=%llu",
+    workflow_debug_log("Filter instance: node='%s' prepared runtime='%s' uuid='%s' duration=%llu",
                        node->id, obs_source_get_name(instance->instance),
-                       (unsigned long long)duration);
+                       node->action.filter_uuid, (unsigned long long)duration);
     return true;
 }
 
