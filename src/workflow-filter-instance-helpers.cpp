@@ -47,6 +47,9 @@ bool workflow_filter_instance_start_native(obs_source_t *filter)
     if (!property_name)
         return false;
 
+    if (!obs_source_enabled(filter))
+        obs_source_set_enabled(filter, true);
+
     obs_properties_t *props = obs_source_properties(filter);
     if (!props)
         return false;
