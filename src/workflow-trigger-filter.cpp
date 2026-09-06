@@ -1,6 +1,7 @@
 #include "workflow-trigger-filter.h"
 #include "workflow-trigger-filter-ui.h"
 #include "workflow-engine-service.h"
+#include "workflow-debug.h"
 #include <obs.h>
 #include <string>
 
@@ -26,7 +27,12 @@ static void run_trigger(void *param)
     if (!request)
         return;
 
-    workflow_engine_service_trigger(request->workflow.c_str(), request->trigger.c_str());
+    workflow_debug_log("Trigger Workflow: executing queued trigger workflow='%s' trigger='%s'",
+                       request->workflow.c_str(), request->trigger.c_str());
+    const bool result = workflow_engine_service_trigger(request->workflow.c_str(),
+                                                        request->trigger.c_str());
+    workflow_debug_log("Trigger Workflow: queued trigger result=%d workflow='%s' trigger='%s'",
+                       result, request->workflow.c_str(), request->trigger.c_str());
     delete request;
 }
 
@@ -41,6 +47,8 @@ static void video_tick(void *param, float)
         return;
 
     data->enabled = enabled;
+    workflow_debug_log("Trigger Workflow: enabled transition source='%s' enabled=%d",
+                       obs_source_get_name(data->source), enabled);
     if (!enabled)
         return;
 
@@ -51,10 +59,14 @@ static void video_tick(void *param, float)
     const std::string workflow = obs_data_get_string(settings, "workflow");
     const std::string trigger = obs_data_get_string(settings, "trigger");
     const bool valid_target = !workflow.empty() && !trigger.empty();
+    workflow_debug_log("Trigger Workflow: target workflow='%s' trigger='%s' valid=%d",
+                       workflow.c_str(), trigger.c_str(), valid_target);
     obs_data_release(settings);
 
     if (valid_target) {
         auto *request = new trigger_request{workflow, trigger};
+        workflow_debug_log("Trigger Workflow: queueing UI trigger workflow='%s' trigger='%s'",
+                           workflow.c_str(), trigger.c_str());
         obs_queue_task(OBS_TASK_UI, run_trigger, request, false);
     }
 
