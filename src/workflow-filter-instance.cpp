@@ -6,6 +6,31 @@
 #include <cstdlib>
 #include <obs.h>
 
+static void log_move_settings(obs_source_t *source, const char *stage)
+{
+    if (!source)
+        return;
+    obs_data_t *settings = obs_source_get_settings(source);
+    if (!settings)
+        return;
+    workflow_debug_log(
+        "Filter instance: %s name='%s' trigger=%lld source='%s' "
+        "duration=%lld duration_type=%lld custom_duration=%d "
+        "easing=%lld easing_function=%lld simultaneous='%s' next='%s' next_on='%s'",
+        stage, obs_source_get_name(source),
+        obs_data_get_int(settings, "start_trigger"),
+        obs_data_get_string(settings, "source"),
+        obs_data_get_int(settings, "duration"),
+        obs_data_get_int(settings, "duration_type"),
+        obs_data_get_bool(settings, "custom_duration") ? 1 : 0,
+        obs_data_get_int(settings, "easing_match"),
+        obs_data_get_int(settings, "easing_function_match"),
+        obs_data_get_string(settings, "simultaneous_move"),
+        obs_data_get_string(settings, "next_move"),
+        obs_data_get_string(settings, "next_move_on"));
+    obs_data_release(settings);
+}
+
 workflow_filter_instance *workflow_filter_instance_create(
     obs_source_t *original, obs_source_t *parent, const workflow_node_t *node)
 {
@@ -16,6 +41,7 @@ workflow_filter_instance *workflow_filter_instance_create(
     if (!result)
         return nullptr;
 
+    log_move_settings(original, "original before duplicate");
     char name[WORKFLOW_MAX_NAME];
     snprintf(name, sizeof(name), "%s [workflow:%p]",
              obs_source_get_name(original), (void *)result);
@@ -24,14 +50,17 @@ workflow_filter_instance *workflow_filter_instance_create(
         free(result);
         return nullptr;
     }
+    log_move_settings(result->instance, "duplicate before attach");
+
     result->original = obs_source_get_ref(original);
     result->parent = obs_source_get_ref(parent);
     obs_source_set_enabled(result->instance, false);
     obs_source_filter_add(parent, result->instance);
+    log_move_settings(result->instance, "duplicate after attach");
 
     workflow_debug_log("Filter instance: duplicated '%s' -> '%s' node='%s'",
-                       obs_source_get_name(original), obs_source_get_name(result->instance),
-                       node->id);
+                       obs_source_get_name(original),
+                       obs_source_get_name(result->instance), node->id);
     return result;
 }
 
@@ -50,7 +79,7 @@ static void log_runtime_state(obs_source_t *source, const char *stage)
     const bool parent_active = parent ? obs_source_active(parent) : false;
     const bool parent_showing = parent ? obs_source_showing(parent) : false;
     const char *parent_name = parent ? obs_source_get_name(parent) : "";
-    obs_source_t *target_source = target && *target ? obs_get_source_by_name(target) : nullptr;
+    const bool target_exists = target && *target && obs_get_source_by_name(target) != nullptr;
     workflow_debug_log(
         "Filter instance: %s id='%s' enabled=%d active=%d showing=%d "
         "parent='%s' parent_active=%d parent_showing=%d start_trigger=%lld "
@@ -58,9 +87,7 @@ static void log_runtime_state(obs_source_t *source, const char *stage)
         stage, id ? id : "", enabled ? 1 : 0, active ? 1 : 0,
         showing ? 1 : 0, parent_name ? parent_name : "",
         parent_active ? 1 : 0, parent_showing ? 1 : 0, trigger,
-        target ? target : "", target_source ? 1 : 0);
-    if (target_source)
-        obs_source_release(target_source);
+        target ? target : "", target_exists ? 1 : 0);
 }
 
 static void enable_source_on_ui(void *data)
