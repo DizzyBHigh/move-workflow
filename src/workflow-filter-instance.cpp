@@ -93,6 +93,18 @@ workflow_filter_instance *workflow_filter_instance_create(obs_source_t *original
 
 struct enable_task_data { obs_source_t *source; obs_source_t *parent; };
 
+static void sample_source_after_enable(void *data)
+{
+    enable_task_data *task = (enable_task_data *)data;
+    if (!task) return;
+    log_filter_state("runtime post-enable sample", task->source);
+    log_move_source_state("runtime post-enable sample", task->source);
+    log_scene_item_state("runtime post-enable sample", task->parent, task->source);
+    if (task->source) obs_source_release(task->source);
+    if (task->parent) obs_source_release(task->parent);
+    free(task);
+}
+
 static void enable_source_on_ui(void *data)
 {
     enable_task_data *task = (enable_task_data *)data;
@@ -106,7 +118,8 @@ static void enable_source_on_ui(void *data)
         log_filter_state("runtime UI enable after", source);
         log_move_source_state("runtime UI enable after", source);
         log_scene_item_state("runtime UI enable after", parent, source);
-        obs_source_release(source);
+        obs_queue_task(OBS_TASK_UI, sample_source_after_enable, task, false);
+        return;
     }
     if (parent) obs_source_release(parent);
     free(task);
