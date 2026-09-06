@@ -1,6 +1,6 @@
 #include "workflow-trigger-filter.h"
 #include "workflow-trigger-filter-ui.h"
-#include "workflow-engine-service.h"
+#include "workflow-trigger-dispatch.hpp"
 #include <obs.h>
 #include <string>
 
@@ -39,7 +39,7 @@ static void video_tick(void *param, float)
     obs_data_release(settings);
 
     if (valid_target)
-        workflow_engine_service_trigger(workflow.c_str(), trigger.c_str());
+        workflow_trigger_dispatch(workflow.c_str(), trigger.c_str());
 
     obs_source_set_enabled(data->source, false);
 }
