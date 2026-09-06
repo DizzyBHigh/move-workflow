@@ -82,6 +82,7 @@ workflow_filter_instance *workflow_filter_instance_create(obs_source_t *original
     log_move_source_state("runtime immediately after duplicate", result->instance);
     result->original = obs_source_get_ref(original);
     result->parent = obs_source_get_ref(parent);
+    result->node = node;
     obs_source_set_enabled(result->instance, false);
     obs_source_filter_add(parent, result->instance);
     workflow_debug_log("Filter instance: duplicated '%s' -> '%s' node='%s' parent='%s'",
