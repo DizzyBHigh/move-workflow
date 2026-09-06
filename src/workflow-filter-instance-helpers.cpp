@@ -1,5 +1,7 @@
 #include "workflow-filter-instance-helpers.hpp"
 
+#include "workflow-debug.h"
+
 #include <cstdio>
 #include <cstring>
 
@@ -44,17 +46,50 @@ bool workflow_filter_instance_start_native(obs_source_t *filter)
     else if (id && strcmp(id, "move_action_filter") == 0)
         property_name = "move_filter_start";
 
-    if (!property_name)
+    if (!property_name) {
+        workflow_debug_log("Filter instance: no native Start property id='%s'",
+                           id ? id : "");
         return false;
+    }
+
+    workflow_debug_log(
+        "Filter instance: native Start prep id='%s' enabled_before=%d source='%s'",
+        id, obs_source_enabled(filter) ? 1 : 0,
+        [&]() {
+            obs_data_t *settings = obs_source_get_settings(filter);
+            const char *source = settings ? obs_data_get_string(settings, "source") : "";
+            static char value[1024];
+            snprintf(value, sizeof(value), "%s", source ? source : "");
+            if (settings)
+                obs_data_release(settings);
+            return value;
+        }());
 
     if (!obs_source_enabled(filter))
         obs_source_set_enabled(filter, true);
 
     obs_properties_t *props = obs_source_properties(filter);
-    if (!props)
+    if (!props) {
+        workflow_debug_log("Filter instance: native Start properties unavailable id='%s'", id);
         return false;
+    }
+
     obs_property_t *property = obs_properties_get(props, property_name);
-    const bool started = property && obs_property_button_clicked(property, filter);
+    workflow_debug_log(
+        "Filter instance: native Start property id='%s' property='%s' found=%d enabled_after=%d",
+        id, property_name, property ? 1 : 0, obs_source_enabled(filter) ? 1 : 0);
+
+    if (!property) {
+        obs_properties_destroy(props);
+        return false;
+    }
+
+    /* Exeldro's Start callbacks return false even when they successfully
+       invoke their internal start routine, so this return value is not a
+       reliable indication of whether the action started. */
+    obs_property_button_clicked(property, filter);
+    workflow_debug_log("Filter instance: native Start callback invoked id='%s' property='%s'",
+                       id, property_name);
     obs_properties_destroy(props);
-    return started;
+    return true;
 }
