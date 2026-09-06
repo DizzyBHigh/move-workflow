@@ -43,11 +43,14 @@ static void log_runtime_state(obs_source_t *source, const char *stage)
     const long long trigger = settings ? obs_data_get_int(settings, "start_trigger") : -1;
     const char *target = settings ? obs_data_get_string(settings, "source") : "";
     const bool enabled = obs_source_enabled(source);
+    const bool active = obs_source_active(source);
+    const bool showing = obs_source_showing(source);
     const char *id = obs_source_get_id(source);
     obs_source_t *target_source = target && *target ? obs_get_source_by_name(target) : nullptr;
-    workflow_debug_log("Filter instance: %s id='%s' enabled=%d start_trigger=%lld source='%s' target_exists=%d",
-                       stage, id ? id : "", enabled ? 1 : 0, trigger,
-                       target ? target : "", target_source ? 1 : 0);
+    workflow_debug_log("Filter instance: %s id='%s' enabled=%d active=%d showing=%d start_trigger=%lld source='%s' target_exists=%d",
+                       stage, id ? id : "", enabled ? 1 : 0, active ? 1 : 0,
+                       showing ? 1 : 0, trigger, target ? target : "",
+                       target_source ? 1 : 0);
     if (target_source)
         obs_source_release(target_source);
     if (settings)
