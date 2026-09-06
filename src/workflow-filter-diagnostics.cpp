@@ -10,8 +10,8 @@
 
 namespace {
 struct deferred_probe {
-    obs_source_t *filter = nullptr;
-    uint32_t remaining = 0;
+    obs_source_t *filter;
+    uint32_t remaining;
 };
 
 static void log_target(obs_source_t *filter, const char *stage)
@@ -42,9 +42,11 @@ static void log_target(obs_source_t *filter, const char *stage)
 
 static void deferred_probe_task(void *param)
 {
-    auto *probe = static_cast<deferred_probe *>(param);
-    if (!probe || !probe->filter)
+    deferred_probe *probe = static_cast<deferred_probe *>(param);
+    if (!probe || !probe->filter) {
+        free(probe);
         return;
+    }
 
     workflow_filter_diagnostics_log_runtime(probe->filter, "deferred graphics task");
     log_target(probe->filter, "deferred graphics task");
@@ -129,7 +131,7 @@ void workflow_filter_diagnostics_begin(obs_source_t *filter,
         obs_source_get_name(filter), duration_ms,
         obs_frontend_streaming_active() || obs_frontend_recording_active() ? 1 : 0);
 
-    auto *probe = static_cast<deferred_probe *>(calloc(1, sizeof(*probe)));
+    deferred_probe *probe = static_cast<deferred_probe *>(calloc(1, sizeof(*probe)));
     if (!probe)
         return;
 
