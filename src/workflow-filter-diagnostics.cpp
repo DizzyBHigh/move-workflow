@@ -22,12 +22,19 @@ static void log_target(obs_source_t *filter, const char *stage)
     obs_scene_t *scene = obs_scene_from_source(parent);
     obs_sceneitem_t *item = scene && target && *target
         ? obs_scene_find_source(scene, target) : nullptr;
+    float x = 0.0f;
+    float y = 0.0f;
+
+    if (item) {
+        struct obs_transform_info info = {};
+        obs_sceneitem_get_info2(item, &info);
+        x = info.pos.x;
+        y = info.pos.y;
+    }
 
     workflow_debug_log(
         "Filter tick target: %s filter='%s' target='%s' pos=(%.3f,%.3f)",
-        stage, obs_source_get_name(filter), target ? target : "",
-        item ? ({ struct obs_transform_info info = {}; obs_sceneitem_get_info2(item, &info); info.pos.x; }) : 0.0,
-        item ? ({ struct obs_transform_info info = {}; obs_sceneitem_get_info2(item, &info); info.pos.y; }) : 0.0);
+        stage, obs_source_get_name(filter), target ? target : "", x, y);
 
     if (settings)
         obs_data_release(settings);
