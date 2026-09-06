@@ -29,22 +29,22 @@ bool NodeSettingsDialog::apply()
     if(changeScene){
         const QString sceneName=scene_?scene_->currentText().trimmed():QString();
         if(sceneName.isEmpty()){
-            wf->action.scene_name[0]='\0'; wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0';
+            wf->action.scene_name[0]='\0'; wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0'; wf->action.filter_uuid[0]='\0';
         } else {
-            wf->action.kind=WORKFLOW_CHANGE_SCENE; settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,sceneName); wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0';
+            wf->action.kind=WORKFLOW_CHANGE_SCENE; settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,sceneName); wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0'; wf->action.filter_uuid[0]='\0';
         }
     } else {
         const QString parentName=source_->currentText().trimmed();
         const QString filterName=filter_->currentText().trimmed();
         if(parentName.isEmpty()){
-            wf->action.kind=WORKFLOW_MOVE_ACTION; wf->action.scene_name[0]='\0'; wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0';
+            wf->action.kind=WORKFLOW_MOVE_ACTION; wf->action.scene_name[0]='\0'; wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0'; wf->action.filter_uuid[0]='\0';
         } else if(filterName.isEmpty()){
             wf->action.kind=WORKFLOW_MOVE_ACTION; settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,parentName);
-            wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0';
+            wf->action.source_name[0]='\0'; wf->action.filter_name[0]='\0'; wf->action.filter_id[0]='\0'; wf->action.filter_uuid[0]='\0';
         } else {
             obs_source_t *parent=obs_get_source_by_name(parentName.toUtf8().constData()); if(!parent)return false; obs_source_t *filter=obs_source_get_filter_by_name(parent,filterName.toUtf8().constData()); if(!filter){obs_source_release(parent);return false;}
-            const char *filterId=obs_source_get_id(filter); if(!settings_supported_filter(filterId)){obs_source_release(filter);obs_source_release(parent);return false;}
-            wf->action.kind=settings_kind(filterId); settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,parentName); wf->action.source_name[0]='\0'; settings_copy_text(wf->action.filter_name,WORKFLOW_MAX_NAME,filterName); settings_copy_text(wf->action.filter_id,WORKFLOW_MAX_NAME,QString::fromUtf8(filterId)); obs_source_release(filter);obs_source_release(parent);
+            const char *filterId=obs_source_get_id(filter); const char *filterUuid=obs_source_get_uuid(filter); if(!settings_supported_filter(filterId)||!filterUuid||!*filterUuid){obs_source_release(filter);obs_source_release(parent);return false;}
+            wf->action.kind=settings_kind(filterId); settings_copy_text(wf->action.scene_name,WORKFLOW_MAX_NAME,parentName); wf->action.source_name[0]='\0'; settings_copy_text(wf->action.filter_name,WORKFLOW_MAX_NAME,filterName); settings_copy_text(wf->action.filter_id,WORKFLOW_MAX_NAME,QString::fromUtf8(filterId)); settings_copy_text(wf->action.filter_uuid,WORKFLOW_MAX_NAME,QString::fromUtf8(filterUuid)); obs_source_release(filter);obs_source_release(parent);
         }
     }
     wf->start_delay.mode=startDelayDefault_->isChecked()?WORKFLOW_USE_EXISTING:WORKFLOW_OVERRIDE; wf->start_delay.delay_ms=startDelayDefault_->isChecked()?startDelayOverrideMs_:(uint64_t)startDelayMs_->value();
