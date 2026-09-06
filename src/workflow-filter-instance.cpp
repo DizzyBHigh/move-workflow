@@ -112,10 +112,9 @@ static void log_target_transform(obs_source_t *filter, const char *stage)
         obs_sceneitem_get_info(item, &info);
         workflow_debug_log(
             "Filter target: %s filter='%s' target='%s' pos=(%.3f,%.3f) "
-            "scale=(%.3f,%.3f) rot=%.3f crop=(%d,%d,%d,%d)",
+            "scale=(%.3f,%.3f) rot=%.3f",
             stage, obs_source_get_name(filter), target_name,
-            info.pos.x, info.pos.y, info.scale.x, info.scale.y, info.rot,
-            info.crop.left, info.crop.top, info.crop.right, info.crop.bottom);
+            info.pos.x, info.pos.y, info.scale.x, info.scale.y, info.rot);
     } else {
         workflow_debug_log("Filter target: %s filter='%s' target='%s' scene_item=missing",
                            stage, obs_source_get_name(filter),
