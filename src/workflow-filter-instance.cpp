@@ -3,7 +3,6 @@
 #include "workflow-debug.h"
 
 #include <obs.h>
-#include <obs-scene.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
