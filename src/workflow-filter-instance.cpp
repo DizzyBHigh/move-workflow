@@ -10,17 +10,10 @@ static void log_filter_state(const char *label, obs_source_t *source)
 {
     if (!source)
         return;
-    obs_data_t *settings = obs_source_get_settings(source);
-    const char *json = settings ? obs_data_get_json(settings) : nullptr;
     workflow_debug_log(
-        "Filter diagnostic: %s name='%s' id='%s' enabled=%d active=%d showing=%d settings=%s",
+        "Filter diagnostic: %s name='%s' id='%s' enabled=%d active=%d showing=%d",
         label, obs_source_get_name(source), obs_source_get_unversioned_id(source),
-        obs_source_enabled(source), obs_source_active(source), obs_source_showing(source),
-        json ? json : "<none>");
-    if (json)
-        bfree((void *)json);
-    if (settings)
-        obs_data_release(settings);
+        obs_source_enabled(source), obs_source_active(source), obs_source_showing(source));
 }
 
 workflow_filter_instance *workflow_filter_instance_create(
