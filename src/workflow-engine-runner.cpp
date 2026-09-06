@@ -98,6 +98,7 @@ void workflow_engine_runner_continue(void *data)
     continuation *next = (continuation *)data;
     if (!next) return;
     workflow_engine_state_t *state = next->state;
+    bool holds_shortcut_wait = false;
     if (workflow_engine_state_is_active(state) && state->generation == next->generation) {
         workflow_node_t *node = workflow_engine_find_node(state->workflow, next->node_id);
         if (node) {
@@ -110,7 +111,8 @@ void workflow_engine_runner_continue(void *data)
                 const uint64_t end_delay = delay_value(node->end_delay.mode, node->end_delay.delay_ms);
                 if (!end_delay) {
                     clear_phase(state, node);
-                    if (!enter_shortcut_wait(state, node))
+                    holds_shortcut_wait = enter_shortcut_wait(state, node);
+                    if (!holds_shortcut_wait)
                         workflow_engine_runner_run_next_links(state, node, 0);
                 } else if (!workflow_engine_runner_schedule_phase(state, node, end_delay, PHASE_END_DELAY))
                     workflow_engine_state_stop(state);
@@ -119,12 +121,14 @@ void workflow_engine_runner_continue(void *data)
                                    next->phase == PHASE_FAILED_END_DELAY ? "failed-action end delay" : "end delay",
                                    node->id);
                 clear_phase(state, node);
-                if (!enter_shortcut_wait(state, node))
+                holds_shortcut_wait = enter_shortcut_wait(state, node);
+                if (!holds_shortcut_wait)
                     workflow_engine_runner_run_next_links(state, node, 0);
             }
         }
     }
-    workflow_engine_state_delay_end(state);
+    if (!holds_shortcut_wait)
+        workflow_engine_state_delay_end(state);
     free(next);
 }
 
