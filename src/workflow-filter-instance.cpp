@@ -46,15 +46,21 @@ static void log_runtime_state(obs_source_t *source, const char *stage)
     const bool active = obs_source_active(source);
     const bool showing = obs_source_showing(source);
     const char *id = obs_source_get_id(source);
+    obs_source_t *parent = obs_filter_get_parent(source);
+    const bool parent_active = parent ? obs_source_active(parent) : false;
+    const bool parent_showing = parent ? obs_source_showing(parent) : false;
+    const char *parent_name = parent ? obs_source_get_name(parent) : "";
     obs_source_t *target_source = target && *target ? obs_get_source_by_name(target) : nullptr;
-    workflow_debug_log("Filter instance: %s id='%s' enabled=%d active=%d showing=%d start_trigger=%lld source='%s' target_exists=%d",
-                       stage, id ? id : "", enabled ? 1 : 0, active ? 1 : 0,
-                       showing ? 1 : 0, trigger, target ? target : "",
-                       target_source ? 1 : 0);
+    workflow_debug_log(
+        "Filter instance: %s id='%s' enabled=%d active=%d showing=%d "
+        "parent='%s' parent_active=%d parent_showing=%d start_trigger=%lld "
+        "source='%s' target_exists=%d",
+        stage, id ? id : "", enabled ? 1 : 0, active ? 1 : 0,
+        showing ? 1 : 0, parent_name ? parent_name : "",
+        parent_active ? 1 : 0, parent_showing ? 1 : 0, trigger,
+        target ? target : "", target_source ? 1 : 0);
     if (target_source)
         obs_source_release(target_source);
-    if (settings)
-        obs_data_release(settings);
 }
 
 static void enable_source_on_ui(void *data)
