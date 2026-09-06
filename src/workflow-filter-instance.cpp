@@ -39,7 +39,14 @@ static void enable_source_on_ui(void *data)
     obs_source_t *source = (obs_source_t *)data;
     if (!source)
         return;
+
+    workflow_debug_log("Filter instance: UI enable before name='%s' enabled=%d active=%d showing=%d",
+                       obs_source_get_name(source), obs_source_enabled(source),
+                       obs_source_active(source), obs_source_showing(source));
     obs_source_set_enabled(source, true);
+    workflow_debug_log("Filter instance: UI enable after name='%s' enabled=%d active=%d showing=%d",
+                       obs_source_get_name(source), obs_source_enabled(source),
+                       obs_source_active(source), obs_source_showing(source));
     obs_source_release(source);
 }
 
@@ -50,6 +57,11 @@ bool workflow_filter_instance_execute(workflow_filter_instance *instance)
     obs_source_t *source = obs_source_get_ref(instance->instance);
     if (!source)
         return false;
+
+    workflow_debug_log("Filter instance: execute name='%s' enabled=%d active=%d showing=%d id='%s'",
+                       obs_source_get_name(source), obs_source_enabled(source),
+                       obs_source_active(source), obs_source_showing(source),
+                       obs_source_get_unversioned_id(source));
     obs_queue_task(OBS_TASK_UI, enable_source_on_ui, source, false);
     workflow_debug_log("Filter instance: queued enable '%s'",
                        obs_source_get_name(instance->instance));
