@@ -27,11 +27,11 @@ static void run_trigger(void *param)
     if (!request)
         return;
 
-    workflow_debug_log("Trigger Workflow: executing queued trigger workflow='%s' trigger='%s'",
+    workflow_debug_log("Trigger Workflow: queued callback begin workflow='%s' trigger='%s'",
                        request->workflow.c_str(), request->trigger.c_str());
     const bool result = workflow_engine_service_trigger(request->workflow.c_str(),
                                                         request->trigger.c_str());
-    workflow_debug_log("Trigger Workflow: queued trigger result=%d workflow='%s' trigger='%s'",
+    workflow_debug_log("Trigger Workflow: queued callback end result=%d workflow='%s' trigger='%s'",
                        result, request->workflow.c_str(), request->trigger.c_str());
     delete request;
 }
@@ -65,12 +65,16 @@ static void video_tick(void *param, float)
 
     if (valid_target) {
         auto *request = new trigger_request{workflow, trigger};
-        workflow_debug_log("Trigger Workflow: queueing UI trigger workflow='%s' trigger='%s'",
-                           workflow.c_str(), trigger.c_str());
+        workflow_debug_log("Trigger Workflow: queueing UI trigger workflow='%s' trigger='%s' source_enabled=%d",
+                           workflow.c_str(), trigger.c_str(), obs_source_enabled(data->source));
         obs_queue_task(OBS_TASK_UI, run_trigger, request, false);
+        workflow_debug_log("Trigger Workflow: UI trigger queued; disabling source='%s'",
+                           obs_source_get_name(data->source));
     }
 
     obs_source_set_enabled(data->source, false);
+    workflow_debug_log("Trigger Workflow: source disabled source='%s' enabled_now=%d",
+                       obs_source_get_name(data->source), obs_source_enabled(data->source));
 }
 
 static void *create(obs_data_t *, obs_source_t *source)
@@ -78,12 +82,18 @@ static void *create(obs_data_t *, obs_source_t *source)
     auto *data = new trigger_filter;
     data->source = source;
     data->enabled = obs_source_enabled(source);
+    workflow_debug_log("Trigger Workflow: instance created source='%s' enabled=%d",
+                       source ? obs_source_get_name(source) : "", data->enabled);
     return data;
 }
 
 static void destroy(void *opaque)
 {
-    delete static_cast<trigger_filter *>(opaque);
+    auto *data = static_cast<trigger_filter *>(opaque);
+    if (data && data->source)
+        workflow_debug_log("Trigger Workflow: instance destroyed source='%s' enabled=%d",
+                           obs_source_get_name(data->source), obs_source_enabled(data->source));
+    delete data;
 }
 
 static obs_source_info info = []() {
