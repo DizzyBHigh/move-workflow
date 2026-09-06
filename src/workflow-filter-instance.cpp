@@ -57,6 +57,28 @@ static void log_move_settings(obs_source_t *source, const char *stage)
     obs_data_release(settings);
 }
 
+static void rebind_move_source(obs_source_t *filter)
+{
+    if (!filter || strcmp(obs_source_get_id(filter), "move_source_filter") != 0)
+        return;
+
+    obs_data_t *settings = obs_source_get_settings(filter);
+    if (!settings)
+        return;
+
+    const char *source_name = obs_data_get_string(settings, "source");
+    if (!source_name || !*source_name) {
+        obs_data_release(settings);
+        return;
+    }
+
+    obs_data_set_string(settings, "source", "");
+    obs_source_update(filter, settings);
+    obs_data_set_string(settings, "source", source_name);
+    obs_source_update(filter, settings);
+    obs_data_release(settings);
+}
+
 workflow_filter_instance *workflow_filter_instance_create(
     obs_source_t *original, obs_source_t *parent, const workflow_node_t *node)
 {
@@ -82,6 +104,7 @@ workflow_filter_instance *workflow_filter_instance_create(
     result->parent = obs_source_get_ref(parent);
     obs_source_set_enabled(result->instance, false);
     obs_source_filter_add(parent, result->instance);
+    rebind_move_source(result->instance);
     log_move_settings(result->instance, "duplicate after attach");
 
     workflow_debug_log("Filter instance: duplicated '%s' -> '%s' node='%s'",
