@@ -64,6 +64,16 @@ static bool run_action(workflow_engine_state_t *state, workflow_node_t *node, si
         if (workflow_engine_runner_schedule_phase(state, node, duration, PHASE_DURATION)) return simultaneous_ok;
         return false;
     }
+    /*
+     * Give a successfully triggered OBS filter an event-loop opportunity
+     * before a zero-duration workflow can reach state teardown. This is
+     * intentionally only one millisecond and does not change the configured
+     * action duration exposed by the workflow UI.
+     */
+    if (workflow_engine_runner_schedule_phase(state, node, 1, PHASE_DURATION)) {
+        workflow_debug_log("Action lifecycle: node='%s' zero duration; scheduling execution tick", node->id);
+        return simultaneous_ok;
+    }
     if (end_delay) {
         if (workflow_engine_runner_schedule_phase(state, node, end_delay, PHASE_END_DELAY)) return simultaneous_ok;
         return false;
