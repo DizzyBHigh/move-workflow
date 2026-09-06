@@ -5,6 +5,7 @@
 #include <obs.h>
 #include <QGraphicsPathItem>
 #include <QMessageBox>
+#include <QPushButton>
 
 namespace {
 static bool valid_connection_nodes(NodeItem *source, NodeItem *target)
@@ -19,11 +20,11 @@ bool EditorScene::editConnection(QGraphicsPathItem *line, const QString &type)
     Connection *connection = findConnection(line);
     if (!connection) return false;
     auto *source = connection->from->workflowNode();
-    NodeItem *target = connection->to;
+    auto *target = connection->to->workflowNode();
     if (!source || !target) return false;
 
     const QString oldType = connection->type;
-    const QString targetId = target->id();
+    const QString targetId = connection->to->id();
     if (type == oldType) return true;
     if (!workflow_scene_relationship::remove(source, target, oldType)) return false;
     if (type == "__delete__") {
@@ -49,8 +50,9 @@ bool EditorScene::deleteMissingConnection(NodeItem *from, const QString &targetI
     NodeItem *target = findNodeById(targetId.toUtf8().constData());
     if (!target) return false;
     auto *wf = from->workflowNode();
-    if (!wf) return false;
-    if (!workflow_scene_relationship::remove(wf, target, type)) return false;
+    auto *targetWf = target->workflowNode();
+    if (!wf || !targetWf) return false;
+    if (!workflow_scene_relationship::remove(wf, targetWf, type)) return false;
     from->refreshDisplay();
     rebuildConnections();
     emit workflowChanged();
