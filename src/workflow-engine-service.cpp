@@ -2,6 +2,7 @@
 #include "workflow-engine.h"
 #include "workflow-engine-node.h"
 #include "workflow-persistence.h"
+#include "workflow-debug.h"
 #include <obs-module.h>
 
 static workflow_engine_t *service_engine;
@@ -20,12 +21,30 @@ static workflow_t *find_workflow(const char *id)
 
 bool workflow_engine_service_trigger(const char *workflow_id, const char *trigger_id)
 {
-    if (!service_engine || !workflow_id || !trigger_id) return false;
+    workflow_debug_log("Trigger service: request workflow='%s' trigger='%s' engine=%p",
+                       workflow_id ? workflow_id : "", trigger_id ? trigger_id : "",
+                       (void *)service_engine);
+    if (!service_engine || !workflow_id || !trigger_id)
+        return false;
+
     auto *workflow = find_workflow(workflow_id);
-    if (!workflow) return false;
+    workflow_debug_log("Trigger service: workflow lookup workflow='%s' found=%d enabled=%d running=%d",
+                       workflow_id, workflow != nullptr, workflow ? workflow->enabled : 0,
+                       workflow_engine_is_workflow_running(service_engine, workflow_id));
+    if (!workflow)
+        return false;
+
     auto *node = workflow_engine_find_node(workflow, trigger_id);
-    if (!node || node->type != WORKFLOW_NODE_TRIGGER) return false;
-    return workflow_engine_start_trigger(service_engine, workflow, node->id);
+    workflow_debug_log("Trigger service: trigger lookup workflow='%s' trigger='%s' found=%d type=%d",
+                       workflow_id, trigger_id, node != nullptr, node ? (int)node->type : -1);
+    if (!node || node->type != WORKFLOW_NODE_TRIGGER)
+        return false;
+
+    const bool result = workflow_engine_start_trigger(service_engine, workflow, node->id);
+    workflow_debug_log("Trigger service: start result=%d workflow='%s' trigger='%s' running_after=%d",
+                       result, workflow_id, trigger_id,
+                       workflow_engine_is_workflow_running(service_engine, workflow_id));
+    return result;
 }
 
 bool workflow_engine_service_accept_shortcut(const char *workflow_id, const char *source_id,
@@ -65,7 +84,7 @@ bool workflow_engine_service_resume_shortcut(const char *workflow_id,
 }
 
 bool workflow_engine_service_node_runtime(const char *workflow_id, const char *node_id,
-					  workflow_engine_node_runtime_t *out)
+                                          workflow_engine_node_runtime_t *out)
 {
     return service_engine && workflow_id && node_id && out &&
            workflow_engine_get_node_runtime(service_engine, workflow_id, node_id, out);
