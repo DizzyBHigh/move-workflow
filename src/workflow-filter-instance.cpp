@@ -5,6 +5,7 @@
 #include <obs.h>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 static void log_filter_state(const char *label, obs_source_t *source)
 {
