@@ -80,15 +80,17 @@ bool workflow_filter_instance_set_prepare_node(workflow_filter_instance_set *set
         if(uuid&&*uuid)strncpy(node->action.filter_uuid,uuid,WORKFLOW_MAX_NAME-1);
     }
     workflow_filter_instance *instance=workflow_filter_instance_create(original,parent,node);
-    obs_source_release(original);obs_source_release(parent);
-    if(!instance)return false;
+    if(!instance){obs_source_release(original);obs_source_release(parent);return false;}
     uint64_t duration=0,restore_delay=0;
     workflow_filter_apply_node_settings(instance->instance,node,&duration,&restore_delay);
+    instance->restore_delay_ms=restore_delay+25;
     set->instances[set->count]=instance;
+    set->node_ids[set->count][0]='\0';
     strncpy(set->node_ids[set->count],node->id,WORKFLOW_MAX_NAME-1);
     set->node_ids[set->count][WORKFLOW_MAX_NAME-1]='\0';
     ++set->count;
-    workflow_debug_log("Filter instance: node='%s' prepared runtime='%s' uuid='%s' duration=%llu",node->id,obs_source_get_name(instance->instance),node->action.filter_uuid,(unsigned long long)duration);
+    workflow_debug_log("Filter instance: node='%s' prepared original='%s' uuid='%s' duration=%llu",node->id,obs_source_get_name(instance->instance),node->action.filter_uuid,(unsigned long long)duration);
+    obs_source_release(original);obs_source_release(parent);
     return true;
 }
 
