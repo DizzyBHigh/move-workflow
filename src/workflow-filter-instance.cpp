@@ -1,6 +1,7 @@
 #include "workflow-filter-instance.h"
 
 #include "workflow-debug.h"
+#include "workflow-filter-activation.h"
 
 #include <obs.h>
 #include <cstdio>
@@ -136,6 +137,7 @@ bool workflow_filter_instance_execute(workflow_filter_instance *instance)
     if (!instance || !instance->instance) return false;
     obs_source_t *source = obs_source_get_ref(instance->instance);
     if (!source) return false;
+    workflow_filter_prepare_for_execution(source, instance->original, instance->node);
     log_filter_state("runtime execute", source);
     log_move_source_state("runtime execute", source);
     log_scene_item_state("runtime execute", instance->parent, source);
