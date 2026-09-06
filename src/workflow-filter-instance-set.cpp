@@ -46,11 +46,17 @@ static void find_filter_by_uuid(obs_source_t *, obs_source_t *filter, void *data
 static obs_source_t *find_action_filter(obs_source_t *parent,
                                         const workflow_action_ref_t *action)
 {
-    if (!parent || !action || !action->filter_uuid[0])
+    if (!parent || !action)
         return nullptr;
-    filter_lookup_context context{action->filter_uuid, nullptr};
-    obs_source_enum_filters(parent, find_filter_by_uuid, &context);
-    return context.filter;
+    if (action->filter_uuid[0]) {
+        filter_lookup_context context{action->filter_uuid, nullptr};
+        obs_source_enum_filters(parent, find_filter_by_uuid, &context);
+        return context.filter;
+    }
+    /* Legacy workflows did not persist filter UUIDs. */
+    return action->filter_name[0]
+               ? obs_source_get_filter_by_name(parent, action->filter_name)
+               : nullptr;
 }
 
 workflow_filter_instance_set *workflow_filter_instance_set_create(workflow_t *workflow)
