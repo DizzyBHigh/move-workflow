@@ -2,27 +2,29 @@
 
 #include "workflow-debug.h"
 #include "workflow-filter-diagnostics.hpp"
+#include "workflow-filter-instance-helpers.hpp"
 
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 #include <obs.h>
 
 namespace {
-struct deferred_enable {
+struct deferred_start {
     obs_source_t *filter;
 };
 
-static void enable_filter_task(void *param)
+static void start_filter_task(void *param)
 {
-    auto *task = static_cast<deferred_enable *>(param);
+    auto *task = static_cast<deferred_start *>(param);
     if (!task)
         return;
 
     if (task->filter && !obs_source_removed(task->filter)) {
-        workflow_debug_log("Filter instance: deferred enable '%s'",
+        workflow_debug_log("Filter instance: invoking native Start '%s'",
                            obs_source_get_name(task->filter));
-        obs_source_set_enabled(task->filter, true);
+        if (!workflow_filter_instance_start_native(task->filter))
+            workflow_debug_log("Filter instance: native Start unavailable for '%s'",
+                               obs_source_get_name(task->filter));
     }
 
     if (task->filter)
@@ -58,30 +60,6 @@ static void log_move_settings(obs_source_t *source, const char *stage)
     obs_data_release(settings);
 }
 
-static void rebind_move_source(obs_source_t *filter)
-{
-    if (!filter || strcmp(obs_source_get_id(filter), "move_source_filter") != 0)
-        return;
-
-    obs_data_t *settings = obs_source_get_settings(filter);
-    if (!settings)
-        return;
-
-    const char *source = obs_data_get_string(settings, "source");
-    if (!source || !*source) {
-        obs_data_release(settings);
-        return;
-    }
-
-    char source_name[WORKFLOW_MAX_NAME];
-    snprintf(source_name, sizeof(source_name), "%s", source);
-    obs_data_set_string(settings, "source", "");
-    obs_source_update(filter, settings);
-    obs_data_set_string(settings, "source", source_name);
-    obs_source_update(filter, settings);
-    obs_data_release(settings);
-}
-
 workflow_filter_instance *workflow_filter_instance_create(
     obs_source_t *original, obs_source_t *parent, const workflow_node_t *node)
 {
@@ -107,7 +85,7 @@ workflow_filter_instance *workflow_filter_instance_create(
     result->parent = obs_source_get_ref(parent);
     obs_source_set_enabled(result->instance, false);
     obs_source_filter_add(parent, result->instance);
-    rebind_move_source(result->instance);
+    workflow_filter_instance_rebind_move_source(result->instance);
     log_move_settings(result->instance, "duplicate after attach");
 
     workflow_debug_log("Filter instance: duplicated '%s' -> '%s' node='%s'",
@@ -125,19 +103,17 @@ bool workflow_filter_instance_execute(workflow_filter_instance *instance)
     workflow_filter_diagnostics_log_target(instance->instance, "before execute");
     workflow_filter_diagnostics_begin(instance->instance, 1000);
 
-    obs_source_set_enabled(instance->instance, false);
-
-    deferred_enable *task =
-        (deferred_enable *)calloc(1, sizeof(*task));
+    deferred_start *task =
+        (deferred_start *)calloc(1, sizeof(*task));
     if (!task)
         return false;
 
     task->filter = obs_source_get_ref(instance->instance);
-    obs_queue_task(OBS_TASK_UI, enable_filter_task, task, false);
+    obs_queue_task(OBS_TASK_UI, start_filter_task, task, false);
 
-    workflow_filter_diagnostics_log_runtime(instance->instance, "after scheduling enable");
-    workflow_filter_diagnostics_log_target(instance->instance, "after scheduling enable");
-    workflow_debug_log("Filter instance: scheduled enable for temporary '%s'",
+    workflow_filter_diagnostics_log_runtime(instance->instance, "after scheduling native start");
+    workflow_filter_diagnostics_log_target(instance->instance, "after scheduling native start");
+    workflow_debug_log("Filter instance: scheduled native Start for temporary '%s'",
                        obs_source_get_name(instance->instance));
     return true;
 }
