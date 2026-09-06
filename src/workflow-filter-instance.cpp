@@ -4,6 +4,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <obs.h>
 
 workflow_filter_instance *workflow_filter_instance_create(
     obs_source_t *original, obs_source_t *parent, const workflow_node_t *node)
@@ -34,12 +35,28 @@ workflow_filter_instance *workflow_filter_instance_create(
     return result;
 }
 
+static void log_runtime_state(obs_source_t *source, const char *stage)
+{
+    if (!source)
+        return;
+    obs_data_t *settings = obs_source_get_settings(source);
+    const long long trigger = settings ? obs_data_get_int(settings, "start_trigger") : -1;
+    const bool enabled = obs_source_enabled(source);
+    const char *id = obs_source_get_id(source);
+    workflow_debug_log("Filter instance: %s id='%s' enabled=%d start_trigger=%lld",
+                       stage, id ? id : "", enabled ? 1 : 0, trigger);
+    if (settings)
+        obs_data_release(settings);
+}
+
 static void enable_source_on_ui(void *data)
 {
     obs_source_t *source = (obs_source_t *)data;
     if (!source)
         return;
+    log_runtime_state(source, "before enable");
     obs_source_set_enabled(source, true);
+    log_runtime_state(source, "after enable");
     obs_source_release(source);
 }
 
@@ -47,6 +64,7 @@ bool workflow_filter_instance_execute(workflow_filter_instance *instance)
 {
     if (!instance || !instance->instance)
         return false;
+    log_runtime_state(instance->instance, "queued execution");
     obs_source_t *source = obs_source_get_ref(instance->instance);
     if (!source)
         return false;
