@@ -116,13 +116,7 @@ static void enable_source_on_ui(void *data)
         log_filter_state("runtime UI enable before", source);
         log_move_source_state("runtime UI enable before", source);
         log_scene_item_state("runtime UI enable before", parent, source);
-        obs_source_set_enabled(source, true);
-        obs_data_t *settings = obs_source_get_settings(source);
-        if (settings) {
-            obs_data_set_int(settings, "start_trigger", 5);
-            obs_source_update(source, settings);
-            obs_data_release(settings);
-        }
+        workflow_filter_activate(source, parent);
         log_filter_state("runtime UI enable after", source);
         log_move_source_state("runtime UI enable after", source);
         log_scene_item_state("runtime UI enable after", parent, source);
