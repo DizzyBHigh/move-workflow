@@ -15,11 +15,20 @@ public:
     explicit Panel(QWidget *parent) : QWidget(parent), rows_(new QVBoxLayout), timer_(new QTimer(this))
     {
         auto *layout = new QVBoxLayout(this);
-        layout->addWidget(new QLabel("Active Runs", this));
+        auto *header = new QHBoxLayout;
+        header->addWidget(new QLabel("Active Runs", this));
+        stopAll_ = new QPushButton("Stop Workflow", this);
+        header->addWidget(stopAll_);
+        layout->addLayout(header);
         layout->addLayout(rows_);
         layout->addStretch();
+        connect(stopAll_, &QPushButton::clicked, this, [this] {
+            workflow_engine_service_stop_workflow(workflowId_.toUtf8().constData());
+            rebuild();
+        });
         connect(timer_, &QTimer::timeout, this, [this] { rebuild(); });
         timer_->start(250);
+        rebuild();
     }
     void setWorkflow(const QString &id) { workflowId_ = id; rebuild(); }
 private:
@@ -29,16 +38,18 @@ private:
             if (item->widget()) item->widget()->deleteLater();
             delete item;
         }
-        for (const auto &run : workflow_engine_monitor::active_runs(runs_, workflowId_)) {
+        const auto runs = workflow_engine_monitor::active_runs(engine_, workflowId_);
+        stopAll_->setEnabled(!workflowId_.isEmpty() && !runs.isEmpty());
+        for (const auto &run : runs) {
             auto *row = new QWidget(this);
             auto *layout = new QHBoxLayout(row);
-            QString text = QString("Run %1  %2")
-                .arg(run.run_id).arg(run.current_node_id.isEmpty() ? "Starting" : run.current_node_id);
+            QString text = QString("Run %1  %2").arg(run.run_id)
+                .arg(run.current_node_id.isEmpty() ? "Starting" : run.current_node_id);
             if (run.waiting_for_shortcut) text += "  [Waiting for shortcut]";
             layout->addWidget(new QLabel(text, row));
             auto *stop = new QPushButton("Stop", row);
             connect(stop, &QPushButton::clicked, this, [this, id = run.run_id] {
-                workflow_engine_monitor::stop_run(runs_, id);
+                workflow_engine_service_stop_run(workflowId_.toUtf8().constData(), id);
                 rebuild();
             });
             layout->addWidget(stop);
@@ -46,9 +57,10 @@ private:
         }
     }
     QVBoxLayout *rows_;
+    QPushButton *stopAll_ = nullptr;
     QTimer *timer_;
     QString workflowId_;
-    workflow_engine_runs_t *runs_ = nullptr;
+    workflow_engine_t *engine_ = nullptr;
 };
 }
 
