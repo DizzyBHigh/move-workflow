@@ -121,7 +121,7 @@ void NodeItem::paint(QPainter *p, const QStyleOptionGraphicsItem *o, QWidget *w)
     } else {
         type_->setVisible(true); details_->setVisible(true);
     }
-    workflow_node_play::paint(p, this, rect());
+    workflow_node_play::paint(p, this, rect(), active);
 }
 
 void NodeItem::updateGeometryForText()
