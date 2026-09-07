@@ -9,6 +9,7 @@ extern "C" {
 #endif
 
 typedef struct workflow_engine workflow_engine_t;
+typedef struct workflow_engine_runs workflow_engine_runs_t;
 
 workflow_engine_t *workflow_engine_create(void);
 void workflow_engine_destroy(workflow_engine_t *engine);
@@ -18,6 +19,8 @@ bool workflow_engine_stop_workflow(workflow_engine_t *engine, const char *workfl
 bool workflow_engine_stop_run(workflow_engine_t *engine, uint64_t run_id);
 bool workflow_engine_is_running(const workflow_engine_t *engine);
 bool workflow_engine_is_workflow_running(const workflow_engine_t *engine, const char *workflow_id);
+workflow_engine_runs_t *workflow_engine_runs(workflow_engine_t *engine);
+const workflow_engine_runs_t *workflow_engine_runs_const(const workflow_engine_t *engine);
 bool workflow_engine_run_entries(workflow_engine_t *engine);
 bool workflow_engine_run_node(workflow_engine_t *engine, const char *node_id);
 bool workflow_engine_test_node(workflow_engine_t *engine, workflow_t *workflow, const char *node_id);
