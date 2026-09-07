@@ -54,7 +54,13 @@ private:
                 ? QString("Status: %1 [Waiting for shortcut]").arg(node)
                 : QString("Status: %1").arg(node);
             layout->addWidget(new QLabel(status, row));
-            layout->addWidget(new QLabel(QString("UUID: %1").arg(run.workflow_id), row));
+            if (!run.waiting_for_shortcut && !run.phase.isEmpty() && run.duration_ms > 0) {
+                layout->addWidget(new QLabel(QString("Phase: %1").arg(run.phase), row));
+                const double elapsed = run.elapsed_ms / 1000.0;
+                const double duration = run.duration_ms / 1000.0;
+                layout->addWidget(new QLabel(QString("Time: %1 / %2 s")
+                    .arg(elapsed, 0, 'f', 2).arg(duration, 0, 'f', 2), row));
+            }
             rows_->addWidget(row);
         }
     }
