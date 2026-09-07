@@ -2,13 +2,13 @@
 
 ## 2.0.0
 
-This release adds tools for working with, testing, and monitoring running workflows, a new shortcut system for manually controlling when nodes advance and better separation of workflow and runtime state.
+This release adds features for testing and monitoring workflows, a new shortcut system for manually controlling when nodes advance, and better separation of workflow and runtime state.
 
 ### What's New
 
 #### Keyboard Shortcuts
 
-- Added workflow shortcuts which trigger nodes using configurable keybindings.
+- Added a new shortcut node connector that triggers nodes using configurable keybindings.
 - A single shortcut can be used by multiple workflow connections, allowing multiple nodes to be triggered by the shortcut.
 - Added handling for shortcut conflicts with hotkeys already registered elsewhere in OBS.
 
@@ -55,7 +55,7 @@ This release adds tools for working with, testing, and monitoring running workfl
 - Improved node and filter selection behaviour.
 - Added visual feedback for actively executing Action nodes.
 
-### Behind the scenes changes
+### Behind-the-scenes changes
 
 The workflow runtime has been split into smaller components for execution, delays, shortcuts, runtime filter instances, and monitoring. 
 
