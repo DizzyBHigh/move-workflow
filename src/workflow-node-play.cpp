@@ -22,15 +22,15 @@ QRectF button_rect(const QRectF &rect)
 }
 }
 
-void paint(QPainter *painter, const NodeItem *, const QRectF &rect)
+void paint(QPainter *painter, const NodeItem *, const QRectF &rect, bool active)
 {
     if (!painter)
         return;
 
     const QRectF button = button_rect(rect);
     painter->save();
-    painter->setPen(QPen(QColor(90, 105, 120), 1));
-    painter->setBrush(QColor(32, 42, 52));
+    painter->setPen(QPen(active ? QColor(72, 190, 92) : QColor(90, 105, 120), 1));
+    painter->setBrush(active ? QColor(35, 145, 62) : QColor(32, 42, 52));
     painter->drawRoundedRect(button, 4, 4);
     painter->setPen(QColor(225, 230, 235));
     painter->drawText(button, Qt::AlignCenter, QStringLiteral("▶"));
