@@ -2,6 +2,7 @@
 #include "workflow-model.h"
 #include "workflow-node.h"
 
+#include <QColor>
 #include <QFormLayout>
 #include <QFrame>
 #include <QGraphicsScene>
@@ -118,8 +119,8 @@ public:
         auto *heading = new QLabel("NODE PROPERTIES", this); heading->setObjectName("propertiesHeading"); root->addWidget(heading);
         toggle_ = new QPushButton("Show IDs", this); toggle_->setCheckable(true); toggle_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); toggle_->setMinimumHeight(28); toggle_->setVisible(false); toggle_->setToolTip("Switch relationship nodes between friendly names and IDs"); root->addWidget(toggle_);
         connect(toggle_, &QPushButton::toggled, this, [this](bool checked) { showIds_ = checked; toggle_->setText(checked ? "Show Names" : "Show IDs"); if (node_) setNode(node_); });
-        auto *scroll = new QScrollArea(this); scroll->setWidgetResizable(true); scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff); scroll->setFrameShape(QFrame::NoFrame);
-        panel_ = new QWidget(scroll); form_ = new QFormLayout(panel_); form_->setContentsMargins(4, 4, 8, 8); form_->setVerticalSpacing(7); scroll->setWidget(panel_); root->addWidget(scroll, 1);
+        auto *scroll = new QScrollArea(this); scroll->setWidgetResizable(true); scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff); scroll->setFrameShape(QFrame::NoFrame); scroll->setStyleSheet("QScrollArea{background:transparent;border:none;} QScrollArea > QWidget{background:transparent;border:none;}");
+        panel_ = new QWidget(scroll); panel_->setStyleSheet("background:transparent;"); form_ = new QFormLayout(panel_); form_->setContentsMargins(4, 4, 8, 8); form_->setVerticalSpacing(7); scroll->setWidget(panel_); root->addWidget(scroll, 1);
         edit_ = new QPushButton("Edit Node...", this); edit_->setEnabled(false); root->addWidget(edit_);
         connect(edit_, &QPushButton::clicked, this, [this] { if (node_ && editNode_) editNode_(node_); }); clear();
     }
