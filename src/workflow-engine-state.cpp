@@ -35,10 +35,13 @@ void workflow_engine_state_stop(workflow_engine_state_t *state)
         return;
     if (!state->stopping)
         workflow_engine_run_filter_instances_cleanup(state->owner_run);
+    for (size_t i = 0; i < WORKFLOW_MAX_NODES; ++i)
+        workflow_engine_node_runtime_reset(&state->node_runtime[i]);
     state->stopping = true;
     state->running = false;
     state->waiting_for_shortcut = false;
     state->shortcut_source_id[0] = '\0';
+    state->current_node_id[0] = '\0';
     state->generation++;
 }
 
