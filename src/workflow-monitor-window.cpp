@@ -7,11 +7,12 @@
 #include <QDialog>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPointer>
 #include <QPushButton>
 #include <QVBoxLayout>
 
 namespace {
-QDialog *monitorWindow;
+QPointer<QDialog> monitorWindow;
 
 class MonitorWindow : public QDialog {
 public:
