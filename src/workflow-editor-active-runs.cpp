@@ -20,7 +20,7 @@ public:
         stopAll_ = new QPushButton("Stop All", this); header->addWidget(stopAll_);
         layout->addLayout(header); layout->addLayout(rows_); layout->addStretch();
         connect(stopAll_, &QPushButton::clicked, this, [this] {
-            workflow_engine_service_stop_workflow(workflowId_.toUtf8().constData());
+            workflow_engine_monitor::stop_scope(engine_, workflowId_);
             rebuild(); notifyRefresh();
         });
         connect(timer_, &QTimer::timeout, this, [this] { rebuild(); notifyRefresh(); });
@@ -35,7 +35,7 @@ private:
     {
         while (auto *item = rows_->takeAt(0)) { if (item->widget()) item->widget()->deleteLater(); delete item; }
         const auto runs = workflow_engine_monitor::active_runs(engine_, workflowId_);
-        stopAll_->setEnabled(!workflowId_.isEmpty() && !runs.isEmpty());
+        stopAll_->setEnabled(!runs.isEmpty());
         for (const auto &run : runs) {
             auto *row = new QWidget(this); auto *layout = new QHBoxLayout(row);
             QString text = QString("Run %1  %2").arg(run.run_id).arg(
