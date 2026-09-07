@@ -14,6 +14,7 @@ struct workflow_editor_toolbar_callbacks {
     std::function<void(bool)> set_workflow_enabled;
     std::function<void()> import_workflow;
     std::function<void()> export_workflow;
+    std::function<void()> stop_workflow;
     std::function<void()> zoom_out;
     std::function<void()> zoom_reset;
     std::function<void()> zoom_in;
