@@ -36,4 +36,15 @@ size_t stop_workflow(workflow_engine_t *engine, const QString &workflow_id)
         ? (workflow_engine_stop_workflow(engine, workflow_id.toUtf8().constData()) ? 1 : 0) : 0;
 }
 
+size_t stop_scope(workflow_engine_t *engine, const QString &workflow_id)
+{
+    if (!engine) return 0;
+    if (workflow_id.isEmpty()) {
+        const size_t count = active_runs(engine).size();
+        workflow_engine_stop(engine);
+        return count;
+    }
+    return stop_workflow(engine, workflow_id);
+}
+
 }
