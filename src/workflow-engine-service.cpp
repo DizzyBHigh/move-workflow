@@ -26,25 +26,13 @@ bool workflow_engine_service_trigger(const char *workflow_id, const char *trigge
                        (void *)service_engine);
     if (!service_engine || !workflow_id || !trigger_id)
         return false;
-
     auto *workflow = find_workflow(workflow_id);
-    workflow_debug_log("Trigger service: workflow lookup workflow='%s' found=%d enabled=%d running=%d",
-                       workflow_id, workflow != nullptr, workflow ? workflow->enabled : 0,
-                       workflow_engine_is_workflow_running(service_engine, workflow_id));
     if (!workflow)
         return false;
-
     auto *node = workflow_engine_find_node(workflow, trigger_id);
-    workflow_debug_log("Trigger service: trigger lookup workflow='%s' trigger='%s' found=%d type=%d",
-                       workflow_id, trigger_id, node != nullptr, node ? (int)node->type : -1);
     if (!node || node->type != WORKFLOW_NODE_TRIGGER)
         return false;
-
-    const bool result = workflow_engine_start_trigger(service_engine, workflow, node->id);
-    workflow_debug_log("Trigger service: start result=%d workflow='%s' trigger='%s' running_after=%d",
-                       result, workflow_id, trigger_id,
-                       workflow_engine_is_workflow_running(service_engine, workflow_id));
-    return result;
+    return workflow_engine_start_trigger(service_engine, workflow, node->id);
 }
 
 bool workflow_engine_service_accept_shortcut(const char *workflow_id, const char *source_id,
@@ -68,6 +56,16 @@ bool workflow_engine_service_test_node(const char *workflow_id, const char *node
     if (!service_engine || !workflow_id || !node_id) return false;
     auto *workflow = find_workflow(workflow_id);
     if (!workflow || !workflow->enabled) return false;
+    return workflow_engine_test_node(service_engine, workflow, node_id);
+}
+
+bool workflow_engine_service_run_from_node(const char *workflow_id, const char *node_id)
+{
+    if (!service_engine || !workflow_id || !node_id || !*node_id)
+        return false;
+    auto *workflow = find_workflow(workflow_id);
+    if (!workflow || !workflow->enabled)
+        return false;
     return workflow_engine_test_node(service_engine, workflow, node_id);
 }
 
