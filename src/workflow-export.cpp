@@ -1,10 +1,36 @@
 #include "workflow-export.h"
+#include "workflow-editor-node-order.hpp"
 #include "workflow-persistence-json.h"
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QStringList>
 #include <obs-module.h>
+
+static QJsonArray export_node_order(const workflow_t *workflow)
+{
+    QStringList stored = workflow_editor_node_order::stored_order(
+        QString::fromUtf8(workflow->id));
+    QStringList order;
+    for (const QString &id : stored) {
+        for (size_t i = 0; i < workflow->node_count; ++i) {
+            if (id == QString::fromUtf8(workflow->nodes[i].id)) {
+                if (!order.contains(id)) order.append(id);
+                break;
+            }
+        }
+    }
+    for (size_t i = 0; i < workflow->node_count; ++i) {
+        const QString id = QString::fromUtf8(workflow->nodes[i].id);
+        if (!order.contains(id)) order.append(id);
+    }
+
+    QJsonArray result;
+    for (const QString &id : order)
+        result.append(id);
+    return result;
+}
 
 bool workflow_export_selected(const workflow_manager_t *manager, const char *path)
 {
@@ -24,6 +50,7 @@ bool workflow_export_selected(const workflow_manager_t *manager, const char *pat
         }
     }
     if (selected_json.isEmpty()) return false;
+    selected_json["node_order"] = export_node_order(selected);
 
     QJsonObject root{{"version", manager_json["version"]},
                      {"format", "obs-move-workflow"},
