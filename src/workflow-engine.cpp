@@ -53,10 +53,8 @@ bool workflow_engine_accept_shortcut(workflow_engine_t *engine, workflow_t *work
     for (workflow_engine_run_t *run = workflow_engine_runs_head(engine->runs); run;
          run = workflow_engine_run_next(run)) {
         workflow_engine_state_t *state = workflow_engine_run_state(run);
-        if (!workflow_engine_state_is_active(state) || state->workflow != workflow)
-            continue;
-        if (workflow_engine_runner_activate_shortcut(state, source_id, target_id))
-            accepted = true;
+        if (!workflow_engine_state_is_active(state) || state->workflow != workflow) continue;
+        if (workflow_engine_runner_activate_shortcut(state, source_id, target_id)) accepted = true;
     }
     return accepted;
 }
@@ -64,6 +62,20 @@ bool workflow_engine_accept_shortcut(workflow_engine_t *engine, workflow_t *work
 void workflow_engine_stop(workflow_engine_t *engine)
 {
     if (engine) workflow_engine_runs_stop_all(engine->runs);
+}
+
+bool workflow_engine_stop_workflow(workflow_engine_t *engine, const char *workflow_id)
+{
+    return engine && workflow_id && workflow_engine_runs_stop_workflow(engine->runs, workflow_id) > 0;
+}
+
+bool workflow_engine_stop_run(workflow_engine_t *engine, uint64_t run_id)
+{
+    if (!engine || !run_id) return false;
+    workflow_engine_run_t *run = workflow_engine_runs_find(engine->runs, run_id);
+    if (!run || !workflow_engine_state_is_active(workflow_engine_run_state(run))) return false;
+    workflow_engine_state_stop(workflow_engine_run_state(run));
+    return true;
 }
 
 bool workflow_engine_is_running(const workflow_engine_t *engine)
@@ -95,18 +107,13 @@ bool workflow_engine_get_node_runtime(const workflow_engine_t *engine,
         const workflow_engine_state_t *state = workflow_engine_run_state_const(run);
         if (!state->workflow || strcmp(state->workflow->id, workflow_id)) continue;
         const auto *runtime = workflow_engine_state_node_runtime_const(state, node_id);
-        if (runtime && workflow_engine_node_runtime_is_active(runtime)) {
-            *out = *runtime;
-            return true;
-        }
+        if (runtime && workflow_engine_node_runtime_is_active(runtime)) { *out = *runtime; return true; }
     }
     return false;
 }
 
 static workflow_engine_state_t *current_state(workflow_engine_t *engine)
-{
-    return engine ? workflow_engine_run_state(workflow_engine_runs_current(engine->runs)) : nullptr;
-}
+{ return engine ? workflow_engine_run_state(workflow_engine_runs_current(engine->runs)) : nullptr; }
 
 bool workflow_engine_run_entries(workflow_engine_t *engine)
 { return workflow_engine_runner_run_entries(current_state(engine)); }
