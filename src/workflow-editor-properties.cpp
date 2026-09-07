@@ -64,7 +64,28 @@ QString listValues(NodeItem *owner, size_t count, const char ids[][WORKFLOW_MAX_
     QGraphicsScene *scene = owner ? owner->scene() : nullptr;
     for (size_t i = 0; i < count; ++i)
         values << nodeDisplay(scene, QString::fromUtf8(ids[i]), showIds);
-    return values.isEmpty() ? QStringLiteral("None") : values.join(", ");
+    return values.isEmpty() ? QStringLiteral("None") : values.join("\n");
+}
+
+QString shortcutListValues(NodeItem *owner, const workflow_node_t *data, bool showIds)
+{
+    QStringList values;
+    QGraphicsScene *scene = owner ? owner->scene() : nullptr;
+    for (size_t i = 0; i < data->shortcut_node_count; ++i) {
+        const QString id = QString::fromUtf8(data->shortcut_node_ids[i]);
+        QString value = nodeDisplay(scene, id, showIds);
+        for (size_t j = 0; j < data->shortcut_binding_count; ++j) {
+            const auto &binding = data->shortcut_bindings[j];
+            if (QString::fromUtf8(binding.target_id).compare(id, Qt::CaseInsensitive) == 0) {
+                const QString key = QString::fromUtf8(binding.key);
+                if (!key.isEmpty())
+                    value += QStringLiteral(" [") + key + QStringLiteral("]");
+                break;
+            }
+        }
+        values << value;
+    }
+    return values.isEmpty() ? QStringLiteral("None") : values.join("\n");
 }
 
 QString timingText(workflow_value_mode_t mode, uint64_t value, uint64_t defaultValue)
@@ -92,10 +113,6 @@ public:
         auto *heading = new QLabel("NODE PROPERTIES", this);
         heading->setObjectName("propertiesHeading");
         root->addWidget(heading);
-        toggle_ = new QPushButton("Show IDs", this);
-        toggle_->setCheckable(true);
-        toggle_->setToolTip("Switch relationship nodes between friendly names and IDs");
-        root->addWidget(toggle_);
         auto *scroll = new QScrollArea(this);
         scroll->setWidgetResizable(true);
         scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -109,6 +126,9 @@ public:
         edit_ = new QPushButton("Edit Node...", this);
         edit_->setEnabled(false);
         root->addWidget(edit_);
+        toggle_ = new QPushButton("Show IDs", this);
+        toggle_->setCheckable(true);
+        toggle_->setToolTip("Switch relationship nodes between friendly names and IDs");
         connect(toggle_, &QPushButton::toggled, this, [this](bool checked) {
             showIds_ = checked;
             toggle_->setText(checked ? "Show Names" : "Show IDs");
@@ -147,9 +167,7 @@ public:
         add("Start Delay", timingText(data->start_delay.mode, data->start_delay.delay_ms, DEFAULT_START_DELAY_MS));
         add("Duration", timingText(data->duration.mode, data->duration.duration_ms, DEFAULT_DURATION_MS));
         add("End Delay", timingText(data->end_delay.mode, data->end_delay.delay_ms, DEFAULT_END_DELAY_MS));
-        add("Simultaneous Nodes", listValues(node, data->simultaneous_node_count, data->simultaneous_node_ids, showIds_));
-        add("Next Nodes", listValues(node, data->next_node_count, data->next_node_ids, showIds_));
-        add("Shortcut Nodes", listValues(node, data->shortcut_node_count, data->shortcut_node_ids, showIds_));
+        addConnections(data, node);
     }
 
 private:
@@ -162,6 +180,13 @@ private:
         form_->addRow(name, label);
     }
     void add(const QString &name, const char *value) { add(name, QString::fromUtf8(value ? value : "")); }
+    void addConnections(const workflow_node_t *data, NodeItem *node)
+    {
+        form_->addRow(QStringLiteral("Connections"), toggle_);
+        add("Next", listValues(node, data->next_node_count, data->next_node_ids, showIds_));
+        add("Simultaneous", listValues(node, data->simultaneous_node_count, data->simultaneous_node_ids, showIds_));
+        add("Shortcut", shortcutListValues(node, data, showIds_));
+    }
     void clear()
     {
         while (form_->rowCount() > 0)
