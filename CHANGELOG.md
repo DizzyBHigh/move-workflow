@@ -2,61 +2,52 @@
 
 ## 2.0.0
 
-This release adds a number of tools for working with, testing, and monitoring running workflows, along with a new shortcut system and better separation of workflow runtime state.
+This release adds tools for working with, testing, and monitoring running workflows, a new shortcut system for manually controlling when nodes advance and better separation of workflow and runtime state.
 
 ### What's New
 
 #### Keyboard Shortcuts
 
-- Added workflow shortcuts for triggering actions from configurable keyboard keys.
-- A single shortcut can be used by multiple workflow connections, allowing several actions to respond to the same key press.
-- Added shortcut configuration and editing directly in the workflow editor.
+- Added workflow shortcuts which trigger nodes using configurable keybindings.
+- A single shortcut can be used by multiple workflow connections, allowing multiple nodes to be triggered by the shortcut.
 - Added handling for shortcut conflicts with hotkeys already registered elsewhere in OBS.
-- Shortcut execution is handled by the workflow engine rather than relying on Move Transition's own chaining.
 
-#### Workflow Runtime Control
+#### Multiple Workflow handling
 
-- Added tracking for individual workflow runs.
+- Added monitoring for individual workflow runs.
 - Multiple runs of the same workflow can now exist independently.
-- Added the ability to stop an individual workflow run without affecting other runs.
-- Added the ability to stop all active runs belonging to a specific workflow.
-- Improved cleanup of temporary Move filter instances when a run ends or is stopped.
+  - Stop an individual workflow run without affecting other runs.
+  - Stop all active runs belonging to a specific workflow.
+  - Improved cleanup of temporary Move filter instances when a run ends or is stopped.
 
 #### Run From Node
 
 - Added play buttons to workflow nodes in the editor.
 - A workflow can now be started directly from any node for testing and debugging.
-- Starting a node this way follows the normal workflow timing and connection rules.
 
-#### Active Runs Monitor
+#### Workflow Monitor
 
 - Added an Active Runs panel to the Workflow Editor.
-- The panel shows currently running workflow instances and the node they are executing.
-- Added timing information for Start Delay, Execution/Duration, and End Delay.
-- Added Stop Instance controls for individual runs.
-- Added Stop All control for the selected workflow.
-- Shortcut-waiting runs are clearly shown in the monitor.
+- The panel shows currently running workflow instances and the node they are executing along with timing for Start Delay, Execution/Duration, and End Delay.
+- Stop Instance controls for individual runs.
+- Stop All control for the selected workflow.
+- Runs waiting for a shortcut key are shown in the monitor.
 
 #### Standalone Workflow Monitor
 
-- Added a separate Move Workflow Monitor for monitoring workflows without the main Workflow Editor open.
-- The monitor can view runs for a specific workflow or all workflows.
-- Individual workflow instances can be stopped directly from the monitor.
-- The monitor can be docked, floated, or tabbed alongside other OBS panels.
+- Added a dockable Move Workflow Monitor for monitoring workflows without the main Workflow Editor open.
 
 #### Workflow Node Organization
 
 - Added drag-and-drop reordering to the Workflow Nodes list.
-- The list order is independent of the workflow graph and execution order, so reorganizing the list does not change how the workflow runs.
-- Sidebar node ordering is persisted separately from the workflow itself.
+- Nodes list ordering is persisted separately from the workflow itself.
 - Node ordering is included when exporting and importing workflows.
 
 #### Action Editor Improvements
 
-- Improved Move filter selection so the editor displays the filter's friendly name while retaining the actual OBS filter identity internally.
 - Improved restoration of timing and easing settings when editing existing actions.
 - New Action nodes now correctly start with workflow timing set to use the existing Move filter behaviour.
-- Improved handling of Move filter instances during runtime execution to prevent state from leaking between workflow runs.
+- Improved handling of Move filters during execution to prevent settings from leaking between workflow runs.
 
 #### Editor Improvements
 
@@ -64,9 +55,9 @@ This release adds a number of tools for working with, testing, and monitoring ru
 - Improved node and filter selection behaviour.
 - Added visual feedback for actively executing Action nodes.
 
-### Under the Hood
+### Behind the scenes changes
 
-The workflow runtime has been split into smaller components for execution, delays, shortcuts, runtime filter instances, and monitoring. This makes the workflow engine easier to extend while keeping the underlying Move Transition filters responsible for what an action actually does.
+The workflow runtime has been split into smaller components for execution, delays, shortcuts, runtime filter instances, and monitoring. 
 
 Move Workflow controls when actions happen and how the workflow proceeds, while Move Transition continues to control what those actions actually do.
 
