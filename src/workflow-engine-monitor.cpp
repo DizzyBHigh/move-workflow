@@ -3,6 +3,18 @@
 #include "workflow-engine-runs.h"
 #include <cstring>
 
+namespace {
+QString phase_name(workflow_engine_node_phase_t phase)
+{
+    switch (phase) {
+    case WORKFLOW_NODE_PHASE_START_DELAY: return "Start Delay";
+    case WORKFLOW_NODE_PHASE_EXECUTION: return "Executing";
+    case WORKFLOW_NODE_PHASE_END_DELAY: return "End Delay";
+    default: return QString();
+    }
+}
+}
+
 namespace workflow_engine_monitor {
 
 QList<RunInfo> active_runs(workflow_engine_t *engine, const QString &workflow_id)
@@ -21,6 +33,9 @@ QList<RunInfo> active_runs(workflow_engine_t *engine, const QString &workflow_id
         if (info.workflow_id) item.workflow_id = QString::fromUtf8(info.workflow_id);
         if (info.workflow_name) item.workflow_name = QString::fromUtf8(info.workflow_name);
         if (info.current_node_id) item.current_node_id = QString::fromUtf8(info.current_node_id);
+        item.phase = phase_name(info.phase);
+        item.elapsed_ms = info.elapsed_ms;
+        item.duration_ms = info.duration_ms;
         const auto *state = workflow_engine_run_state_const(run);
         if (state && state->workflow && info.current_node_id) {
             for (size_t i = 0; i < state->workflow->node_count; ++i) {
