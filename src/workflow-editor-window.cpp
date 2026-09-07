@@ -2,6 +2,7 @@
 #include "workflow-editor-view.h"
 #include "workflow-editor-toolbar.h"
 #include "workflow-editor-sidebar.h"
+#include "workflow-editor-sidebar-play.hpp"
 #include "workflow-editor-properties.h"
 #include "workflow-model.h"
 #include "workflow-node-dialog.h"
@@ -58,7 +59,8 @@ public:
         sidebar.add_trigger=[this]{addNodeFromPalette("trigger");};sidebar.add_node=[this](const char *kind){addNodeFromPalette(kind);};
         sidebar.select_node=[this](const char *id){if(!id)return;for(auto *node:scene_->nodes())if(node->id()==QString::fromUtf8(id)){scene_->clearSelection();node->setSelected(true);break;}};
         sidebar.edit_node=[this]{editSelectedNode();};sidebar.copy_node=[this]{copySelectedNodes();};sidebar.paste_node=[this]{pasteNodes();};sidebar.duplicate_node=[this]{duplicateSelectedNode();};sidebar.delete_node=[this]{deleteSelectedNodes();};
-        sidebar_=create_workflow_editor_sidebar(this,std::move(sidebar),[this]() -> const char * { return workspace_.loaded_workflow_id; });
+        sidebar_=create_workflow_editor_sidebar(this,std::move(sidebar));
+        workflow_editor_sidebar_install_play_buttons(sidebar_,[this]() -> const char * { return workspace_.loaded_workflow_id; });
         properties_=create_workflow_editor_properties(this,[this](NodeItem *node){editNode(node);});
         auto *splitter=new QSplitter(Qt::Horizontal,this);splitter->addWidget(sidebar_);splitter->addWidget(view_);splitter->addWidget(properties_);splitter->setStretchFactor(1,1);splitter->setSizes({250,850,280});root->addWidget(splitter,1);
         auto *status=new QHBoxLayout;status->setContentsMargins(6,2,6,2);status->addWidget(new QLabel("Workflow canvas",this));auto *versionLabel=new QLabel(QString("<a href=\"https://github.com/DizzyBHigh/move-workflow/releases/latest\">Move Workflow %1</a>").arg(QString::fromUtf8(PLUGIN_VERSION)),this);versionLabel->setOpenExternalLinks(true);status->addWidget(versionLabel);status->addStretch();zoomLabel_=new QLabel("100%",this);status->addWidget(new QLabel("Zoom:",this));status->addWidget(zoomLabel_);root->addLayout(status);view_->setZoomLabel(zoomLabel_);
