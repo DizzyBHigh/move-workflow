@@ -53,6 +53,10 @@ WorkflowActionList::WorkflowActionList(const QString &title, const QString &hint
     addButton->setToolTip("Add the matching action to this relationship");
     searchRow->addWidget(addButton);
     root->addLayout(searchRow);
+    auto *displayButton = new QPushButton("Show IDs", this);
+    displayButton->setCheckable(true);
+    displayButton->setToolTip("Switch between friendly node names and node IDs");
+    root->addWidget(displayButton);
     auto *completerModel = new QStringListModel(this);
     completerModel->setStringList(workflow_action_list_names(nodes_, current_));
     auto *completer = new QCompleter(completerModel, search_);
@@ -63,10 +67,17 @@ WorkflowActionList::WorkflowActionList(const QString &title, const QString &hint
     connect(addButton, &QPushButton::clicked, this, [this] { addAction(); });
     connect(search_, &QLineEdit::returnPressed, this, [this] { addAction(); });
     auto *attachedBox = new QWidget(this);
+    attachedBox->setProperty("showNodeIds", false);
     attachedLayout_ = new QVBoxLayout(attachedBox);
     attachedLayout_->setContentsMargins(0, 0, 0, 0);
     attachedLayout_->setSpacing(3);
     root->addWidget(attachedBox);
+    connect(displayButton, &QPushButton::toggled, this,
+            [this, attachedBox, displayButton](bool showIds) {
+                attachedBox->setProperty("showNodeIds", showIds);
+                displayButton->setText(showIds ? "Show Names" : "Show IDs");
+                rebuildAttachedList();
+            });
     for (size_t i = 0; i < count; ++i) {
         const QString id = QString::fromUtf8(ids[i]);
         if (!id.isEmpty() && !contains_id(attachedIds_, id))
