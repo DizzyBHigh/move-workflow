@@ -12,7 +12,9 @@ void workflow_editor_sidebar_install_play_buttons(QWidget *sidebar,
 {
     if (!sidebar || !workflow_id_provider)
         return;
-    auto *list = sidebar->findChild<QListWidget *>("workflowNodesList");
+    auto *list = dynamic_cast<QListWidget *>(sidebar);
+    if (!list)
+        list = sidebar->findChild<QListWidget *>("workflowNodesList");
     if (!list)
         return;
     for (int row = 0; row < list->count(); ++row) {
@@ -29,9 +31,7 @@ void workflow_editor_sidebar_install_play_buttons(QWidget *sidebar,
         auto *button = new QPushButton(QStringLiteral("▶"), container);
         button->setToolTip(QStringLiteral("Run workflow from this node"));
         button->setFixedSize(28, 24);
-        layout->addWidget(icon);
-        layout->addWidget(label, 1);
-        layout->addWidget(button);
+        layout->addWidget(icon); layout->addWidget(label, 1); layout->addWidget(button);
         const QByteArray nodeId = item->data(Qt::UserRole).toByteArray();
         QObject::connect(button, &QPushButton::clicked, list, [nodeId, workflow_id_provider] {
             const QByteArray workflowId = QByteArray(workflow_id_provider());
