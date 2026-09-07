@@ -1,4 +1,5 @@
 #include "workflow-import.h"
+#include "workflow-editor-node-order.hpp"
 #include "workflow-node-identity.hpp"
 #include "workflow-persistence-json.h"
 #include <QFile>
@@ -49,7 +50,9 @@ static void remap_imported_node(workflow_t *workflow, const char *old_id, const 
             snprintf(workflow->entry_node_ids[i], WORKFLOW_MAX_NAME, "%s", new_id);
 }
 
-static bool normalize_imported_node_ids(workflow_manager_t *manager, workflow_t *workflow)
+static bool normalize_imported_node_ids(workflow_manager_t *manager,
+                                         workflow_t *workflow,
+                                         QStringList *nodeOrder)
 {
     for (size_t i = 0; i < workflow->node_count; ++i) {
         char old_id[WORKFLOW_MAX_NAME];
@@ -57,6 +60,10 @@ static bool normalize_imported_node_ids(workflow_manager_t *manager, workflow_t 
         if (!workflow_manager_generate_node_id(manager, workflow->nodes[i].id,
                                                 sizeof(workflow->nodes[i].id)))
             return false;
+        const QString oldId = QString::fromUtf8(old_id);
+        const QString newId = QString::fromUtf8(workflow->nodes[i].id);
+        for (QString &id : *nodeOrder)
+            if (id == oldId) id = newId;
         remap_imported_node(workflow, old_id, workflow->nodes[i].id);
     }
     return true;
@@ -87,6 +94,14 @@ bool workflow_import_file(workflow_manager_t *manager, const char *path)
         return false;
     }
 
+    QStringList nodeOrder;
+    const QJsonArray workflows = root["workflows"].toArray();
+    if (!workflows.isEmpty() && workflows.first().isObject()) {
+        const QJsonArray order = workflows.first().toObject()["node_order"].toArray();
+        for (const QJsonValue &value : order)
+            if (value.isString()) nodeOrder.append(value.toString());
+    }
+
     const std::unique_ptr<workflow_manager_t> imported(new workflow_manager_t{});
     if (!workflow_manager_from_json(imported.get(), root) || imported->workflow_count != 1) {
         blog(LOG_WARNING, "[Move Workflow] Import failed: JSON contained %zu workflows after parsing.",
@@ -96,7 +111,7 @@ bool workflow_import_file(workflow_manager_t *manager, const char *path)
     workflow_t *workflow = &imported->workflows[0];
     blog(LOG_INFO, "[Move Workflow] Import parsed workflow '%s' with %zu nodes.",
          workflow->name, workflow->node_count);
-    if (!normalize_imported_node_ids(imported.get(), workflow)) {
+    if (!normalize_imported_node_ids(imported.get(), workflow, &nodeOrder)) {
         blog(LOG_WARNING, "[Move Workflow] Import failed: could not normalize node IDs.");
         return false;
     }
@@ -113,6 +128,8 @@ bool workflow_import_file(workflow_manager_t *manager, const char *path)
         return false;
     }
     workflow_manager_set_selected(manager, workflow->id);
+    if (!nodeOrder.isEmpty())
+        workflow_editor_node_order::save_order(QString::fromUtf8(workflow->id), nodeOrder);
     blog(LOG_INFO, "[Move Workflow] Imported workflow '%s' (manager now has %zu workflows).",
          workflow->name, manager->workflow_count);
     return true;
