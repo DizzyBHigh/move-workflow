@@ -33,6 +33,7 @@ void paint(QPainter *painter, const NodeItem *, const QRectF &rect, bool active)
     painter->setBrush(active ? QColor(35, 145, 62) : QColor(32, 42, 52));
     painter->drawRoundedRect(button, 4, 4);
     painter->setPen(QColor(225, 230, 235));
+    painter->setFont(QFont(QStringLiteral("Segoe UI"), 12, QFont::Normal));
     painter->drawText(button, Qt::AlignCenter, QStringLiteral("▶"));
     painter->restore();
 }
