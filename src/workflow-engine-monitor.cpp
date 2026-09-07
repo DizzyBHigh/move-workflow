@@ -1,6 +1,7 @@
 #include "workflow-engine-monitor.hpp"
 #include "workflow-engine.h"
 #include "workflow-engine-runs.h"
+#include <cstring>
 
 namespace workflow_engine_monitor {
 
