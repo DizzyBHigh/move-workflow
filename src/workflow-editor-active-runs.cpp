@@ -12,7 +12,8 @@
 namespace {
 class Panel : public QWidget {
 public:
-    explicit Panel(QWidget *parent) : QWidget(parent), rows_(new QVBoxLayout), timer_(new QTimer(this))
+    Panel(QWidget *parent, workflow_engine *engine)
+        : QWidget(parent), engine_(engine), rows_(new QVBoxLayout), timer_(new QTimer(this))
     {
         auto *layout = new QVBoxLayout(this);
         auto *header = new QHBoxLayout;
@@ -31,6 +32,7 @@ public:
         rebuild();
     }
     void setWorkflow(const QString &id) { workflowId_ = id; rebuild(); }
+    void refreshRuns() { rebuild(); }
 private:
     void rebuild()
     {
@@ -38,7 +40,6 @@ private:
             if (item->widget()) item->widget()->deleteLater();
             delete item;
         }
-        engine_ = workflow_engine_service_engine();
         const auto runs = workflow_engine_monitor::active_runs(engine_, workflowId_);
         stopAll_->setEnabled(!workflowId_.isEmpty() && !runs.isEmpty());
         for (const auto &run : runs) {
@@ -57,18 +58,18 @@ private:
             rows_->addWidget(row);
         }
     }
+    workflow_engine *engine_ = nullptr;
     QVBoxLayout *rows_;
     QPushButton *stopAll_ = nullptr;
     QTimer *timer_;
     QString workflowId_;
-    workflow_engine_t *engine_ = nullptr;
 };
 }
 
 namespace workflow_editor_active_runs {
-QWidget *create(QWidget *parent) { return new Panel(parent); }
+QWidget *create(QWidget *parent, workflow_engine *engine) { return new Panel(parent, engine); }
 void set_workflow(QWidget *panel, const QString &workflowId)
 { if (auto *p = dynamic_cast<Panel *>(panel)) p->setWorkflow(workflowId); }
 void refresh(QWidget *panel)
-{ if (auto *p = dynamic_cast<Panel *>(panel)) p->rebuild(); }
+{ if (auto *p = dynamic_cast<Panel *>(panel)) p->refreshRuns(); }
 }
