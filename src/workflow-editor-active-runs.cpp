@@ -38,6 +38,7 @@ private:
             if (item->widget()) item->widget()->deleteLater();
             delete item;
         }
+        engine_ = workflow_engine_service_engine();
         const auto runs = workflow_engine_monitor::active_runs(engine_, workflowId_);
         stopAll_->setEnabled(!workflowId_.isEmpty() && !runs.isEmpty());
         for (const auto &run : runs) {
@@ -69,5 +70,5 @@ QWidget *create(QWidget *parent) { return new Panel(parent); }
 void set_workflow(QWidget *panel, const QString &workflowId)
 { if (auto *p = dynamic_cast<Panel *>(panel)) p->setWorkflow(workflowId); }
 void refresh(QWidget *panel)
-{ if (auto *p = dynamic_cast<Panel *>(panel)) p->update(); }
+{ if (auto *p = dynamic_cast<Panel *>(panel)) p->rebuild(); }
 }
