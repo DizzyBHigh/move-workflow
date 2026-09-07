@@ -16,6 +16,9 @@ typedef struct workflow_engine_run_info {
     const char *workflow_id;
     const char *workflow_name;
     const char *current_node_id;
+    workflow_engine_node_phase_t phase;
+    int64_t elapsed_ms;
+    int64_t duration_ms;
     bool running;
     bool waiting_for_shortcut;
 } workflow_engine_run_info_t;
