@@ -1,5 +1,6 @@
 #include "move-workflow-editor.h"
 #include "workflow-editor-window.h"
+#include "workflow-monitor-window.hpp"
 
 #include <obs-frontend-api.h>
 
@@ -14,6 +15,14 @@ void register_menu()
     if (!action)
         return;
     QObject::connect(action, &QAction::triggered, [] { show_move_workflow_editor(); });
+
+    QAction *monitor = static_cast<QAction *>(
+        obs_frontend_add_tools_menu_qaction("Move Workflow Monitor"));
+    if (!monitor)
+        return;
+    QObject::connect(monitor, &QAction::triggered, [] {
+        workflow_monitor_window::show(obs_frontend_get_main_window());
+    });
 }
 
 struct AutoRegister {
