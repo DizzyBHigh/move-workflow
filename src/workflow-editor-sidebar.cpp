@@ -1,6 +1,5 @@
 #include "workflow-editor-sidebar.h"
 #include "workflow-editor-sidebar-icons.h"
-#include "workflow-editor-sidebar-play.hpp"
 #include "workflow-node.h"
 
 #include <QHBoxLayout>
@@ -26,10 +25,8 @@ bool node_configured(const workflow_node_t *node)
 
 class EditorSidebar final : public QWidget {
 public:
-    EditorSidebar(QWidget *parent, workflow_editor_sidebar_callbacks callbacks,
-                  std::function<const char *()> workflow_id_provider)
-        : QWidget(parent), callbacks_(std::move(callbacks)),
-          workflow_id_provider_(std::move(workflow_id_provider))
+    EditorSidebar(QWidget *parent, workflow_editor_sidebar_callbacks callbacks)
+        : QWidget(parent), callbacks_(std::move(callbacks))
     {
         setObjectName("workflowEditorSidebar");
         setMinimumWidth(230); setMaximumWidth(300);
@@ -70,15 +67,14 @@ public:
         QSignalBlocker blocker(workflowNodes_); workflowNodes_->clear(); int selectedRow=-1;
         for(int i=0;i<nodes.size();++i){auto *node=nodes.at(i);auto *item=new QListWidgetItem(workflow_editor_sidebar_node_type_icon(node->workflowNode()->type,node_configured(node->workflowNode())),node->nodeName(),workflowNodes_);item->setData(Qt::UserRole,node->id());if(node==selected)selectedRow=i;}
         if(selectedRow>=0)workflowNodes_->setCurrentRow(selectedRow); filterWorkflowNodes(search_->text());
-        workflow_editor_sidebar_install_play_buttons(workflowNodes_, workflow_id_provider_);
     }
 private:
     QPushButton *button(const char *text){return new QPushButton(text,this);}
     void filterWorkflowNodes(const QString &text){for(int i=0;i<workflowNodes_->count();++i)workflowNodes_->item(i)->setHidden(!workflowNodes_->item(i)->text().contains(text,Qt::CaseInsensitive));}
-    workflow_editor_sidebar_callbacks callbacks_; std::function<const char *()> workflow_id_provider_;
+    workflow_editor_sidebar_callbacks callbacks_;
     QLineEdit *search_=nullptr; QListWidget *workflowNodes_=nullptr; QPushButton *addTrigger_=nullptr,*addAction_=nullptr; QPushButton *edit_=nullptr,*copy_=nullptr,*paste_=nullptr; QPushButton *duplicate_=nullptr,*remove_=nullptr;
 };
 }
-QWidget *create_workflow_editor_sidebar(QWidget *parent, workflow_editor_sidebar_callbacks callbacks, std::function<const char *()> workflow_id_provider){return new EditorSidebar(parent,std::move(callbacks),std::move(workflow_id_provider));}
+QWidget *create_workflow_editor_sidebar(QWidget *parent, workflow_editor_sidebar_callbacks callbacks){return new EditorSidebar(parent,std::move(callbacks));}
 void workflow_editor_sidebar_set_selection_state(QWidget *sidebar,bool selected,bool paste){if(auto *widget=dynamic_cast<EditorSidebar*>(sidebar))widget->setSelectionState(selected,paste);}
 void workflow_editor_sidebar_set_workflow_nodes(QWidget *sidebar,const QList<NodeItem*> &nodes,NodeItem *selected){if(auto *widget=dynamic_cast<EditorSidebar*>(sidebar))widget->setWorkflowNodes(nodes,selected);}
