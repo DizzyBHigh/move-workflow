@@ -25,9 +25,9 @@ NodeItem *EditorScene::addNode(workflow_node_type_t type, const QString &name)
                                     QUuid::createUuid().toString(QUuid::WithoutBraces));
     workflow_scene_utils::copy_text(node.workflow.name, WORKFLOW_MAX_NAME, name);
     node.workflow.type = type; node.workflow.trigger_count = 0;
-    node.workflow.duration.mode = WORKFLOW_OVERRIDE;
-    node.workflow.start_delay.mode = WORKFLOW_OVERRIDE;
-    node.workflow.end_delay.mode = WORKFLOW_OVERRIDE;
+    node.workflow.duration.mode = WORKFLOW_USE_EXISTING;
+    node.workflow.start_delay.mode = WORKFLOW_USE_EXISTING;
+    node.workflow.end_delay.mode = WORKFLOW_USE_EXISTING;
     node.workflow.simultaneous_actions_mode = WORKFLOW_OVERRIDE;
     node.workflow.next_actions_mode = WORKFLOW_OVERRIDE;
     auto *item = new NodeItem(node);
