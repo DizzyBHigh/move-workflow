@@ -4,13 +4,14 @@
 #include <QPixmap>
 #include <QPolygonF>
 
-QIcon workflow_editor_sidebar_node_type_icon(workflow_node_type_t type)
+QIcon workflow_editor_sidebar_node_type_icon(workflow_node_type_t type, bool configured)
 {
     QPixmap pixmap(18, 18);
     pixmap.fill(Qt::transparent);
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
-    const QColor background = type == WORKFLOW_NODE_TRIGGER ? QColor("#2e9d62") : QColor("#3478c7");
+    const QColor background = type == WORKFLOW_NODE_TRIGGER ? QColor("#2e9d62") :
+                              configured ? QColor("#3478c7") : QColor("#dc4141");
     painter.setBrush(background);
     painter.setPen(Qt::NoPen);
     painter.drawRoundedRect(QRectF(0, 0, 18, 18), 3, 3);
