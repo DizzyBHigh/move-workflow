@@ -34,7 +34,8 @@ static void set_phase(workflow_engine_state_t *state, workflow_node_t *node,
     if (!runtime) return;
     runtime->phase = phase;
     runtime->active = phase != WORKFLOW_NODE_PHASE_IDLE;
-    runtime->deadline_ms = now_ms() + (int64_t)duration_ms;
+    runtime->start_ms = now_ms();
+    runtime->deadline_ms = runtime->start_ms + (int64_t)duration_ms;
 }
 
 static void clear_phase(workflow_engine_state_t *state, workflow_node_t *node)
