@@ -4,10 +4,12 @@
 
 #include <QFormLayout>
 #include <QFrame>
+#include <QGraphicsScene>
 #include <QLabel>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QStringList>
+#include <QSizePolicy>
 #include <QVBoxLayout>
 #include <QWidget>
 #include <utility>
@@ -17,11 +19,51 @@ constexpr uint64_t DEFAULT_START_DELAY_MS = 0;
 constexpr uint64_t DEFAULT_DURATION_MS = 300;
 constexpr uint64_t DEFAULT_END_DELAY_MS = 0;
 
-QString listValues(size_t count, const char ids[][WORKFLOW_MAX_NAME])
+QString easingName(workflow_easing_t value)
+{
+    switch (value) {
+    case WORKFLOW_EASE_IN: return "In";
+    case WORKFLOW_EASE_OUT: return "Out";
+    case WORKFLOW_EASE_IN_OUT: return "In / Out";
+    default: return "None";
+    }
+}
+
+QString easingFunctionName(workflow_easing_function_t value)
+{
+    switch (value) {
+    case WORKFLOW_EASING_QUADRATIC: return "Quadratic";
+    case WORKFLOW_EASING_CUBIC: return "Cubic";
+    case WORKFLOW_EASING_QUARTIC: return "Quartic";
+    case WORKFLOW_EASING_QUINTIC: return "Quintic";
+    case WORKFLOW_EASING_SINE: return "Sine";
+    case WORKFLOW_EASING_CIRCULAR: return "Circular";
+    case WORKFLOW_EASING_EXPONENTIAL: return "Exponential";
+    case WORKFLOW_EASING_ELASTIC: return "Elastic";
+    case WORKFLOW_EASING_BOUNCE: return "Bounce";
+    case WORKFLOW_EASING_BACK: return "Back";
+    default: return "Unknown";
+    }
+}
+
+QString nodeDisplay(QGraphicsScene *scene, const QString &id, bool showIds)
+{
+    if (showIds || !scene)
+        return id;
+    for (QGraphicsItem *item : scene->items()) {
+        auto *node = dynamic_cast<NodeItem *>(item);
+        if (node && node->id().compare(id, Qt::CaseInsensitive) == 0)
+            return node->nodeName();
+    }
+    return id;
+}
+
+QString listValues(NodeItem *owner, size_t count, const char ids[][WORKFLOW_MAX_NAME], bool showIds)
 {
     QStringList values;
+    QGraphicsScene *scene = owner ? owner->scene() : nullptr;
     for (size_t i = 0; i < count; ++i)
-        values << QString::fromUtf8(ids[i]);
+        values << nodeDisplay(scene, QString::fromUtf8(ids[i]), showIds);
     return values.isEmpty() ? QStringLiteral("None") : values.join(", ");
 }
 
@@ -50,8 +92,13 @@ public:
         auto *heading = new QLabel("NODE PROPERTIES", this);
         heading->setObjectName("propertiesHeading");
         root->addWidget(heading);
+        toggle_ = new QPushButton("Show IDs", this);
+        toggle_->setCheckable(true);
+        toggle_->setToolTip("Switch relationship nodes between friendly names and IDs");
+        root->addWidget(toggle_);
         auto *scroll = new QScrollArea(this);
         scroll->setWidgetResizable(true);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         scroll->setFrameShape(QFrame::NoFrame);
         panel_ = new QWidget(scroll);
         form_ = new QFormLayout(panel_);
@@ -62,6 +109,11 @@ public:
         edit_ = new QPushButton("Edit Node...", this);
         edit_->setEnabled(false);
         root->addWidget(edit_);
+        connect(toggle_, &QPushButton::toggled, this, [this](bool checked) {
+            showIds_ = checked;
+            toggle_->setText(checked ? "Show Names" : "Show IDs");
+            if (node_) setNode(node_);
+        });
         connect(edit_, &QPushButton::clicked, this, [this] { if (node_ && editNode_) editNode_(node_); });
         clear();
     }
@@ -77,7 +129,6 @@ public:
         add("Name", data->name);
         add("ID", data->id);
         add("Type", workflow_node_type_name(data->type));
-
         if (data->type == WORKFLOW_NODE_TRIGGER) {
             add("Trigger Filters", QString::number(static_cast<qulonglong>(data->trigger_count)));
             for (size_t i = 0; i < data->trigger_count; ++i) {
@@ -90,14 +141,15 @@ public:
             add("Source", data->action.source_name);
             add("Filter", data->action.filter_name);
             add("Filter ID", data->action.filter_id);
+            add("Easing", easingName(data->easing.easing));
+            add("Easing Function", easingFunctionName(data->easing.function));
         }
-
         add("Start Delay", timingText(data->start_delay.mode, data->start_delay.delay_ms, DEFAULT_START_DELAY_MS));
         add("Duration", timingText(data->duration.mode, data->duration.duration_ms, DEFAULT_DURATION_MS));
         add("End Delay", timingText(data->end_delay.mode, data->end_delay.delay_ms, DEFAULT_END_DELAY_MS));
-        add("Simultaneous Nodes", listValues(data->simultaneous_node_count, data->simultaneous_node_ids));
-        add("Next Nodes", listValues(data->next_node_count, data->next_node_ids));
-        add("Shortcut Nodes", listValues(data->shortcut_node_count, data->shortcut_node_ids));
+        add("Simultaneous Nodes", listValues(node, data->simultaneous_node_count, data->simultaneous_node_ids, showIds_));
+        add("Next Nodes", listValues(node, data->next_node_count, data->next_node_ids, showIds_));
+        add("Shortcut Nodes", listValues(node, data->shortcut_node_count, data->shortcut_node_ids, showIds_));
     }
 
 private:
@@ -105,6 +157,7 @@ private:
     {
         auto *label = new QLabel(value.isEmpty() ? QStringLiteral("None") : value, panel_);
         label->setWordWrap(true);
+        label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         label->setTextInteractionFlags(Qt::TextSelectableByMouse);
         form_->addRow(name, label);
     }
@@ -123,6 +176,8 @@ private:
     QWidget *panel_ = nullptr;
     QFormLayout *form_ = nullptr;
     QPushButton *edit_ = nullptr;
+    QPushButton *toggle_ = nullptr;
+    bool showIds_ = false;
 };
 }
 
