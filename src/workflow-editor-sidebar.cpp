@@ -13,6 +13,16 @@
 #include <utility>
 
 namespace {
+bool node_configured(const workflow_node_t *node)
+{
+    if (!node || node->type == WORKFLOW_NODE_TRIGGER)
+        return true;
+    if (node->action.kind == WORKFLOW_CHANGE_SCENE)
+        return node->action.scene_name[0] != '\0';
+    return node->action.scene_name[0] != '\0' && node->action.filter_name[0] != '\0' &&
+           node->action.filter_id[0] != '\0';
+}
+
 class EditorSidebar final : public QWidget {
 public:
     EditorSidebar(QWidget *parent, workflow_editor_sidebar_callbacks callbacks)
@@ -94,7 +104,9 @@ public:
         int selectedRow = -1;
         for (int i = 0; i < nodes.size(); ++i) {
             auto *node = nodes.at(i);
-            auto *item = new QListWidgetItem(workflow_editor_sidebar_node_type_icon(node->workflowNode()->type), node->nodeName(), workflowNodes_);
+            auto *item = new QListWidgetItem(
+                workflow_editor_sidebar_node_type_icon(node->workflowNode()->type, node_configured(node->workflowNode())),
+                node->nodeName(), workflowNodes_);
             item->setData(Qt::UserRole, node->id());
             if (node == selected) selectedRow = i;
         }
