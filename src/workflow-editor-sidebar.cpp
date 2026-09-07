@@ -82,6 +82,14 @@ public:
             if (item && callbacks_.select_node)
                 callbacks_.select_node(item->data(Qt::UserRole).toByteArray().constData());
         });
+        connect(workflowNodes_, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem *item) {
+            if (!item)
+                return;
+            if (callbacks_.select_node)
+                callbacks_.select_node(item->data(Qt::UserRole).toByteArray().constData());
+            if (callbacks_.edit_node)
+                callbacks_.edit_node();
+        });
         connect(addTrigger_, &QPushButton::clicked, this, [this] { if (callbacks_.add_trigger) callbacks_.add_trigger(); });
         connect(addAction_, &QPushButton::clicked, this, [this] { if (callbacks_.add_node) callbacks_.add_node("action"); });
         connect(edit_, &QPushButton::clicked, this, [this] { if (callbacks_.edit_node) callbacks_.edit_node(); });
