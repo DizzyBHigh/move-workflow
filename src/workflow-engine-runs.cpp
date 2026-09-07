@@ -1,6 +1,7 @@
 #include "workflow-engine-runs.h"
 #include "workflow-debug.h"
 #include "workflow-filter-instance.h"
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 
@@ -12,6 +13,12 @@ struct workflow_engine_run {
     workflow_filter_instance_set *filter_instances;
 };
 struct workflow_engine_runs { workflow_engine_run_t *head; workflow_engine_run_t *current; uint64_t next_id; };
+
+static int64_t now_ms(void)
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+}
 
 workflow_engine_runs_t *workflow_engine_runs_create(void)
 { return (workflow_engine_runs_t *)calloc(1, sizeof(workflow_engine_runs_t)); }
@@ -88,6 +95,19 @@ bool workflow_engine_run_get_info(const workflow_engine_run_t *run,
     out->workflow_id = state->workflow ? state->workflow->id : nullptr;
     out->workflow_name = state->workflow ? state->workflow->name : nullptr;
     out->current_node_id = state->current_node_id[0] ? state->current_node_id : nullptr;
+    out->phase = WORKFLOW_NODE_PHASE_IDLE;
+    out->elapsed_ms = 0;
+    out->duration_ms = 0;
+    if (out->current_node_id) {
+        const auto *runtime = workflow_engine_state_node_runtime_const(state, out->current_node_id);
+        if (runtime && workflow_engine_node_runtime_is_active(runtime)) {
+            out->phase = runtime->phase;
+            out->duration_ms = runtime->deadline_ms - runtime->start_ms;
+            out->elapsed_ms = now_ms() - runtime->start_ms;
+            if (out->elapsed_ms < 0) out->elapsed_ms = 0;
+            if (out->duration_ms < 0) out->duration_ms = 0;
+        }
+    }
     out->running = workflow_engine_state_is_active(state);
     out->waiting_for_shortcut = state->waiting_for_shortcut;
     return true;
