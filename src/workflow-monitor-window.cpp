@@ -1,6 +1,7 @@
 #include "workflow-monitor-window.hpp"
 #include "workflow-editor-active-runs.hpp"
 #include "workflow-engine-service.h"
+#include "workflow-persistence.h"
 
 #include <QComboBox>
 #include <QDialog>
