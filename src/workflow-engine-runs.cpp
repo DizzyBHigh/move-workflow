@@ -79,6 +79,20 @@ workflow_engine_run_t *workflow_engine_runs_current(workflow_engine_runs_t *runs
 uint64_t workflow_engine_run_id(const workflow_engine_run_t *run)
 { return run ? run->id : 0; }
 
+bool workflow_engine_run_get_info(const workflow_engine_run_t *run,
+                                  workflow_engine_run_info_t *out)
+{
+    if (!run || !out) return false;
+    const workflow_engine_state_t *state = &run->state;
+    out->run_id = run->id;
+    out->workflow_id = state->workflow ? state->workflow->id : nullptr;
+    out->workflow_name = state->workflow ? state->workflow->name : nullptr;
+    out->current_node_id = state->current_node_id[0] ? state->current_node_id : nullptr;
+    out->running = workflow_engine_state_is_active(state);
+    out->waiting_for_shortcut = state->waiting_for_shortcut;
+    return true;
+}
+
 workflow_engine_run_t *workflow_engine_runs_find(workflow_engine_runs_t *runs, uint64_t run_id)
 {
     if (!runs || !run_id) return nullptr;
