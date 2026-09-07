@@ -12,15 +12,15 @@
 namespace {
 class Panel : public QWidget {
 public:
-    Panel(QWidget *parent, workflow_engine *engine)
-        : QWidget(parent), engine_(engine), rows_(new QVBoxLayout), timer_(new QTimer(this))
+    Panel(QWidget *parent, workflow_engine *)
+        : QWidget(parent), rows_(new QVBoxLayout), timer_(new QTimer(this))
     {
         auto *layout = new QVBoxLayout(this); auto *header = new QHBoxLayout;
         header->addWidget(new QLabel("Active Runs", this));
         stopAll_ = new QPushButton("Stop All", this); header->addWidget(stopAll_);
         layout->addLayout(header); layout->addLayout(rows_); layout->addStretch();
         connect(stopAll_, &QPushButton::clicked, this, [this] {
-            workflow_engine_monitor::stop_scope(engine_, workflowId_);
+            workflow_engine_monitor::stop_scope(workflow_engine_service_engine(), workflowId_);
             rebuild(); notifyRefresh();
         });
         connect(timer_, &QTimer::timeout, this, [this] { rebuild(); notifyRefresh(); });
@@ -34,23 +34,31 @@ private:
     void rebuild()
     {
         while (auto *item = rows_->takeAt(0)) { if (item->widget()) item->widget()->deleteLater(); delete item; }
-        const auto runs = workflow_engine_monitor::active_runs(engine_, workflowId_);
-        stopAll_->setEnabled(!runs.isEmpty());
+        auto *engine = workflow_engine_service_engine();
+        const auto runs = workflow_engine_monitor::active_runs(engine, workflowId_);
+        stopAll_->setEnabled(!workflowId_.isEmpty() && !runs.isEmpty());
         for (const auto &run : runs) {
-            auto *row = new QWidget(this); auto *layout = new QHBoxLayout(row);
-            QString text = QString("Run %1  %2").arg(run.run_id).arg(
-                run.current_node_id.isEmpty() ? "Starting" : run.current_node_id);
-            if (run.waiting_for_shortcut) text += "  [Waiting for shortcut]";
-            layout->addWidget(new QLabel(text, row)); auto *stop = new QPushButton("Stop Instance", row);
+            auto *row = new QWidget(this); auto *layout = new QVBoxLayout(row);
+            auto *top = new QHBoxLayout;
+            top->addWidget(new QLabel(QString("Run %1    %2").arg(run.run_id).arg(
+                run.workflow_name.isEmpty() ? "Unnamed Workflow" : run.workflow_name), row), 1);
+            auto *stop = new QPushButton("Stop Instance", row);
             const QString runWorkflow = run.workflow_id;
             connect(stop, &QPushButton::clicked, this, [this, runWorkflow, id = run.run_id] {
                 workflow_engine_service_stop_run(runWorkflow.toUtf8().constData(), id);
                 rebuild(); notifyRefresh();
             });
-            layout->addWidget(stop); rows_->addWidget(row);
+            top->addWidget(stop); layout->addLayout(top);
+            const QString status = run.waiting_for_shortcut ? "Waiting for shortcut" :
+                (run.current_node_id.isEmpty() ? "Starting" : "Running");
+            layout->addWidget(new QLabel(QString("Status: %1").arg(status), row));
+            layout->addWidget(new QLabel(QString("Current Node: %1").arg(
+                run.current_node_name.isEmpty() ? "Starting" : run.current_node_name), row));
+            layout->addWidget(new QLabel(QString("UUID: %1").arg(run.workflow_id), row));
+            rows_->addWidget(row);
         }
     }
-    workflow_engine *engine_ = nullptr; QVBoxLayout *rows_; QPushButton *stopAll_ = nullptr;
+    QVBoxLayout *rows_; QPushButton *stopAll_ = nullptr;
     QTimer *timer_; QString workflowId_; std::function<void()> refreshCallback_;
 };
 }
