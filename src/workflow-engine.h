@@ -2,6 +2,7 @@
 
 #include "workflow-engine-node-runtime.h"
 #include "workflow-model.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,6 +14,8 @@ workflow_engine_t *workflow_engine_create(void);
 void workflow_engine_destroy(workflow_engine_t *engine);
 bool workflow_engine_start(workflow_engine_t *engine, workflow_t *workflow);
 void workflow_engine_stop(workflow_engine_t *engine);
+bool workflow_engine_stop_workflow(workflow_engine_t *engine, const char *workflow_id);
+bool workflow_engine_stop_run(workflow_engine_t *engine, uint64_t run_id);
 bool workflow_engine_is_running(const workflow_engine_t *engine);
 bool workflow_engine_is_workflow_running(const workflow_engine_t *engine, const char *workflow_id);
 bool workflow_engine_run_entries(workflow_engine_t *engine);
