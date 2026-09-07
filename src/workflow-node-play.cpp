@@ -45,14 +45,16 @@ bool contains(const NodeItem *node, const QPointF &scenePos)
     return button_rect(node->rect()).contains(local);
 }
 
-void execute(const NodeItem *node)
+void execute(const NodeItem *node, const char *workflowId)
 {
-    if (!node)
+    if (!node || !workflowId || !workflowId[0])
         return;
 
-    const QString workflowId = node->workflowNode() && node->workflowNode()->id[0]
-        ? node->workflowNode()->id : QString();
-    Q_UNUSED(workflowId);
+    const workflow_node_t *workflowNode = node->workflowNode();
+    if (!workflowNode || !workflowNode->id[0])
+        return;
+
+    workflow_engine_service_run_from_node(workflowId, workflowNode->id);
 }
 
 } // namespace workflow_node_play
