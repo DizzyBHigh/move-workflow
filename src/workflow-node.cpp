@@ -1,4 +1,5 @@
 #include "workflow-node.h"
+#include "workflow-node-play.hpp"
 #include "workflow-engine-service.h"
 #include "workflow-node-timing-defaults.h"
 #include "workflow-trigger-filter-instance.h"
@@ -120,6 +121,7 @@ void NodeItem::paint(QPainter *p, const QStyleOptionGraphicsItem *o, QWidget *w)
     } else {
         type_->setVisible(true); details_->setVisible(true);
     }
+    workflow_node_play::paint(p, this, rect());
 }
 
 void NodeItem::updateGeometryForText()
