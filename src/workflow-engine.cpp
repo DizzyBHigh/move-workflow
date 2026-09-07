@@ -28,6 +28,12 @@ void workflow_engine_destroy(workflow_engine_t *engine)
     free(engine);
 }
 
+workflow_engine_runs_t *workflow_engine_runs(workflow_engine_t *engine)
+{ return engine ? engine->runs : nullptr; }
+
+const workflow_engine_runs_t *workflow_engine_runs_const(const workflow_engine_t *engine)
+{ return engine ? engine->runs : nullptr; }
+
 bool workflow_engine_start(workflow_engine_t *engine, workflow_t *workflow)
 {
     if (!engine || !workflow) return false;
@@ -60,14 +66,10 @@ bool workflow_engine_accept_shortcut(workflow_engine_t *engine, workflow_t *work
 }
 
 void workflow_engine_stop(workflow_engine_t *engine)
-{
-    if (engine) workflow_engine_runs_stop_all(engine->runs);
-}
+{ if (engine) workflow_engine_runs_stop_all(engine->runs); }
 
 bool workflow_engine_stop_workflow(workflow_engine_t *engine, const char *workflow_id)
-{
-    return engine && workflow_id && workflow_engine_runs_stop_workflow(engine->runs, workflow_id) > 0;
-}
+{ return engine && workflow_id && workflow_engine_runs_stop_workflow(engine->runs, workflow_id) > 0; }
 
 bool workflow_engine_stop_run(workflow_engine_t *engine, uint64_t run_id)
 {
@@ -79,9 +81,7 @@ bool workflow_engine_stop_run(workflow_engine_t *engine, uint64_t run_id)
 }
 
 bool workflow_engine_is_running(const workflow_engine_t *engine)
-{
-    return engine && workflow_engine_runs_any_active(engine->runs);
-}
+{ return engine && workflow_engine_runs_any_active(engine->runs); }
 
 bool workflow_engine_is_workflow_running(const workflow_engine_t *engine, const char *id)
 {
@@ -89,15 +89,13 @@ bool workflow_engine_is_workflow_running(const workflow_engine_t *engine, const 
     for (workflow_engine_run_t *run = workflow_engine_runs_head(engine->runs); run;
          run = workflow_engine_run_next(run)) {
         const workflow_engine_state_t *state = workflow_engine_run_state_const(run);
-        if (workflow_engine_state_is_active(state) && state->workflow &&
-            !strcmp(state->workflow->id, id)) return true;
+        if (workflow_engine_state_is_active(state) && state->workflow && !strcmp(state->workflow->id, id)) return true;
     }
     return false;
 }
 
-bool workflow_engine_get_node_runtime(const workflow_engine_t *engine,
-                                      const char *workflow_id, const char *node_id,
-                                      workflow_engine_node_runtime_t *out)
+bool workflow_engine_get_node_runtime(const workflow_engine_t *engine, const char *workflow_id,
+                                      const char *node_id, workflow_engine_node_runtime_t *out)
 {
     if (!out) return false;
     workflow_engine_node_runtime_reset(out);
