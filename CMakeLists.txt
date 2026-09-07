@@ -26,7 +26,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-scene.cpp src/workflow-scene.h src/workflow-scene-events.cpp
   src/workflow-scene-connections-lines.cpp src/workflow-scene-connections-edit.cpp
   src/workflow-scene-relationship.cpp src/workflow-missing-node-dialog.cpp
-  src/workflow-scene-utils.cpp src/workflow-scene-utils.h src/workflow-node.cpp src/workflow-node.h src/workflow-node-copy.c src/workflow-node-copy.h src/workflow-node-identity.cpp src/workflow-node-identity.hpp
+  src/workflow-scene-utils.cpp src/workflow-scene-utils.h src/workflow-node.cpp src/workflow-node.h src/workflow-node-play.cpp src/workflow-node-play.hpp src/workflow-node-copy.c src/workflow-node-copy.h src/workflow-node-identity.cpp src/workflow-node-identity.hpp
   src/workflow-node-duplicate-ui.cpp src/workflow-node-duplicate-ui.h src/workflow-node-settings.cpp src/workflow-node-settings.h
   src/workflow-node-settings-action.cpp src/workflow-node-settings-scene.cpp src/workflow-node-settings-scene.h
   src/workflow-node-settings-trigger.cpp src/workflow-node-settings-trigger-data.cpp src/workflow-node-settings-common.h
