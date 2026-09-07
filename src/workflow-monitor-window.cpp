@@ -10,8 +10,7 @@
 #include <QVBoxLayout>
 
 namespace {
-QPointer<QDialog> monitorWindow;
-QPointer<QWidget> activeRuns;
+QDialog *monitorWindow;
 
 class MonitorWindow : public QDialog {
 public:
@@ -27,9 +26,9 @@ public:
         auto *refresh = new QPushButton("Refresh", this);
         header->addWidget(refresh);
         layout->addLayout(header);
-        activeRuns = workflow_editor_active_runs::create(this,
-            workflow_engine_service_engine());
-        layout->addWidget(activeRuns, 1);
+        activeRuns_ = workflow_editor_active_runs::create(
+            this, workflow_engine_service_engine());
+        layout->addWidget(activeRuns_, 1);
         connect(workflows_, &QComboBox::currentIndexChanged,
                 this, [this] { updateWorkflow(); });
         connect(refresh, &QPushButton::clicked,
@@ -43,7 +42,7 @@ private:
         workflows_->blockSignals(true);
         workflows_->clear();
         workflows_->addItem("All Workflows", QString());
-        auto *manager = workflow_engine_service_manager();
+        auto *manager = workflow_persistence_manager();
         if (manager) {
             const size_t count = workflow_manager_count(manager);
             for (size_t i = 0; i < count; ++i) {
@@ -61,19 +60,18 @@ private:
     void updateWorkflow()
     {
         workflow_editor_active_runs::set_workflow(
-            activeRuns, workflows_->currentData().toString());
+            activeRuns_, workflows_->currentData().toString());
     }
     QComboBox *workflows_ = nullptr;
+    QWidget *activeRuns_ = nullptr;
 };
 }
 
 namespace workflow_monitor_window {
 QWidget *show(QWidget *parent)
 {
-    if (!monitorWindow) {
-        auto *window = new MonitorWindow(parent);
-        monitorWindow = window;
-    }
+    if (!monitorWindow)
+        monitorWindow = new MonitorWindow(parent);
     monitorWindow->show();
     monitorWindow->raise();
     monitorWindow->activateWindow();
@@ -85,6 +83,5 @@ void close()
     monitorWindow->close();
     monitorWindow->deleteLater();
     monitorWindow = nullptr;
-    activeRuns = nullptr;
 }
 }
