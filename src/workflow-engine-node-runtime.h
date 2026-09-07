@@ -17,6 +17,7 @@ typedef enum workflow_engine_node_phase {
 typedef struct workflow_engine_node_runtime {
     char node_id[128];
     workflow_engine_node_phase_t phase;
+    int64_t start_ms;
     int64_t deadline_ms;
     bool active;
 } workflow_engine_node_runtime_t;
