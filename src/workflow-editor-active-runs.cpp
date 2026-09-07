@@ -50,17 +50,16 @@ private:
             });
             top->addWidget(stop); layout->addLayout(top);
             const QString node = run.current_node_name.isEmpty() ? "Starting" : run.current_node_name;
-            const QString status = run.waiting_for_shortcut
-                ? QString("Status: %1 [Waiting for shortcut]").arg(node)
-                : QString("Status: %1").arg(node);
-            layout->addWidget(new QLabel(status, row));
-            if (!run.waiting_for_shortcut && !run.phase.isEmpty() && run.duration_ms > 0) {
-                layout->addWidget(new QLabel(QString("Phase: %1").arg(run.phase), row));
+            QString status = QString("Status: %1").arg(node);
+            if (run.waiting_for_shortcut) {
+                status += " [Waiting for shortcut]";
+            } else if (!run.phase.isEmpty() && run.duration_ms > 0) {
                 const double elapsed = run.elapsed_ms / 1000.0;
                 const double duration = run.duration_ms / 1000.0;
-                layout->addWidget(new QLabel(QString("Time: %1 / %2 s")
-                    .arg(elapsed, 0, 'f', 2).arg(duration, 0, 'f', 2), row));
+                status += QString("    %1: %2 / %3 s").arg(run.phase)
+                    .arg(elapsed, 0, 'f', 2).arg(duration, 0, 'f', 2);
             }
+            layout->addWidget(new QLabel(status, row));
             rows_->addWidget(row);
         }
     }
