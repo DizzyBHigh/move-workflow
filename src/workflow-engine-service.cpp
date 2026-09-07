@@ -13,6 +13,11 @@ void workflow_engine_service_set(workflow_engine_t *engine)
     blog(LOG_INFO, "[Move Workflow] Engine service %s.", engine ? "connected" : "disconnected");
 }
 
+workflow_engine_t *workflow_engine_service_engine(void)
+{
+    return service_engine;
+}
+
 static workflow_t *find_workflow(const char *id)
 {
     auto *manager = workflow_persistence_manager();
