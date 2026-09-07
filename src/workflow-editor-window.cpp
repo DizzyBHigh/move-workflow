@@ -65,7 +65,9 @@ public:
         workflow_editor_sidebar_install_play_buttons(sidebar_,[this]() -> const char * { return workspace_.loaded_workflow_id; });
         properties_=create_workflow_editor_properties(this,[this](NodeItem *node){editNode(node);});
         auto *splitter=new QSplitter(Qt::Horizontal,this);splitter->addWidget(sidebar_);splitter->addWidget(view_);splitter->addWidget(properties_);splitter->setStretchFactor(1,1);splitter->setSizes({250,850,280});root->addWidget(splitter,1);
-        activeRuns_=workflow_editor_active_runs::create(this,workflow_engine_service_engine());root->addWidget(activeRuns_,0);
+        activeRuns_=workflow_editor_active_runs::create(this,workflow_engine_service_engine());
+        workflow_editor_active_runs::set_refresh_callback(activeRuns_,[this]{if(scene_)scene_->update();});
+        root->addWidget(activeRuns_,0);
         auto *status=new QHBoxLayout;status->setContentsMargins(6,2,6,2);status->addWidget(new QLabel("Workflow canvas",this));auto *versionLabel=new QLabel(QString("<a href=\"https://github.com/DizzyBHigh/move-workflow/releases/latest\">Move Workflow %1</a>").arg(QString::fromUtf8(PLUGIN_VERSION)),this);versionLabel->setOpenExternalLinks(true);status->addWidget(versionLabel);status->addStretch();zoomLabel_=new QLabel("100%",this);status->addWidget(new QLabel("Zoom:",this));status->addWidget(zoomLabel_);root->addLayout(status);view_->setZoomLabel(zoomLabel_);
         connect(scene_,&QGraphicsScene::selectionChanged,this,[this]{updateButtonState();});connect(scene_,&EditorScene::nodeDoubleClicked,this,[this](NodeItem *node){editNode(node);});connect(scene_,&EditorScene::workflowChanged,this,[this]{scheduleSync();});
         auto *undoShortcut=new QShortcut(QKeySequence::Undo,this);undoShortcut->setContext(Qt::WidgetWithChildrenShortcut);connect(undoShortcut,&QShortcut::activated,this,&EditorWindow::undoWorkflow);auto *deleteShortcut=new QShortcut(QKeySequence::Delete,this);deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut);connect(deleteShortcut,&QShortcut::activated,this,&EditorWindow::deleteSelectedNodes);updateButtonState();
@@ -75,7 +77,7 @@ public slots:void redoFromHotkey(){if(shuttingDown_)return;blog(LOG_INFO,"[Move 
     void prepareForShutdown(){beginShutdown();}
 protected:bool eventFilter(QObject *watched,QEvent *event)override{return QDialog::eventFilter(watched,event);}void keyPressEvent(QKeyEvent *event)override{QDialog::keyPressEvent(event);}
 private:
-    void beginShutdown(){if(shuttingDown_)return;shuttingDown_=true;if(scene_)QObject::disconnect(scene_,nullptr,this,nullptr);}
+    void beginShutdown(){if(shuttingDown_)return;if(activeRuns_)workflow_editor_active_runs::set_refresh_callback(activeRuns_,{});shuttingDown_=true;if(scene_)QObject::disconnect(scene_,nullptr,this,nullptr);}
     void scheduleSync(){if(shuttingDown_||syncPending_||applyingUndoRedo_||syncingScene_)return;syncPending_=true;const auto generation=syncGeneration_;QTimer::singleShot(0,this,[this,generation]{if(shuttingDown_)return;syncPending_=false;if(applyingUndoRedo_||generation!=syncGeneration_)return;if(QApplication::mouseButtons()&Qt::LeftButton){QTimer::singleShot(0,this,[this]{scheduleSync();});return;}syncingScene_=true;workflow_workspace_sync_scene(&workspace_);syncingScene_=false;undo_.capture();updateButtonState();});}
     void resetUndo(){if(applyingUndoRedo_)return;++syncGeneration_;syncPending_=false;auto *manager=workflow_workspace_manager(&workspace_);undo_.reset(workflow_manager_selected(manager),manager);}
     void syncLoadedSelection(){const auto *s=workflow_manager_selected_const(workflow_workspace_manager(&workspace_));if(s){std::strncpy(workspace_.loaded_workflow_id,s->id,WORKFLOW_MAX_NAME-1);workspace_.loaded_workflow_id[WORKFLOW_MAX_NAME-1]='\0';}else workspace_.loaded_workflow_id[0]='\0';}
