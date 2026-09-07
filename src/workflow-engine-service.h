@@ -7,6 +7,7 @@ extern "C" {
 #endif
 struct workflow_engine;
 void workflow_engine_service_set(struct workflow_engine *engine);
+struct workflow_engine *workflow_engine_service_engine(void);
 bool workflow_engine_service_test_node(const char *workflow_id, const char *node_id);
 bool workflow_engine_service_run_from_node(const char *workflow_id, const char *node_id);
 bool workflow_engine_service_trigger(const char *workflow_id, const char *trigger_id);
