@@ -15,6 +15,7 @@
 #include "workflow-undo.h"
 #include "workflow-workspace.h"
 #include "workflow-hotkeys.h"
+#include "workflow-engine-service.h"
 #include <obs-frontend-api.h>
 #include <plugin-support.h>
 #include <QApplication>
@@ -53,7 +54,7 @@ public:
         toolbar.create_workflow=[this](const char *name){const bool ok=workflow_workspace_create(&workspace_,name);if(ok){resetUndo();workflow_persistence_sync(workflow_workspace_manager(&workspace_));}return ok;};
         toolbar.duplicate_workflow=[this](const char *name){const bool ok=workflow_workspace_duplicate(&workspace_,name);if(ok){resetUndo();workflow_persistence_sync(workflow_workspace_manager(&workspace_));}return ok;};toolbar.delete_workflow=[this]{return deleteWorkflow();};toolbar.rename_workflow=[this]{renameWorkflow();};
         toolbar.set_workflow_enabled=[this](bool enabled){auto *manager=workflow_workspace_manager(&workspace_);const auto *selected=workflow_manager_selected_const(manager);if(selected){workflow_manager_set_enabled(manager,selected->id,enabled);workflow_persistence_sync(manager);undo_.captureManager();}};
-        toolbar.import_workflow=[this]{importWorkflow();};toolbar.export_workflow=[this]{exportWorkflow();};toolbar.zoom_out=[this]{view_->zoomOut();};toolbar.zoom_reset=[this]{view_->resetZoom();};toolbar.zoom_in=[this]{view_->zoomIn();};toolbar.fit=[this]{view_->fitAll();};toolbar.close=[this]{hide();};
+        toolbar.import_workflow=[this]{importWorkflow();};toolbar.export_workflow=[this]{exportWorkflow();};toolbar.stop_workflow=[this]{if(workspace_.loaded_workflow_id[0]){workflow_engine_service_stop_workflow(workspace_.loaded_workflow_id);scene_->update();refreshUi();}};toolbar.zoom_out=[this]{view_->zoomOut();};toolbar.zoom_reset=[this]{view_->resetZoom();};toolbar.zoom_in=[this]{view_->zoomIn();};toolbar.fit=[this]{view_->fitAll();};toolbar.close=[this]{hide();};
         toolbar_=create_workflow_editor_toolbar(this,workflow_workspace_manager(&workspace_),std::move(toolbar));root->addWidget(toolbar_);
         workflow_editor_sidebar_callbacks sidebar;
         sidebar.add_trigger=[this]{addNodeFromPalette("trigger");};sidebar.add_node=[this](const char *kind){addNodeFromPalette(kind);};
