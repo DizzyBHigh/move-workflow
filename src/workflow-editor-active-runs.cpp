@@ -49,11 +49,11 @@ private:
                 rebuild(); notifyRefresh();
             });
             top->addWidget(stop); layout->addLayout(top);
-            const QString status = run.waiting_for_shortcut ? "Waiting for shortcut" :
-                (run.current_node_id.isEmpty() ? "Starting" : "Running");
-            layout->addWidget(new QLabel(QString("Status: %1").arg(status), row));
-            layout->addWidget(new QLabel(QString("Current Node: %1").arg(
-                run.current_node_name.isEmpty() ? "Starting" : run.current_node_name), row));
+            const QString node = run.current_node_name.isEmpty() ? "Starting" : run.current_node_name;
+            const QString status = run.waiting_for_shortcut
+                ? QString("Status: %1 [Waiting for shortcut]").arg(node)
+                : QString("Status: %1").arg(node);
+            layout->addWidget(new QLabel(status, row));
             layout->addWidget(new QLabel(QString("UUID: %1").arg(run.workflow_id), row));
             rows_->addWidget(row);
         }
