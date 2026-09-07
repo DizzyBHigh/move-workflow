@@ -18,7 +18,6 @@ struct workflow_editor_sidebar_callbacks {
 };
 
 QWidget *create_workflow_editor_sidebar(QWidget *parent,
-                                        workflow_editor_sidebar_callbacks callbacks,
-                                        std::function<const char *()> workflow_id_provider = {});
+                                        workflow_editor_sidebar_callbacks callbacks);
 void workflow_editor_sidebar_set_selection_state(QWidget *sidebar, bool has_selection, bool can_paste);
 void workflow_editor_sidebar_set_workflow_nodes(QWidget *sidebar, const QList<NodeItem *> &nodes, NodeItem *selected);
