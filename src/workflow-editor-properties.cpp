@@ -7,6 +7,7 @@
 #include <QFrame>
 #include <QGraphicsScene>
 #include <QLabel>
+#include <QPainter>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QStringList>
@@ -19,6 +20,34 @@ namespace {
 constexpr uint64_t DEFAULT_START_DELAY_MS = 0;
 constexpr uint64_t DEFAULT_DURATION_MS = 300;
 constexpr uint64_t DEFAULT_END_DELAY_MS = 0;
+
+class WrappingLabel final : public QLabel {
+public:
+    explicit WrappingLabel(const QString &text, QWidget *parent) : QLabel(text, parent)
+    {
+        setMinimumWidth(0);
+        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+        setAlignment(Qt::AlignTop | Qt::AlignLeft);
+        setTextInteractionFlags(Qt::NoTextInteraction);
+    }
+
+    bool hasHeightForWidth() const override { return true; }
+    int heightForWidth(int width) const override
+    {
+        QFontMetrics metrics(font());
+        const QRect bounds = metrics.boundingRect(QRect(0, 0, qMax(1, width), 100000), Qt::AlignLeft | Qt::AlignTop | Qt::TextWrapAnywhere, text());
+        return bounds.height();
+    }
+
+protected:
+    void paintEvent(QPaintEvent *) override
+    {
+        QPainter painter(this);
+        painter.setPen(palette().color(QPalette::WindowText));
+        painter.setFont(font());
+        painter.drawText(rect(), Qt::AlignLeft | Qt::AlignTop | Qt::TextWrapAnywhere, text());
+    }
+};
 
 QString easingName(workflow_easing_t value)
 {
@@ -136,7 +165,7 @@ public:
     }
 
 private:
-    void add(const QString &name, const QString &value) { auto *label = new QLabel(value.isEmpty() ? QStringLiteral("None") : value, panel_); label->setWordWrap(true); label->setMinimumWidth(0); label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred); label->setAlignment(Qt::AlignTop | Qt::AlignLeft); label->setTextInteractionFlags(Qt::TextSelectableByMouse); form_->addRow(name, label); }
+    void add(const QString &name, const QString &value) { auto *label = new WrappingLabel(value.isEmpty() ? QStringLiteral("None") : value, panel_); form_->addRow(name, label); }
     void add(const QString &name, const char *value) { add(name, QString::fromUtf8(value ? value : "")); }
     void addConnections(const workflow_node_t *data, NodeItem *node) { form_->addRow(QStringLiteral("Connections"), new QLabel(panel_)); add("Next", listValues(node, data->next_node_count, data->next_node_ids, showIds_)); add("Simultaneous", listValues(node, data->simultaneous_node_count, data->simultaneous_node_ids, showIds_)); add("Shortcut", shortcutListValues(node, data, showIds_)); }
     void clear() { while (form_->rowCount() > 0) form_->removeRow(0); auto *label = new QLabel("No node selected", panel_); label->setStyleSheet("color:#7f8c99;"); form_->addRow(label); }
