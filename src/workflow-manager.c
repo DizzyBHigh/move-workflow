@@ -34,6 +34,19 @@ const workflow_t *workflow_manager_find_const(const workflow_manager_t *manager,
     return workflow_manager_find((workflow_manager_t *)manager, id);
 }
 
+const workflow_t *workflow_manager_at_const(const workflow_manager_t *manager,
+                                            size_t index)
+{
+    if (!manager || index >= manager->workflow_count)
+        return NULL;
+    return &manager->workflows[index];
+}
+
+size_t workflow_manager_count(const workflow_manager_t *manager)
+{
+    return manager ? manager->workflow_count : 0;
+}
+
 workflow_t *workflow_manager_create(workflow_manager_t *manager,
                                     const char *id, const char *name)
 {
