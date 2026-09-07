@@ -20,6 +20,16 @@ QList<RunInfo> active_runs(workflow_engine_t *engine, const QString &workflow_id
         if (info.workflow_id) item.workflow_id = QString::fromUtf8(info.workflow_id);
         if (info.workflow_name) item.workflow_name = QString::fromUtf8(info.workflow_name);
         if (info.current_node_id) item.current_node_id = QString::fromUtf8(info.current_node_id);
+        const auto *state = workflow_engine_run_state_const(run);
+        if (state && state->workflow && info.current_node_id) {
+            for (size_t i = 0; i < state->workflow->node_count; ++i) {
+                const auto &node = state->workflow->nodes[i];
+                if (!std::strcmp(node.id, info.current_node_id)) {
+                    item.current_node_name = QString::fromUtf8(node.name);
+                    break;
+                }
+            }
+        }
         item.running = info.running;
         item.waiting_for_shortcut = info.waiting_for_shortcut;
         result.append(item);
