@@ -71,7 +71,20 @@ public:
     void setSelectionState(bool selected, bool paste){edit_->setEnabled(selected);copy_->setEnabled(selected);duplicate_->setEnabled(selected);remove_->setEnabled(selected);paste_->setEnabled(paste);}
     void setWorkflowId(const char *id){workflowId_=QString::fromUtf8(id?id:"");}
     void setWorkflowNodes(const QList<NodeItem *> &nodes, NodeItem *selected){
-        QSignalBlocker blocker(workflowNodes_); workflowNodes_->clear();
+        QSignalBlocker blocker(workflowNodes_);
+        if (sameNodeSet(nodes)) {
+            for (int i = 0; i < workflowNodes_->count(); ++i) {
+                auto *item = workflowNodes_->item(i);
+                for (NodeItem *node : nodes) if (node && node->id() == item->data(Qt::UserRole).toString()) {
+                    item->setText(node->nodeName());
+                    item->setIcon(workflow_editor_sidebar_node_type_icon(node->workflowNode()->type,node_configured(node->workflowNode())));
+                    if (node == selected) workflowNodes_->setCurrentItem(item);
+                    break;
+                }
+            }
+            return;
+        }
+        workflowNodes_->clear();
         const QStringList order=workflow_editor_node_order::ordered_node_ids(workflowId_,nodes);
         for(const QString &id:order) for(NodeItem *node:nodes) if(node&&node->id()==id){
             auto *item=new QListWidgetItem(workflow_editor_sidebar_node_type_icon(node->workflowNode()->type,node_configured(node->workflowNode())),node->nodeName(),workflowNodes_);
@@ -80,6 +93,18 @@ public:
         filterWorkflowNodes(search_->text());
     }
 private:
+    bool sameNodeSet(const QList<NodeItem *> &nodes) const
+    {
+        if (workflowNodes_->count() != nodes.size()) return false;
+        for (NodeItem *node : nodes) {
+            if (!node) continue;
+            bool found = false;
+            for (int i = 0; i < workflowNodes_->count(); ++i)
+                if (workflowNodes_->item(i)->data(Qt::UserRole).toString() == node->id()) { found = true; break; }
+            if (!found) return false;
+        }
+        return true;
+    }
     QPushButton *button(const char *text){return new QPushButton(text,this);}
     void filterWorkflowNodes(const QString &text){workflowNodes_->setDragDropMode(text.isEmpty()?QAbstractItemView::InternalMove:QAbstractItemView::NoDragDrop);for(int i=0;i<workflowNodes_->count();++i)workflowNodes_->item(i)->setHidden(!workflowNodes_->item(i)->text().contains(text,Qt::CaseInsensitive));}
     void saveNodeOrder(){QStringList ids;for(int i=0;i<workflowNodes_->count();++i)ids.append(workflowNodes_->item(i)->data(Qt::UserRole).toString());workflow_editor_node_order::save_order(workflowId_,ids);}
