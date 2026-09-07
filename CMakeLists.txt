@@ -1,37 +1,3 @@
-cmake_minimum_required(VERSION 3.28...3.30)
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCOPE)
-project(${_name} VERSION ${_version})
-option(ENABLE_FRONTEND_API "Use obs-frontend-api for UI functionality" ON)
-option(ENABLE_QT "Use Qt functionality" ON)
-include(compilerconfig)
-include(defaults)
-include(helpers)
-add_library(${CMAKE_PROJECT_NAME} MODULE)
-find_package(libobs REQUIRED)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
-if(ENABLE_FRONTEND_API)
-  find_package(obs-frontend-api REQUIRED)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
-endif()
-if(ENABLE_QT)
-  find_package(Qt6 COMPONENTS Widgets Core REQUIRED)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
-  set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
-endif()
-
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-  src/plugin-main.c src/workflow-model.h
-  src/workflow-manager.c src/workflow-manager.h src/workflow-manager-copy.c src/workflow-manager-copy.h
-  src/workflow-manager-ui.cpp src/workflow-manager-ui.h src/workflow-workspace.cpp src/workflow-workspace.h
-  src/workflow-scene.cpp src/workflow-scene.h src/workflow-scene-events.cpp
-  src/workflow-scene-connections-lines.cpp src/workflow-scene-connections-edit.cpp
-  src/workflow-scene-relationship.cpp src/workflow-missing-node-dialog.cpp
-  src/workflow-scene-utils.cpp src/workflow-scene-utils.h src/workflow-node.cpp src/workflow-node.h src/workflow-node-play.cpp src/workflow-node-play.hpp src/workflow-node-copy.c src/workflow-node-copy.h src/workflow-node-identity.cpp src/workflow-node-identity.hpp
-  src/workflow-node-duplicate-ui.cpp src/workflow-node-duplicate-ui.h src/workflow-node-settings.cpp src/workflow-node-settings.h
-  src/workflow-node-settings-action.cpp src/workflow-node-settings-scene.cpp src/workflow-node-settings-scene.h
-  src/workflow-node-settings-trigger.cpp src/workflow-node-settings-trigger-data.cpp src/workflow-node-settings-common.h
-  src/workflow-node-dialog.h src/workflow-node-timing-defaults.cpp src/workflow-node-timing-defaults.h src/workflow-clipboard.cpp src/workflow-clipboard.h
-  src/workflow-persistence.cpp src/workflow-persistence.h src/workflow-persistence-json.cpp src/workflow-persistence-json.h src/workflow-export.cpp src/workflow-export.h src/workflow-import.cpp src/workflow-import.h
   src/workflow-undo.cpp src/workflow-undo.h src/workflow-move-runtime.c src/workflow-move-runtime.h
   src/workflow-shortcuts.c src/workflow-shortcuts.h src/workflow-hotkeys.c src/workflow-hotkeys.h
   src/workflow-debug.h src/workflow-debug.cpp src/workflow-debug-ui.h src/workflow-debug-ui.cpp src/workflow-engine.h src/workflow-engine.cpp
@@ -48,6 +14,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-editor-view.cpp src/workflow-editor-view.h src/workflow-action-list.cpp src/workflow-action-list.h src/workflow-action-list-ui.cpp src/workflow-action-list-ui.h
   src/workflow-editor-toolbar.cpp src/workflow-editor-toolbar.h src/workflow-editor-sidebar.cpp src/workflow-editor-sidebar.h src/workflow-editor-sidebar-icons.cpp src/workflow-editor-sidebar-icons.h
   src/workflow-editor-sidebar-play.cpp src/workflow-editor-sidebar-play.hpp
+  src/workflow-editor-node-order.cpp src/workflow-editor-node-order.hpp
   src/workflow-editor-properties.cpp src/workflow-editor-properties.h src/workflow-editor-connections.cpp src/workflow-editor-connections.hpp
   src/workflow-connection-editor.cpp src/workflow-connection-editor.h
   src/workflow-scene-relationship.h
