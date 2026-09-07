@@ -120,7 +120,7 @@ public:
         toggle_ = new QPushButton("Show IDs", this); toggle_->setCheckable(true); toggle_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); toggle_->setMinimumHeight(28); toggle_->setVisible(false); toggle_->setToolTip("Switch relationship nodes between friendly names and IDs"); root->addWidget(toggle_);
         connect(toggle_, &QPushButton::toggled, this, [this](bool checked) { showIds_ = checked; toggle_->setText(checked ? "Show Names" : "Show IDs"); if (node_) setNode(node_); });
         auto *scroll = new QScrollArea(this); scroll->setWidgetResizable(true); scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff); scroll->setFrameShape(QFrame::NoFrame); scroll->setStyleSheet("QScrollArea{background:transparent;border:none;} QScrollArea > QWidget{background:transparent;border:none;}");
-        panel_ = new QWidget(scroll); panel_->setStyleSheet("background:transparent;"); form_ = new QFormLayout(panel_); form_->setContentsMargins(4, 4, 8, 8); form_->setVerticalSpacing(7); scroll->setWidget(panel_); root->addWidget(scroll, 1);
+        panel_ = new QWidget(scroll); panel_->setStyleSheet("background:transparent;"); form_ = new QFormLayout(panel_); form_->setContentsMargins(4, 4, 8, 8); form_->setVerticalSpacing(7); form_->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow); form_->setLabelAlignment(Qt::AlignTop | Qt::AlignLeft); scroll->setWidget(panel_); root->addWidget(scroll, 1);
         edit_ = new QPushButton("Edit Node...", this); edit_->setEnabled(false); root->addWidget(edit_);
         connect(edit_, &QPushButton::clicked, this, [this] { if (node_ && editNode_) editNode_(node_); }); clear();
     }
@@ -136,7 +136,7 @@ public:
     }
 
 private:
-    void add(const QString &name, const QString &value) { auto *label = new QLabel(value.isEmpty() ? QStringLiteral("None") : value, panel_); label->setWordWrap(true); label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred); label->setTextInteractionFlags(Qt::TextSelectableByMouse); form_->addRow(name, label); }
+    void add(const QString &name, const QString &value) { auto *label = new QLabel(value.isEmpty() ? QStringLiteral("None") : value, panel_); label->setWordWrap(true); label->setMinimumWidth(0); label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred); label->setAlignment(Qt::AlignTop | Qt::AlignLeft); label->setTextInteractionFlags(Qt::TextSelectableByMouse); form_->addRow(name, label); }
     void add(const QString &name, const char *value) { add(name, QString::fromUtf8(value ? value : "")); }
     void addConnections(const workflow_node_t *data, NodeItem *node) { form_->addRow(QStringLiteral("Connections"), new QLabel(panel_)); add("Next", listValues(node, data->next_node_count, data->next_node_ids, showIds_)); add("Simultaneous", listValues(node, data->simultaneous_node_count, data->simultaneous_node_ids, showIds_)); add("Shortcut", shortcutListValues(node, data, showIds_)); }
     void clear() { while (form_->rowCount() > 0) form_->removeRow(0); auto *label = new QLabel("No node selected", panel_); label->setStyleSheet("color:#7f8c99;"); form_->addRow(label); }
