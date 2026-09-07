@@ -21,6 +21,9 @@ bool workflow_manager_remove(workflow_manager_t *manager, const char *id);
 workflow_t *workflow_manager_find(workflow_manager_t *manager, const char *id);
 const workflow_t *workflow_manager_find_const(const workflow_manager_t *manager,
                                               const char *id);
+const workflow_t *workflow_manager_at_const(const workflow_manager_t *manager,
+                                            size_t index);
+size_t workflow_manager_count(const workflow_manager_t *manager);
 bool workflow_manager_set_enabled(workflow_manager_t *manager,
                                    const char *id, bool enabled);
 bool workflow_manager_set_selected(workflow_manager_t *manager, const char *id);
