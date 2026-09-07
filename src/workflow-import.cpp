@@ -3,8 +3,10 @@
 #include "workflow-node-identity.hpp"
 #include "workflow-persistence-json.h"
 #include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QStringList>
 #include <obs-module.h>
 #include <cstdio>
 #include <cstring>
