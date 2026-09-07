@@ -55,5 +55,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/workflow-scene-relationship.h
   src/workflow-shortcut-key-edit.hpp src/workflow-shortcut-key-edit.cpp
   src/workflow-shortcut-list.h src/workflow-shortcut-list.cpp
+  src/workflow-engine-monitor.cpp src/workflow-engine-monitor.hpp
+  src/workflow-editor-active-runs.cpp src/workflow-editor-active-runs.hpp
+  src/workflow-monitor-window.cpp src/workflow-monitor-window.hpp
 )
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
