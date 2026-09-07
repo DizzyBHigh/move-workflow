@@ -86,21 +86,26 @@ void workflow_action_list_rebuild_rows(
         layout->addWidget(empty);
         return;
     }
+    const bool showIds = layout->parentWidget() &&
+                         layout->parentWidget()->property("showNodeIds").toBool();
     for (const QString &id : attached_ids) {
         NodeItem *node = find_id(nodes, id);
-        const QString display_name = node ? node->nodeName() : id;
+        const QString display_name = showIds || !node ? id : node->nodeName();
         auto *row = new QWidget(layout->parentWidget());
+        row->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
         auto *row_layout = new QVBoxLayout(row);
         row_layout->setContentsMargins(4, 2, 2, 2);
         auto *top = new QHBoxLayout;
         auto *label = new QLabel(display_name, row);
+        label->setWordWrap(true);
+        label->setTextInteractionFlags(Qt::TextSelectableByMouse);
         top->addWidget(label, 1);
         auto *remove_button = new QPushButton("Remove", row);
         remove_button->setStyleSheet(
             "QPushButton { min-width: 76px; max-width: 76px; padding: 3px 8px; "
             "text-align: center; }");
         remove_button->setToolTip("Remove this action");
-        top->addWidget(remove_button);
+        top->addWidget(remove_button, 0, Qt::AlignTop);
         row_layout->addLayout(top);
         if (shortcut_mode && node) {
             auto *edit = new QKeySequenceEdit(row);
