@@ -11,6 +11,7 @@ struct RunInfo {
     QString workflow_id;
     QString workflow_name;
     QString current_node_id;
+    QString current_node_name;
     bool running = false;
     bool waiting_for_shortcut = false;
 };
