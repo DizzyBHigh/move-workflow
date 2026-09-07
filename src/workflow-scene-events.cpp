@@ -1,6 +1,7 @@
 #include "workflow-scene.h"
 #include "workflow-connection-editor.h"
 #include "workflow-debug.h"
+#include "workflow-node-play.hpp"
 
 #include <QGraphicsSceneMouseEvent>
 #include <QPainterPath>
@@ -37,6 +38,10 @@ void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
             }
         }
         NodeItem *node = nodeAt(event->scenePos());
+        if (node && workflow_node_play::contains(node, event->scenePos())) {
+            workflow_node_play::execute(node, workflowId_.toUtf8().constData());
+            event->accept(); return;
+        }
         if (node && node->isOnConnectionHandle(event->scenePos())) {
             draggingConnection_ = true; dragSource_ = node;
             dragPreview_ = new QGraphicsPathItem;
