@@ -24,14 +24,11 @@ bool workflow_engine_service_trigger(const char *workflow_id, const char *trigge
     workflow_debug_log("Trigger service: request workflow='%s' trigger='%s' engine=%p",
                        workflow_id ? workflow_id : "", trigger_id ? trigger_id : "",
                        (void *)service_engine);
-    if (!service_engine || !workflow_id || !trigger_id)
-        return false;
+    if (!service_engine || !workflow_id || !trigger_id) return false;
     auto *workflow = find_workflow(workflow_id);
-    if (!workflow)
-        return false;
+    if (!workflow) return false;
     auto *node = workflow_engine_find_node(workflow, trigger_id);
-    if (!node || node->type != WORKFLOW_NODE_TRIGGER)
-        return false;
+    if (!node || node->type != WORKFLOW_NODE_TRIGGER) return false;
     return workflow_engine_start_trigger(service_engine, workflow, node->id);
 }
 
@@ -51,6 +48,19 @@ bool workflow_engine_service_workflow_running(const char *workflow_id)
     return service_engine && workflow_id && workflow_engine_is_workflow_running(service_engine, workflow_id);
 }
 
+bool workflow_engine_service_stop_workflow(const char *workflow_id)
+{
+    return service_engine && workflow_id && workflow_engine_stop_workflow(service_engine, workflow_id);
+}
+
+bool workflow_engine_service_stop_run(const char *workflow_id, uint64_t run_id)
+{
+    if (!service_engine || !workflow_id || !*workflow_id || !run_id) return false;
+    auto *workflow = find_workflow(workflow_id);
+    if (!workflow) return false;
+    return workflow_engine_stop_run(service_engine, run_id);
+}
+
 bool workflow_engine_service_test_node(const char *workflow_id, const char *node_id)
 {
     if (!service_engine || !workflow_id || !node_id) return false;
@@ -61,23 +71,18 @@ bool workflow_engine_service_test_node(const char *workflow_id, const char *node
 
 bool workflow_engine_service_run_from_node(const char *workflow_id, const char *node_id)
 {
-    if (!service_engine || !workflow_id || !node_id || !*node_id)
-        return false;
+    if (!service_engine || !workflow_id || !node_id || !*node_id) return false;
     auto *workflow = find_workflow(workflow_id);
-    if (!workflow || !workflow->enabled)
-        return false;
+    if (!workflow || !workflow->enabled) return false;
     return workflow_engine_test_node(service_engine, workflow, node_id);
 }
 
 bool workflow_engine_service_resume_shortcut(const char *workflow_id,
-                                             const char *source_id,
-                                             const char *target_id)
+                                             const char *source_id, const char *target_id)
 {
-    if (!service_engine || !workflow_id || !source_id || !target_id)
-        return false;
+    if (!service_engine || !workflow_id || !source_id || !target_id) return false;
     auto *workflow = find_workflow(workflow_id);
-    if (!workflow || !workflow->enabled)
-        return false;
+    if (!workflow || !workflow->enabled) return false;
     return workflow_engine_accept_shortcut(service_engine, workflow, source_id, target_id);
 }
 
