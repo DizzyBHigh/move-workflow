@@ -6,6 +6,7 @@
 
 #include <QAction>
 #include <QTimer>
+#include <QWidget>
 
 namespace {
 
@@ -21,7 +22,8 @@ void register_menu()
     if (!monitor)
         return;
     QObject::connect(monitor, &QAction::triggered, [] {
-        workflow_monitor_window::show(obs_frontend_get_main_window());
+        workflow_monitor_window::show(
+            static_cast<QWidget *>(obs_frontend_get_main_window()));
     });
 }
 
