@@ -23,7 +23,7 @@ public:
             workflow_engine_service_stop_workflow(workflowId_.toUtf8().constData());
             rebuild(); notifyRefresh();
         });
-        connect(timer_, &QTimer::timeout, this, [this] { rebuild(); });
+        connect(timer_, &QTimer::timeout, this, [this] { rebuild(); notifyRefresh(); });
         timer_->start(250); rebuild();
     }
     void setWorkflow(const QString &id) { workflowId_ = id; rebuild(); }
