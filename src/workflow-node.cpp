@@ -62,9 +62,14 @@ void NodeItem::refreshDisplay()
         if (defaults.valid) { if (node_.workflow.start_delay.mode==WORKFLOW_USE_EXISTING) sd=defaults.start_delay_ms;
             if (node_.workflow.duration.mode==WORKFLOW_USE_EXISTING) d=defaults.duration_ms;
             if (node_.workflow.end_delay.mode==WORKFLOW_USE_EXISTING) ed=defaults.end_delay_ms; }
-        details_->setPlainText(QString("%1\n%2\nDelay %3 ms   Duration %4 ms   End %5 ms\nSimultaneous %6   End %7   Next %8")
+        const QString easing = node_.workflow.easing.mode == WORKFLOW_USE_EXISTING ? "Default" :
+            (node_.workflow.easing.easing == WORKFLOW_EASE_IN ? "In" :
+             node_.workflow.easing.easing == WORKFLOW_EASE_OUT ? "Out" :
+             node_.workflow.easing.easing == WORKFLOW_EASE_IN_OUT ? "In Out" : "None");
+        details_->setPlainText(QString("%1\n%2\nDelay %3 ms   Duration %4 ms   End %5 ms\nEasing %6   Function %7\nSimultaneous %8   End %9   Next %10")
             .arg(source.isEmpty()?"No source selected":source, filter.isEmpty()?"No Move filter selected":filter)
-            .arg((qulonglong)sd).arg((qulonglong)d).arg((qulonglong)ed)
+            .arg((qulonglong)sd).arg((qulonglong)d).arg((qulonglong)ed).arg(easing)
+            .arg((int)node_.workflow.easing.function)
             .arg((qulonglong)node_.workflow.simultaneous_node_count).arg((qulonglong)node_.workflow.end_node_count).arg((qulonglong)node_.workflow.next_node_count));
     }
     updateGeometryForText(); update();
