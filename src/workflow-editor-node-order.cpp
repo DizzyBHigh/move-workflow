@@ -32,6 +32,14 @@ QStringList merge_order(const QStringList &storedIds,
     return result;
 }
 
+QStringList stored_order(const QString &workflowId)
+{
+    if (workflowId.isEmpty())
+        return {};
+    QSettings settings;
+    return settings.value(key(workflowId)).toStringList();
+}
+
 QStringList ordered_node_ids(const QString &workflowId,
                              const QList<NodeItem *> &nodes)
 {
@@ -41,9 +49,7 @@ QStringList ordered_node_ids(const QString &workflowId,
             if (node) ids.append(node->id());
         return ids;
     }
-    QSettings settings;
-    const QStringList stored = settings.value(key(workflowId)).toStringList();
-    return merge_order(stored, nodes);
+    return merge_order(stored_order(workflowId), nodes);
 }
 
 void save_order(const QString &workflowId, const QStringList &nodeIds)
