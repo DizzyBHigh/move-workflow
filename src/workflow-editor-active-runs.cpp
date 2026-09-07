@@ -17,7 +17,7 @@ public:
     {
         auto *layout = new QVBoxLayout(this); auto *header = new QHBoxLayout;
         header->addWidget(new QLabel("Active Runs", this));
-        stopAll_ = new QPushButton("Stop Workflow", this); header->addWidget(stopAll_);
+        stopAll_ = new QPushButton("Stop All", this); header->addWidget(stopAll_);
         layout->addLayout(header); layout->addLayout(rows_); layout->addStretch();
         connect(stopAll_, &QPushButton::clicked, this, [this] {
             workflow_engine_service_stop_workflow(workflowId_.toUtf8().constData());
@@ -41,7 +41,7 @@ private:
             QString text = QString("Run %1  %2").arg(run.run_id).arg(
                 run.current_node_id.isEmpty() ? "Starting" : run.current_node_id);
             if (run.waiting_for_shortcut) text += "  [Waiting for shortcut]";
-            layout->addWidget(new QLabel(text, row)); auto *stop = new QPushButton("Stop", row);
+            layout->addWidget(new QLabel(text, row)); auto *stop = new QPushButton("Stop Instance", row);
             const QString runWorkflow = run.workflow_id;
             connect(stop, &QPushButton::clicked, this, [this, runWorkflow, id = run.run_id] {
                 workflow_engine_service_stop_run(runWorkflow.toUtf8().constData(), id);
