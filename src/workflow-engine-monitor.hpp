@@ -20,5 +20,6 @@ QList<RunInfo> active_runs(workflow_engine_t *engine,
 
 bool stop_run(workflow_engine_t *engine, uint64_t run_id);
 size_t stop_workflow(workflow_engine_t *engine, const QString &workflow_id);
+size_t stop_scope(workflow_engine_t *engine, const QString &workflow_id);
 
 }
