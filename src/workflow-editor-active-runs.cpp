@@ -50,10 +50,13 @@ private:
             if (run.waiting_for_shortcut) text += "  [Waiting for shortcut]";
             layout->addWidget(new QLabel(text, row));
             auto *stop = new QPushButton("Stop", row);
-            connect(stop, &QPushButton::clicked, this, [this, id = run.run_id] {
-                workflow_engine_service_stop_run(workflowId_.toUtf8().constData(), id);
-                rebuild();
-            });
+            const QString runWorkflow = run.workflow_id;
+            connect(stop, &QPushButton::clicked, this,
+                    [this, runWorkflow, id = run.run_id] {
+                        workflow_engine_service_stop_run(
+                            runWorkflow.toUtf8().constData(), id);
+                        rebuild();
+                    });
             layout->addWidget(stop);
             rows_->addWidget(row);
         }
