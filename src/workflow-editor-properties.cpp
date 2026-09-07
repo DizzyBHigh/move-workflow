@@ -123,7 +123,7 @@ public:
             add("Trigger Filters", QString::number(static_cast<qulonglong>(data->trigger_count)));
             for (size_t i = 0; i < data->trigger_count; ++i) { add(QString("Trigger %1 Source").arg(i + 1), data->triggers[i].source_uuid); add(QString("Trigger %1 Filter").arg(i + 1), data->triggers[i].filter_uuid); }
         } else if (data->type == WORKFLOW_NODE_ACTION) {
-            add("Move Kind", workflow_move_kind_name(data->action.kind)); add("Scene", data->action.scene_name); add("Source", data->action.source_name); add("Filter", data->action.filter_name); add("Filter ID", data->action.filter_id);
+            add("Move Kind", workflow_move_kind_name(data->action.kind)); add("Scene", data->action.scene_name); add("Filter", data->action.filter_name); add("Filter ID", data->action.filter_id);
             add("Easing", easingName(data->easing.easing)); add("Easing Function", easingFunctionName(data->easing.function));
         }
         add("Start Delay", timingText(data->start_delay.mode, data->start_delay.delay_ms, DEFAULT_START_DELAY_MS)); add("Duration", timingText(data->duration.mode, data->duration.duration_ms, DEFAULT_DURATION_MS)); add("End Delay", timingText(data->end_delay.mode, data->end_delay.delay_ms, DEFAULT_END_DELAY_MS)); addConnections(data, node);
