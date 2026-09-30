@@ -1,6 +1,7 @@
 #include "workflow-filter-instance.h"
 
 #include "workflow-debug.h"
+#include "workflow-filter-instance-cleanup.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -15,16 +16,26 @@ workflow_filter_instance *workflow_filter_instance_create(
     if (!result)
         return nullptr;
 
+    result->parent = obs_source_get_ref(parent);
+    if (!result->parent ||
+        !workflow_filter_instance_parent_cleanup_register(result)) {
+        if (result->parent)
+            obs_source_release(result->parent);
+        free(result);
+        return nullptr;
+    }
+
     char name[WORKFLOW_MAX_NAME];
     snprintf(name, sizeof(name), "%s [workflow:%p]",
              obs_source_get_name(original), (void *)result);
     result->instance = obs_source_duplicate(original, name, true);
     if (!result->instance) {
+        workflow_filter_instance_parent_cleanup_unregister(result);
+        obs_source_release(result->parent);
         free(result);
         return nullptr;
     }
     result->original = obs_source_get_ref(original);
-    result->parent = obs_source_get_ref(parent);
     obs_source_set_enabled(result->instance, false);
     obs_source_filter_add(parent, result->instance);
 
@@ -60,6 +71,7 @@ void workflow_filter_instance_destroy(workflow_filter_instance *instance)
 {
     if (!instance)
         return;
+    workflow_filter_instance_parent_cleanup_unregister(instance);
     if (instance->parent && instance->instance)
         obs_source_filter_remove(instance->parent, instance->instance);
     if (instance->instance)
