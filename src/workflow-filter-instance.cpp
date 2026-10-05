@@ -2,6 +2,7 @@
 
 #include "workflow-debug.h"
 #include "workflow-filter-activation.h"
+#include "workflow-filter-instance-cleanup.h"
 
 #include <obs.h>
 #include <cstdio>
@@ -72,16 +73,28 @@ workflow_filter_instance *workflow_filter_instance_create(obs_source_t *original
     if (!original || !parent || !node) return nullptr;
     workflow_filter_instance *result = (workflow_filter_instance *)calloc(1, sizeof(*result));
     if (!result) return nullptr;
+
+    result->parent = obs_source_get_ref(parent);
+    if (!result->parent || !workflow_filter_instance_parent_cleanup_register(result)) {
+        if (result->parent) obs_source_release(result->parent);
+        free(result);
+        return nullptr;
+    }
+
     log_filter_state("original before duplicate", original);
     log_move_source_state("original before duplicate", original);
     char name[WORKFLOW_MAX_NAME];
     snprintf(name, sizeof(name), "%s [workflow:%p]", obs_source_get_name(original), (void *)result);
     result->instance = obs_source_duplicate(original, name, true);
-    if (!result->instance) { free(result); return nullptr; }
+    if (!result->instance) {
+        workflow_filter_instance_parent_cleanup_unregister(result);
+        obs_source_release(result->parent);
+        free(result);
+        return nullptr;
+    }
     log_filter_state("runtime immediately after duplicate", result->instance);
     log_move_source_state("runtime immediately after duplicate", result->instance);
     result->original = obs_source_get_ref(original);
-    result->parent = obs_source_get_ref(parent);
     result->node = node;
     obs_source_set_enabled(result->instance, false);
     obs_source_filter_add(parent, result->instance);
@@ -152,6 +165,7 @@ bool workflow_filter_instance_execute(workflow_filter_instance *instance)
 void workflow_filter_instance_destroy(workflow_filter_instance *instance)
 {
     if (!instance) return;
+    workflow_filter_instance_parent_cleanup_unregister(instance);
     if (instance->parent && instance->instance) obs_source_filter_remove(instance->parent, instance->instance);
     if (instance->instance) obs_source_release(instance->instance);
     if (instance->parent) obs_source_release(instance->parent);
