@@ -64,7 +64,7 @@ function Package {
     Push-Location -Stack PackageRoot $InstallRoot
     try {
         $CompressArgs = @{
-            Path = '*'
+            Path = 'obs-plugins'
             CompressionLevel = 'Optimal'
             DestinationPath = "${ProjectRoot}/release/${OutputName}.zip"
             Verbose = ($Env:CI -ne $null)
