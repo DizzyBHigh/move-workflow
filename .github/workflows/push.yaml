@@ -69,6 +69,7 @@ jobs:
           shopt -s nullglob
 
           root_dir="$(pwd)"
+          version="${GITHUB_REF_NAME}"
           variants=(
             'windows-x64;zip|exe'
             'macos-universal;tar.xz|pkg'
@@ -79,10 +80,12 @@ jobs:
           for variant_data in "${variants[@]}"; do
             IFS=';' read -r variant suffix <<< "${variant_data}"
 
-            candidates=(*-${variant}/@(*|*-dbgsym).@(${suffix}))
+            candidates=(*-${version}-${variant}-*/@(*|*-dbgsym).@(${suffix}))
 
             for candidate in "${candidates[@]}"; do
-              mv "${candidate}" "${root_dir}"
+              filename="${candidate##*/}"
+              normalized="${filename/-${version}-${variant}-*/-${version}-${variant}}"
+              mv "${candidate}" "${root_dir}/${normalized}"
             done
           done
 
