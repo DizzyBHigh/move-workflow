@@ -80,12 +80,11 @@ jobs:
           for variant_data in "${variants[@]}"; do
             IFS=';' read -r variant suffix <<< "${variant_data}"
 
-            candidates=(*-${version}-${variant}-*/@(*|*-dbgsym).@(${suffix}))
+            candidates=(*-${version}-${variant}/@(*|*-dbgsym).@(${suffix}))
 
             for candidate in "${candidates[@]}"; do
               filename="${candidate##*/}"
-              normalized="${filename/-${version}-${variant}-*/-${version}-${variant}}"
-              mv "${candidate}" "${root_dir}/${normalized}"
+              mv "${candidate}" "${root_dir}/${filename}"
             done
           done
 
