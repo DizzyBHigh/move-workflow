@@ -28,6 +28,7 @@ if ( $PSVersionTable.PSVersion -lt '7.2.0' ) {
 
 function Package {
     trap {
+        Pop-Location -Stack PackageRoot -ErrorAction 'SilentlyContinue'
         Write-Error $_
         exit 2
     }
@@ -48,6 +49,7 @@ function Package {
     $ProductVersion = $BuildSpec.version
 
     $OutputName = "${ProductName}-${ProductVersion}-windows-${Target}"
+    $InstallRoot = "${ProjectRoot}/release/${Configuration}"
 
     $RemoveArgs = @{
         ErrorAction = 'SilentlyContinue'
@@ -59,13 +61,19 @@ function Package {
     Remove-Item @RemoveArgs
 
     Log-Group "Archiving ${ProductName}..."
-    $CompressArgs = @{
-        Path = (Get-ChildItem -Path "${ProjectRoot}/release/${Configuration}" -Exclude "${OutputName}*.*")
-        CompressionLevel = 'Optimal'
-        DestinationPath = "${ProjectRoot}/release/${OutputName}.zip"
-        Verbose = ($Env:CI -ne $null)
+    Push-Location -Stack PackageRoot $InstallRoot
+    try {
+        $CompressArgs = @{
+            Path = 'obs-plugins'
+            CompressionLevel = 'Optimal'
+            DestinationPath = "${ProjectRoot}/release/${OutputName}.zip"
+            Verbose = ($Env:CI -ne $null)
+        }
+        Compress-Archive -Force @CompressArgs
     }
-    Compress-Archive -Force @CompressArgs
+    finally {
+        Pop-Location -Stack PackageRoot
+    }
     Log-Group
 }
 
