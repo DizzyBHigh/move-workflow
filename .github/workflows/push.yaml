@@ -69,8 +69,6 @@ jobs:
           shopt -s nullglob
 
           root_dir="$(pwd)"
-          commit_hash="${GITHUB_SHA:0:9}"
-
           variants=(
             'windows-x64;zip|exe'
             'macos-universal;tar.xz|pkg'
@@ -81,7 +79,7 @@ jobs:
           for variant_data in "${variants[@]}"; do
             IFS=';' read -r variant suffix <<< "${variant_data}"
 
-            candidates=(*-${variant}-${commit_hash}/@(*|*-dbgsym).@(${suffix}))
+            candidates=(*-${variant}/@(*|*-dbgsym).@(${suffix}))
 
             for candidate in "${candidates[@]}"; do
               mv "${candidate}" "${root_dir}"
