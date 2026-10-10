@@ -3,7 +3,8 @@ param(
     [ValidateSet('x64')]
     [string] $Target = 'x64',
     [ValidateSet('Debug', 'RelWithDebInfo', 'Release', 'MinSizeRel')]
-    [string] $Configuration = 'RelWithDebInfo'
+    [string] $Configuration = 'RelWithDebInfo',
+    [string] $Version = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -47,6 +48,9 @@ function Package {
     $BuildSpec = Get-Content -Path ${BuildSpecFile} -Raw | ConvertFrom-Json
     $ProductName = $BuildSpec.name
     $ProductVersion = $BuildSpec.version
+    if ( -not [string]::IsNullOrWhiteSpace($Version) ) {
+        $ProductVersion = $Version
+    }
 
     $OutputName = "${ProductName}-${ProductVersion}-windows-${Target}"
     $InstallRoot = "${ProjectRoot}/release/${Configuration}"
