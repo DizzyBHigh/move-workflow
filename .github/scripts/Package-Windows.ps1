@@ -50,6 +50,16 @@ function Package {
 
     $OutputName = "${ProductName}-${ProductVersion}-windows-${Target}"
     $InstallRoot = "${ProjectRoot}/release/${Configuration}"
+    $PluginBin = "${InstallRoot}/${ProductName}/bin/64bit"
+    $ObsPluginBin = "${InstallRoot}/obs-plugins/64bit"
+
+    if ( ! ( Test-Path -LiteralPath $PluginBin -PathType Container ) ) {
+        throw "Expected installed plugin directory was not found: ${PluginBin}"
+    }
+
+    Remove-Item -Path "${InstallRoot}/obs-plugins" -Recurse -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Path $ObsPluginBin -Force | Out-Null
+    Copy-Item -Path "${PluginBin}/*" -Destination $ObsPluginBin -Recurse -Force
 
     $RemoveArgs = @{
         ErrorAction = 'SilentlyContinue'
