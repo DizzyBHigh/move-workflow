@@ -118,7 +118,10 @@ endfunction()
 
 # _check_dependencies: Fetch and extract pre-built OBS build dependencies
 function(_check_dependencies)
-  file(READ "${CMAKE_CURRENT_SOURCE_DIR}/buildspec.json" buildspec)
+  if(NOT DEFINED MOVE_WORKFLOW_BUILDSPEC OR MOVE_WORKFLOW_BUILDSPEC STREQUAL "")
+    set(MOVE_WORKFLOW_BUILDSPEC "${CMAKE_CURRENT_SOURCE_DIR}/buildspec.json")
+  endif()
+  file(READ "${MOVE_WORKFLOW_BUILDSPEC}" buildspec)
 
   string(JSON dependency_data GET ${buildspec} dependencies)
 
