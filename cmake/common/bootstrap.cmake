@@ -43,7 +43,10 @@ endif()
 # Add common module directories to default search path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/common")
 
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/buildspec.json" buildspec)
+if(NOT DEFINED MOVE_WORKFLOW_BUILDSPEC OR MOVE_WORKFLOW_BUILDSPEC STREQUAL "")
+  set(MOVE_WORKFLOW_BUILDSPEC "${CMAKE_CURRENT_SOURCE_DIR}/buildspec.json")
+endif()
+file(READ "${MOVE_WORKFLOW_BUILDSPEC}" buildspec)
 
 string(JSON _name GET ${buildspec} name)
 string(JSON _website GET ${buildspec} website)
