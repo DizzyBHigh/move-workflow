@@ -48,6 +48,27 @@ function Package {
     Copy-Item -Path "$LegacyPluginBin/*" -Destination $LegacyBin -Recurse -Force
     Copy-Item -Path "$NativePluginBin/*" -Destination $NativeBin -Recurse -Force
 
+    # OBS 33 reads module metadata from the plugin data directory; the plugin
+    # manager also expects a manifest at the plugin package root.
+    $Manifest = [ordered]@{
+        id = $ProductName
+        version = $ProductVersion
+        display_name = $BuildSpec.displayName
+        os_arch = 'x64'
+        name = $ProductName
+        description = $BuildSpec.description
+        urls = [ordered]@{
+            repository = $BuildSpec.website
+            website = $BuildSpec.website
+            support = $BuildSpec.website
+        }
+    }
+    $ManifestJson = $Manifest | ConvertTo-Json -Depth 5
+    $NativeData = Join-Path $NativeBin 'data'
+    New-Item -ItemType Directory -Path $NativeData -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $NativeBin 'manifest.json') -Value $ManifestJson -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $NativeData 'manifest.json') -Value $ManifestJson -Encoding utf8
+
     $LegacyDll = Join-Path $LegacyBin "$ProductName.dll"
     $NativeDll = Join-Path $NativeBin "$ProductName.dll"
     if ( !(Test-Path -LiteralPath $LegacyDll -PathType Leaf) -or
