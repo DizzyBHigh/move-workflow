@@ -119,19 +119,15 @@ jobs:
           "pluginName=${ProductName}" >> $env:GITHUB_OUTPUT
           "pluginVersion=${ProductVersion}" >> $env:GITHUB_OUTPUT
 
-      - name: Build Plugin 🧱
-        uses: ./.github/actions/build-plugin
-        with:
-          target: x64
-          config: ${{ needs.check-event.outputs.config }}
+      - name: Build Plugin for OBS 30–32 🧱
+        run: ./.github/scripts/Build-Windows.ps1 -Target x64 -Configuration '${{ needs.check-event.outputs.config }}' -ObsTarget OBS30-32
 
-      - name: Package Plugin 📀
-        uses: ./.github/actions/package-plugin
-        with:
-          target: x64
-          config: ${{ needs.check-event.outputs.config }}
-          package: ${{ fromJSON(needs.check-event.outputs.package) }}
-          version: ${{ steps.setup.outputs.pluginVersion }}
+      - name: Build Plugin for OBS 33 🧱
+        run: ./.github/scripts/Build-Windows.ps1 -Target x64 -Configuration '${{ needs.check-event.outputs.config }}' -ObsTarget OBS33
+
+      - name: Package Both Builds 📀
+        if: ${{ fromJSON(needs.check-event.outputs.package) }}
+        run: ./.github/scripts/Package-Windows.ps1 -Target x64 -Configuration '${{ needs.check-event.outputs.config }}' -Version '${{ steps.setup.outputs.pluginVersion }}'
 
       - name: Upload Artifacts 📡
         uses: actions/upload-artifact@v4

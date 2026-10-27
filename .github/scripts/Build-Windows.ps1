@@ -3,7 +3,9 @@ param(
     [ValidateSet('x64')]
     [string] $Target = 'x64',
     [ValidateSet('Debug', 'RelWithDebInfo', 'Release', 'MinSizeRel')]
-    [string] $Configuration = 'RelWithDebInfo'
+    [string] $Configuration = 'RelWithDebInfo',
+    [ValidateSet('OBS30-32', 'OBS33')]
+    [string] $ObsTarget = 'OBS30-32'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -47,7 +49,10 @@ function Build {
     Push-Location -Stack BuildTemp
     Ensure-Location $ProjectRoot
 
-    $CmakeArgs = @('--preset', "windows-ci-${Target}")
+    $PresetSuffix = if ($ObsTarget -eq 'OBS33') { 'obs33-' } else { '' }
+    $BuildDirectory = if ($ObsTarget -eq 'OBS33') { "build_obs33_${Target}" } else { "build_${Target}" }
+    $InstallDirectory = "${ProjectRoot}/release/${Configuration}/${ObsTarget}"
+    $CmakeArgs = @('--preset', "windows-ci-${PresetSuffix}${Target}")
     $CmakeBuildArgs = @('--build')
     $CmakeInstallArgs = @()
 
@@ -58,15 +63,15 @@ function Build {
     }
 
     $CmakeBuildArgs += @(
-        '--preset', "windows-${Target}"
+        '--preset', "windows-ci-${PresetSuffix}${Target}"
         '--config', $Configuration
         '--parallel'
         '--', '/consoleLoggerParameters:Summary', '/noLogo'
     )
 
     $CmakeInstallArgs += @(
-        '--install', "build_${Target}"
-        '--prefix', "${ProjectRoot}/release/${Configuration}"
+        '--install', $BuildDirectory
+        '--prefix', $InstallDirectory
         '--config', $Configuration
     )
 
