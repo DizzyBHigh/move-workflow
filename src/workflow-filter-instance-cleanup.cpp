@@ -5,10 +5,10 @@
 static void workflow_filter_instance_parent_removed(void *data, calldata_t *call_data)
 {
     workflow_filter_instance *instance = (workflow_filter_instance *)data;
-    if (!instance || !instance->parent)
+    if (!instance)
         return;
 
-    workflow_filter_instance_destroy(instance);
+    instance->parent_removed = true;
     (void)call_data;
 }
 
