@@ -166,7 +166,8 @@ void workflow_filter_instance_destroy(workflow_filter_instance *instance)
 {
     if (!instance) return;
     workflow_filter_instance_parent_cleanup_unregister(instance);
-    if (instance->parent && instance->instance) obs_source_filter_remove(instance->parent, instance->instance);
+    if (!instance->parent_removed && instance->parent && instance->instance)
+        obs_source_filter_remove(instance->parent, instance->instance);
     if (instance->instance) obs_source_release(instance->instance);
     if (instance->parent) obs_source_release(instance->parent);
     if (instance->original) obs_source_release(instance->original);
